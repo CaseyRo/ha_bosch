@@ -34,9 +34,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         if coordinator:
             async_add_entities([
                 BoschPoinTTAPINumberEntity(
-                    coordinator, config_entry.entry_id, uuid, desc
+                    coordinator, config_entry.entry_id, uuid, description
                 )
-                for desc in POINTTAPI_NUMBER_DESCRIPTIONS
+                for description in POINTTAPI_NUMBER_DESCRIPTIONS
             ])
         else:
             async_add_entities([])
