@@ -175,8 +175,7 @@ async def test_api_paths(session: aiohttp.ClientSession, access_token: str, devi
 
 
 async def main() -> None:
-    print()
-    device_id = os.environ.get("BOSCH_DEVICE_ID") or input("Device serial (no dashes, e.g. 101506113): ").strip()
+    ha_mode = "--ha" in sys.argv
 
     # Step 1: browser login + intercept
     log.info("Launching browser...")
@@ -188,9 +187,21 @@ async def main() -> None:
         print("       You can run test_pointtapi_oauth.py to do it manually instead.")
         sys.exit(1)
 
+    if ha_mode:
+        # Just print the URL for pasting into HA — don't exchange the code
+        print()
+        print("=" * 60)
+        print("Paste this into Home Assistant:")
+        print()
+        print(callback_url)
+        print()
+        print("=" * 60)
+        return
+
     print(f"\n[OK] Callback URL: {callback_url[:80]}...")
 
     # Step 2: extract code
+    device_id = os.environ.get("BOSCH_DEVICE_ID") or input("Device serial (no dashes, e.g. 101506113): ").strip()
     parsed = urllib.parse.urlparse(callback_url)
     params = urllib.parse.parse_qs(parsed.query)
     code = (params.get("code") or [None])[0]
