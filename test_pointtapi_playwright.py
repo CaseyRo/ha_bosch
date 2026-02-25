@@ -12,18 +12,18 @@ Run:
 """
 import asyncio
 import base64
-import getpass
 import hashlib
 import json
 import logging
+import os
 import sys
 import urllib.parse
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote, urlencode
 
 import aiohttp
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+from playwright_stealth import Stealth
 
 logging.basicConfig(
     level=logging.INFO,
@@ -72,153 +72,59 @@ def build_auth_url() -> str:
     return f"https://singlekey-id.com/auth/en-us/login?ReturnUrl={return_url}{encoded_query}"
 
 
-async def capture_callback_url(email: str, password: str) -> str | None:
-    """Launch browser, log in, intercept the OAuth callback URL."""
-    SCREENSHOT_DIR.mkdir(exist_ok=True)
+async def capture_callback_url() -> str | None:
+    """Open browser on the Bosch login page; wait for the user to log in and
+    the OAuth callback redirect to fire, then return the callback URL."""
     auth_url = build_auth_url()
     captured: list[str] = []
+    done = asyncio.Event()
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False, slow_mo=200)
-        context = await browser.new_context()
+    async with Stealth().use_async(async_playwright()) as p:
+        browser = await p.chromium.launch(headless=False)
+        context = await browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            )
+        )
         page = await context.new_page()
 
-        # ── Intercept 302 redirects to the custom scheme ─────────────────────
-        # The OAuth server sends a 302 Location: com.bosch.tt.dashtt.pointt://...
-        # We capture it from the response headers before the browser tries to navigate.
+        # Intercept the custom-scheme redirect in response headers
         def on_response(response):
             location = response.headers.get("location", "")
             if location.startswith("com.bosch.tt.dashtt.pointt://"):
                 log.info("Captured redirect: %s", location[:80])
                 captured.append(location)
+                done.set()
 
-        page.on("response", on_response)
-
-        # Also catch it if it arrives as a navigation request
+        # Also catch it if the browser tries to navigate to the custom scheme
         def on_request(request):
             if request.url.startswith("com.bosch.tt.dashtt.pointt://"):
-                log.info("Captured request navigation: %s", request.url[:80])
+                log.info("Captured navigation: %s", request.url[:80])
                 captured.append(request.url)
+                done.set()
 
+        page.on("response", on_response)
         page.on("request", on_request)
 
+        log.info("Navigating to Bosch login page...")
+        await page.goto(auth_url, wait_until="domcontentloaded", timeout=20_000)
+
+        print()
+        print("  Browser is open — please log in with your Bosch account.")
+        print("  The script will continue automatically once you're logged in.")
+        print()
+
+        # Wait up to 3 minutes for the user to log in
         try:
-            # Step 1: navigate to auth URL
-            log.info("Navigating to Bosch login page...")
-            await page.goto(auth_url, wait_until="domcontentloaded", timeout=20_000)
-            await page.screenshot(path=str(SCREENSHOT_DIR / "01_login_page.png"))
-            log.info("Screenshot: debug_screenshots/01_login_page.png")
-
-            # Step 2: fill email
-            log.info("Looking for email field...")
-            email_selectors = [
-                'input[name="Username"]',
-                'input[type="email"]',
-                'input[id="Username"]',
-                'input[name="email"]',
-                'input[placeholder*="mail" i]',
-            ]
-            email_field = None
-            for sel in email_selectors:
-                try:
-                    email_field = page.locator(sel).first
-                    await email_field.wait_for(state="visible", timeout=3_000)
-                    log.info("  Found email field: %s", sel)
-                    break
-                except PlaywrightTimeout:
-                    email_field = None
-
-            if email_field is None:
-                await page.screenshot(path=str(SCREENSHOT_DIR / "02_no_email_field.png"))
-                log.error("Could not find email input. See debug_screenshots/02_no_email_field.png")
-                # Print all input elements for diagnosis
-                inputs = await page.locator("input").all()
-                log.info("Inputs on page: %s", [await i.get_attribute("name") for i in inputs])
-                await browser.close()
-                return None
-
-            await email_field.fill(email)
-
-            # Step 3: fill password
-            log.info("Looking for password field...")
-            password_selectors = [
-                'input[name="Password"]',
-                'input[type="password"]',
-                'input[id="Password"]',
-            ]
-            password_field = None
-            for sel in password_selectors:
-                try:
-                    password_field = page.locator(sel).first
-                    await password_field.wait_for(state="visible", timeout=3_000)
-                    log.info("  Found password field: %s", sel)
-                    break
-                except PlaywrightTimeout:
-                    password_field = None
-
-            if password_field is None:
-                await page.screenshot(path=str(SCREENSHOT_DIR / "03_no_password_field.png"))
-                log.error("Could not find password input. See debug_screenshots/03_no_password_field.png")
-                await browser.close()
-                return None
-
-            await password_field.fill(password)
-            await page.screenshot(path=str(SCREENSHOT_DIR / "04_filled_credentials.png"))
-
-            # Step 4: click submit and wait for the redirect
-            log.info("Submitting login form...")
-            submit_selectors = [
-                'button[type="submit"]',
-                'input[type="submit"]',
-                'button:has-text("Sign in")',
-                'button:has-text("Log in")',
-                'button:has-text("Login")',
-                '.btn-primary',
-            ]
-            submit_btn = None
-            for sel in submit_selectors:
-                try:
-                    submit_btn = page.locator(sel).first
-                    await submit_btn.wait_for(state="visible", timeout=2_000)
-                    log.info("  Found submit button: %s", sel)
-                    break
-                except PlaywrightTimeout:
-                    submit_btn = None
-
-            if submit_btn is None:
-                await page.screenshot(path=str(SCREENSHOT_DIR / "05_no_submit.png"))
-                log.error("Could not find submit button.")
-                await browser.close()
-                return None
-
-            # Click submit; the OAuth callback redirect may cause a navigation error — that's fine
-            try:
-                async with page.expect_navigation(timeout=15_000):
-                    await submit_btn.click()
-            except PlaywrightTimeout:
-                pass  # Timeout is expected if the redirect goes to a custom scheme
-            except Exception as e:
-                log.debug("Navigation exception (expected for custom scheme): %s", e)
-
-            # Give a moment for any final redirects to fire
-            await asyncio.sleep(2)
-            await page.screenshot(path=str(SCREENSHOT_DIR / "06_after_submit.png"))
-            log.info("Screenshot: debug_screenshots/06_after_submit.png")
-
-        except Exception as e:
-            log.error("Browser automation error: %s", e, exc_info=True)
-            try:
-                await page.screenshot(path=str(SCREENSHOT_DIR / "error.png"))
-            except Exception:
-                pass
+            await asyncio.wait_for(done.wait(), timeout=180)
+        except asyncio.TimeoutError:
+            log.error("Timed out waiting for login (3 min). Closing browser.")
         finally:
             await browser.close()
 
-    if captured:
-        return captured[0]
-
-    log.warning("Callback URL not captured — check screenshots in debug_screenshots/")
-    return None
+    return captured[0] if captured else None
 
 
 async def exchange_code(session: aiohttp.ClientSession, code: str) -> dict:
@@ -270,14 +176,11 @@ async def test_api_paths(session: aiohttp.ClientSession, access_token: str, devi
 
 async def main() -> None:
     print()
-    device_id = input("Device serial (no dashes, e.g. 101506113): ").strip()
-    email = input("Bosch account email: ").strip()
-    password = getpass.getpass("Bosch account password: ")
+    device_id = os.environ.get("BOSCH_DEVICE_ID") or input("Device serial (no dashes, e.g. 101506113): ").strip()
 
     # Step 1: browser login + intercept
-    print()
-    log.info("Launching browser to complete Bosch login...")
-    callback_url = await capture_callback_url(email, password)
+    log.info("Launching browser...")
+    callback_url = await capture_callback_url()
 
     if not callback_url:
         print("\n[FAIL] Could not capture the callback URL automatically.")
