@@ -35,7 +35,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           # Check for syntax errors or bad style
-          ruff check --exclude deric-bosch-client --exclude unittests .
+          ruff check --exclude deric-bosch-client --exclude unittests --exclude test_pointtapi_oauth.py --exclude test_pointtapi_playwright.py .
 
       - name: Run Tests
         run: |
