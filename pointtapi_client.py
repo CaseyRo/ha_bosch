@@ -45,9 +45,9 @@ class PoinTTAPIClient:
         headers = {"Authorization": f"Bearer {token}"}
         async with self._session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status in (401, 403):
-                _LOGGER.warning("POINTTAPI auth failed: %s", resp.status)
+                _LOGGER.warning("POINTTAPI auth failed on GET %s: HTTP %s", uri, resp.status)
                 raise ConfigEntryAuthFailed(
-                    "Token expired or revoked. Please re-authenticate."
+                    f"POINTTAPI GET {uri}: HTTP {resp.status}"
                 ) from None
             if resp.status != 200:
                 raise RuntimeError(f"POINTTAPI GET {uri} failed: {resp.status}")
@@ -63,9 +63,9 @@ class PoinTTAPIClient:
         body = json.dumps({"value": value})
         async with self._session.put(url, headers=headers, data=body, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status in (401, 403):
-                _LOGGER.warning("POINTTAPI auth failed on PUT: %s", resp.status)
+                _LOGGER.warning("POINTTAPI auth failed on PUT %s: HTTP %s", uri, resp.status)
                 raise ConfigEntryAuthFailed(
-                    "Token expired or revoked. Please re-authenticate."
+                    f"POINTTAPI PUT {uri}: HTTP {resp.status}"
                 ) from None
             if resp.status not in (200, 204):
                 raise RuntimeError(f"POINTTAPI PUT {uri} failed: {resp.status}")

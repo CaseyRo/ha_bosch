@@ -29,7 +29,12 @@ ID_KEY = "id"
 
 
 async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
-    """Fetch root paths and one level of references; return path -> response dict."""
+    """Fetch root paths and one level of references; return path -> response dict.
+
+    Only /gateway auth failures are treated as real token problems (re-raised as
+    ConfigEntryAuthFailed). All other paths: 403/401 is logged and skipped, since
+    some sub-resources may be forbidden without the token being invalid.
+    """
     data: dict[str, Any] = {}
     for root in POINTTAPI_COORDINATOR_ROOTS:
         try:
@@ -57,15 +62,17 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
                                     if isinstance(sub2, dict):
                                         data[r2_id] = sub2
                                 except ConfigEntryAuthFailed:
-                                    raise
+                                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r2_id)
                                 except Exception:
                                     continue
                 except ConfigEntryAuthFailed:
-                    raise
+                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
                 except Exception:  # skip single path failure
                     continue
         except ConfigEntryAuthFailed:
-            raise
+            if root == "/gateway":
+                raise  # Token is genuinely bad
+            _LOGGER.debug("POINTTAPI 401/403 on root %s, skipping", root)
         except Exception as err:
             if root == "/gateway":
                 _LOGGER.warning("POINTTAPI gateway fetch failed: %s", err)
