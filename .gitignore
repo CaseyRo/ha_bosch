@@ -27,6 +27,7 @@ home-assistant.log
 
 # Local Debug Scripts
 debug_connection.py
+debug_screenshots/
 
 # Flask stuff:
 instance/
