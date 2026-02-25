@@ -315,7 +315,7 @@ class BoschGatewayEntry:
                 raise ConfigEntryNotReady(
                     f"Could not reach POINTTAPI: {err}"
                 ) from err
-            self.supported_platforms = [CLIMATE, WATER_HEATER, "sensor", BINARY_SENSOR]
+            self.supported_platforms = [CLIMATE, WATER_HEATER, "sensor", BINARY_SENSOR, NUMBER]
             self.hass.data[DOMAIN][self.uuid][GATEWAY] = self.gateway
             coordinator = PoinTTAPIDataUpdateCoordinator(
                 self.hass, self.config_entry, self.gateway
