@@ -1,0 +1,3 @@
+[submodule "deric-bosch-client"]
+	path = deric-bosch-client
+	url = https://github.com/deric/bosch-thermostat-client-python.git
