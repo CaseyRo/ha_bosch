@@ -217,14 +217,12 @@ class BoschFlowHandler(config_entries.ConfigFlow):
         )
 
     async def async_step_reauth(self, entry_data):
-        """Re-prompt for POINTTAPI OAuth when token expired or revoked (task 7.1)."""
-        entry_id = self.context.get("entry_id")
-        if entry_id:
-            entry = self.hass.config_entries.async_get_entry(entry_id)
-            if entry and entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-                self._host = entry.data.get(CONF_DEVICE_ID) or entry.data.get(UUID, "")
-                self._choose_type = entry.data.get(CONF_DEVICE_TYPE)
-                return await self.async_step_pointtapi_oauth_open()
+        """Re-prompt for POINTTAPI OAuth when token expired or revoked."""
+        entry = self._get_reauth_entry()
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            self._host = entry.data.get(CONF_DEVICE_ID) or entry.data.get(UUID, "")
+            self._choose_type = entry.data.get(CONF_DEVICE_TYPE)
+            return await self.async_step_pointtapi_oauth_open()
         return self.async_abort(reason="reauth_invalid")
 
     async def async_step_pointtapi_oauth_open(self, user_input=None):
@@ -266,15 +264,16 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                         errors["base"] = "oauth_token_failed"
                     else:
                         if reauth_entry_id:
-                            entry = self.hass.config_entries.async_get_entry(reauth_entry_id)
-                            if entry:
-                                new_data = {**entry.data}
-                                new_data[ACCESS_TOKEN] = tokens["access_token"]
-                                new_data["refresh_token"] = tokens["refresh_token"]
-                                new_data["expires_at"] = tokens["expires_at"]
-                                self.hass.config_entries.async_update_entry(entry, data=new_data)
-                                await self.hass.config_entries.async_reload(entry.entry_id)
-                            return self.async_abort(reason="reauth_successful")
+                            return self.async_update_reload_and_abort(
+                                self._get_reauth_entry(),
+                                data_updates={
+                                    ACCESS_TOKEN: tokens["access_token"],
+                                    "refresh_token": tokens["refresh_token"],
+                                    "expires_at": tokens["expires_at"],
+                                },
+                            )
+                        await self.async_set_unique_id(self._host)
+                        self._abort_if_unique_id_configured()
                         data = {
                             CONF_ADDRESS: self._host,
                             CONF_DEVICE_ID: self._host,

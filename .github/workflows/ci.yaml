@@ -35,7 +35,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           # Check for syntax errors or bad style
-          ruff check custom_components/bosch
+          ruff check --exclude deric-bosch-client --exclude unittests .
 
       - name: Run Tests
         run: |
