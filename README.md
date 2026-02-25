@@ -69,6 +69,12 @@ pip install bosch-thermostat-client==0.28.2 tzdata ruff
 
 CI runs ruff + pytest on Python 3.12 and 3.13.
 
+## Support this project
+
+If this integration is useful to you, consider buying me a coffee:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/CaseyRo)
+
 ## Credits
 
 - Original integration by [@pszafer](https://github.com/pszafer) and contributors
