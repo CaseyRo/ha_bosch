@@ -8,10 +8,13 @@ from bosch_thermostat_client.const import (
     SENSORS,
 )
 from bosch_thermostat_client.const.easycontrol import ENERGY
-from homeassistant.helpers import entity_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from ..const import CIRCUITS, DOMAIN, GATEWAY, SERVICE_MOVE_OLD_DATA, SIGNAL_BOSCH, UUID
+from ..const import CIRCUITS, CONF_PROTOCOL, DOMAIN, GATEWAY, POINTTAPI, SIGNAL_BOSCH, UUID
+from ..pointtapi_entities import (
+    BoschPoinTTAPISensorEntity,
+    _pointtapi_sensor_descriptions,
+)
 from .bosch import BoschSensor
 from .circuit import CircuitSensor
 from .energy import EcusRecordingSensors, EnergySensor, EnergySensors
@@ -36,6 +39,24 @@ SensorKinds = {
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Thermostat from a config entry."""
+    if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+        uuid = config_entry.data.get(UUID)
+        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
+        coordinator = data.get("coordinator")
+        if coordinator:
+            entities = [
+                BoschPoinTTAPISensorEntity(
+                    coordinator,
+                    config_entry.entry_id,
+                    uuid,
+                    desc,
+                )
+                for desc in _pointtapi_sensor_descriptions()
+            ]
+            async_add_entities(entities)
+        else:
+            async_add_entities([])
+        return True
     uuid = config_entry.data[UUID]
     data = hass.data[DOMAIN][uuid]
     enabled_sensors = config_entry.data.get(SENSORS, [])
@@ -132,13 +153,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(data[SENSOR])
     async_add_entities(data[RECORDING])
     if data[RECORDING]:
-        platform = entity_platform.async_get_current_platform()
-
-        # This will register add possibility via service to move old data to new format.
-        platform.async_register_entity_service(
-            SERVICE_MOVE_OLD_DATA,
-            {},
-            "move_old_entity_data_to_new",
-        )
+        pass
+        # Service registration removed as move_old_entity_data_to_new is currently broken
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     return True

@@ -15,22 +15,36 @@ from bosch_thermostat_client.exceptions import (
 )
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import AbortFlow
 
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_ADDRESS, CONF_PASSWORD
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from . import create_notification_firmware
+from .pointtapi_oauth import (
+    build_auth_url,
+    exchange_code_for_tokens,
+    extract_code_from_callback_url,
+)
 from .const import (
     ACCESS_KEY,
     ACCESS_TOKEN,
     CONF_DEVICE_TYPE,
+    CONF_DEVICE_ID,
     CONF_PROTOCOL,
     DOMAIN,
+    POINTTAPI,
     UUID,
 )
 
 DEVICE_TYPE = [NEFIT, IVT, EASYCONTROL, IVT_MBLAN]
 PROTOCOLS = [HTTP, XMPP]
+EASYCONTROL_PROTOCOLS = [XMPP, POINTTAPI]
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,7 +55,6 @@ class BoschFlowHandler(config_entries.ConfigFlow):
     """Handle a bosch config flow."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
         """Initialize Bosch flow."""
@@ -73,7 +86,25 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                     ),
                     errors=errors,
                 )
-            elif self._choose_type in (NEFIT, EASYCONTROL, IVT_MBLAN):
+            if self._choose_type == EASYCONTROL:
+                return self.async_show_form(
+                    step_id="easycontrol_protocol",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(CONF_PROTOCOL): SelectSelector(
+                                SelectSelectorConfig(
+                                    options=[
+                                        {"value": XMPP, "label": "Local connection (XMPP)"},
+                                        {"value": POINTTAPI, "label": "Cloud / Bosch Account"},
+                                    ],
+                                    mode=SelectSelectorMode.LIST,
+                                )
+                            ),
+                        }
+                    ),
+                    errors=errors,
+                )
+            if self._choose_type in (NEFIT, IVT_MBLAN):
                 return await self.async_step_protocol({CONF_PROTOCOL: XMPP})
         return self.async_show_form(
             step_id="choose_type",
@@ -81,6 +112,48 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 {
                     vol.Required(CONF_DEVICE_TYPE): vol.All(
                         vol.Upper, vol.In(DEVICE_TYPE)
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_easycontrol_protocol(self, user_input=None):
+        """Handle EasyControl protocol choice: XMPP or POINTTAPI."""
+        errors = {}
+        if user_input is not None:
+            self._protocol = user_input[CONF_PROTOCOL]
+            if self._protocol == XMPP:
+                return self.async_show_form(
+                    step_id="xmpp_config",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(CONF_ADDRESS): str,
+                            vol.Required(CONF_ACCESS_TOKEN): str,
+                            vol.Optional(CONF_PASSWORD): str,
+                        }
+                    ),
+                    errors=errors,
+                )
+            return self.async_show_form(
+                step_id="pointtapi_device_id",
+                data_schema=vol.Schema(
+                    {vol.Required(CONF_DEVICE_ID): str}
+                ),
+                errors=errors,
+            )
+        return self.async_show_form(
+            step_id="easycontrol_protocol",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PROTOCOL): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": XMPP, "label": "Local connection (XMPP)"},
+                                {"value": POINTTAPI, "label": "Cloud / Bosch Account"},
+                            ],
+                            mode=SelectSelectorMode.LIST,
+                        )
                     ),
                 }
             ),
@@ -125,6 +198,106 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 access_token=self._access_token,
                 password=self._password,
             )
+
+    async def async_step_pointtapi_device_id(self, user_input=None):
+        """Handle POINTTAPI device ID (serial without dashes)."""
+        errors = {}
+        if user_input is not None:
+            raw = user_input[CONF_DEVICE_ID].strip()
+            device_id = raw.replace("-", "")
+            if not device_id or not device_id.isdigit():
+                errors["base"] = "invalid_device_id"
+            else:
+                self._host = device_id
+                return await self.async_step_pointtapi_oauth_open()
+        return self.async_show_form(
+            step_id="pointtapi_device_id",
+            data_schema=vol.Schema({vol.Required(CONF_DEVICE_ID): str}),
+            errors=errors,
+        )
+
+    async def async_step_reauth(self, entry_data):
+        """Re-prompt for POINTTAPI OAuth when token expired or revoked (task 7.1)."""
+        entry_id = self.context.get("entry_id")
+        if entry_id:
+            entry = self.hass.config_entries.async_get_entry(entry_id)
+            if entry and entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+                self._host = entry.data.get(CONF_DEVICE_ID) or entry.data.get(UUID, "")
+                self._choose_type = entry.data.get(CONF_DEVICE_TYPE)
+                return await self.async_step_pointtapi_oauth_open()
+        return self.async_abort(reason="reauth_invalid")
+
+    async def async_step_pointtapi_oauth_open(self, user_input=None):
+        """Show Bosch login URL and prompt user to open it in a browser, then continue."""
+        if user_input is not None:
+            return self.async_show_form(
+                step_id="pointtapi_oauth",
+                data_schema=vol.Schema(
+                    {vol.Required("oauth_callback_url"): str}
+                ),
+                description_placeholders={"auth_url": build_auth_url()},
+                errors={},
+            )
+        auth_url = build_auth_url()
+        return self.async_show_form(
+            step_id="pointtapi_oauth_open",
+            data_schema=vol.Schema({}),
+            description_placeholders={"auth_url": auth_url},
+        )
+
+    async def async_step_pointtapi_oauth(self, user_input=None):
+        """Handle POINTTAPI OAuth: paste callback URL, exchange code for tokens, store in entry."""
+        errors = {}
+        reauth_entry_id = self.context.get("entry_id")
+        if user_input is not None:
+            callback_url = (user_input.get("oauth_callback_url") or "").strip()
+            if not callback_url:
+                errors["base"] = "oauth_callback_empty"
+            else:
+                code = extract_code_from_callback_url(callback_url)
+                if not code:
+                    errors["base"] = "oauth_callback_invalid"
+                else:
+                    try:
+                        session = async_get_clientsession(self.hass)
+                        tokens = await exchange_code_for_tokens(session, code)
+                    except Exception as err:  # ConfigEntryAuthFailed or aiohttp
+                        _LOGGER.warning("POINTTAPI token exchange failed: %s", err)
+                        errors["base"] = "oauth_token_failed"
+                    else:
+                        if reauth_entry_id:
+                            entry = self.hass.config_entries.async_get_entry(reauth_entry_id)
+                            if entry:
+                                new_data = {**entry.data}
+                                new_data[ACCESS_TOKEN] = tokens["access_token"]
+                                new_data["refresh_token"] = tokens["refresh_token"]
+                                new_data["expires_at"] = tokens["expires_at"]
+                                self.hass.config_entries.async_update_entry(entry, data=new_data)
+                                await self.hass.config_entries.async_reload(entry.entry_id)
+                            return self.async_abort(reason="reauth_successful")
+                        data = {
+                            CONF_ADDRESS: self._host,
+                            CONF_DEVICE_ID: self._host,
+                            UUID: self._host,
+                            CONF_DEVICE_TYPE: self._choose_type,
+                            CONF_PROTOCOL: POINTTAPI,
+                            ACCESS_KEY: "",
+                            ACCESS_TOKEN: tokens["access_token"],
+                            "refresh_token": tokens["refresh_token"],
+                            "expires_at": tokens["expires_at"],
+                        }
+                        return self.async_create_entry(
+                            title=f"EasyControl (POINTTAPI) {self._host}",
+                            data=data,
+                        )
+        return self.async_show_form(
+            step_id="pointtapi_oauth",
+            data_schema=vol.Schema(
+                {vol.Required("oauth_callback_url"): str}
+            ),
+            description_placeholders={"auth_url": build_auth_url()},
+            errors=errors,
+        )
 
     async def async_step_xmpp_config(self, user_input=None):
         if user_input is not None:
@@ -174,23 +347,47 @@ class BoschFlowHandler(config_entries.ConfigFlow):
             if uuid:
                 await self.async_set_unique_id(uuid)
                 self._abort_if_unique_id_configured()
+        except AbortFlow:
+            raise
         except (DeviceException, EncryptionException) as err:
-            _LOGGER.error("Wrong IP or credentials at %s - %s", host, err)
+            _LOGGER.error(
+                "Authentication failed: host=%s, device_type=%s, protocol=%s, error=%s",
+                host,
+                device_type,
+                session_type,
+                err,
+                exc_info=_LOGGER.isEnabledFor(logging.DEBUG),
+            )
             return self.async_abort(reason="faulty_credentials")
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error("Error connecting Bosch at %s - %s", host, err)
+            _LOGGER.error(
+                "Unexpected error connecting to Bosch: host=%s, device_type=%s, protocol=%s, error=%s",
+                host,
+                device_type,
+                session_type,
+                err,
+                exc_info=True,
+            )
+            return self.async_abort(reason="unknown")
         else:
-            _LOGGER.debug("Adding Bosch entry.")
+            _LOGGER.info(
+                "Successfully configured Bosch device: device_name=%s, uuid=%s, host=%s, protocol=%s",
+                device.device_name or "Unknown model",
+                uuid,
+                device.host,
+                session_type,
+            )
+            data = {
+                CONF_ADDRESS: device.host,
+                UUID: uuid,
+                ACCESS_KEY: device.access_key,
+                ACCESS_TOKEN: device.access_token,
+                CONF_DEVICE_TYPE: self._choose_type,
+                CONF_PROTOCOL: session_type,
+            }
             return self.async_create_entry(
                 title=device.device_name or "Unknown model",
-                data={
-                    CONF_ADDRESS: device.host,
-                    UUID: uuid,
-                    ACCESS_KEY: device.access_key,
-                    ACCESS_TOKEN: device.access_token,
-                    CONF_DEVICE_TYPE: self._choose_type,
-                    CONF_PROTOCOL: session_type,
-                },
+                data=data,
             )
 
     async def async_step_discovery(self, discovery_info=None):

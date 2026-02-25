@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f unittests/requirements.txt ]; then pip install -r unittests/requirements.txt; fi
+          # Install dependencies manually that might be missing in requirements
+          pip install bosch-thermostat-client tzdata
+
+      - name: Lint with Ruff
+        run: |
+          # Check for syntax errors or bad style
+          ruff check custom_components/bosch
+
+      - name: Run Tests
+        run: |
+          # Run the unit tests
+          python3 -m pytest --tb=short -q unittests

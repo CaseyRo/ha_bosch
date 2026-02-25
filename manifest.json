@@ -1,14 +1,16 @@
 {
   "domain": "bosch",
-  "name": "Bosch thermostat",
+  "name": "Bosch thermostat ha-pro",
+  "integration_type": "hub",
   "documentation": "https://github.com/bosch-thermostat/home-assistant-bosch-custom-component",
   "issue_tracker": "https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues",
   "dependencies": ["network", "persistent_notification"],
   "after_dependencies": ["http", "recorder"],
   "codeowners": ["@pszafer"],
-  "requirements": ["bosch-thermostat-client==v0.28.2"],
-  "version": "0.28.2",
+  "requirements": ["bosch-thermostat-client==0.28.2"],
+  "version": "0.28.6",
   "zeroconf": ["_buderus._tcp.local."],
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "iot_class": "cloud_polling",
+  "loggers": ["custom_components.bosch", "bosch_thermostat_client"]
 }

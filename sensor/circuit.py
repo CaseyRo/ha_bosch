@@ -1,13 +1,13 @@
 """Bosch sensor of circuit/zones entities."""
 
-from ..const import CIRCUITS_SENSOR_NAMES, SIGNAL_SOLAR_UPDATE_BOSCH
+from ..const import CIRCUITS_SENSOR_NAMES, SIGNAL_SENSOR_UPDATE_BOSCH
 from .base import BoschBaseSensor
 
 
 class CircuitSensor(BoschBaseSensor):
     """Representation of a Bosch sensor."""
 
-    signal = SIGNAL_SOLAR_UPDATE_BOSCH
+    signal = SIGNAL_SENSOR_UPDATE_BOSCH
 
     @property
     def device_name(self):

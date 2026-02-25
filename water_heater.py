@@ -22,7 +22,9 @@ from .bosch_entity import BoschClimateWaterEntity
 from .const import (
     BOSCH_STATE,
     CHARGE,
+    CONF_PROTOCOL,
     DOMAIN,
+    POINTTAPI,
     SERVICE_CHARGE_SCHEMA,
     SERVICE_CHARGE_START,
     SIGNAL_BOSCH,
@@ -32,12 +34,24 @@ from .const import (
     UUID,
     WATER_HEATER,
 )
+from .pointtapi_entities import BoschPoinTTAPIWaterHeaterEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities) -> bool:
     """Set up the Bosch Water heater from a config entry."""
+    if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+        uuid = config_entry.data.get(UUID)
+        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
+        coordinator = data.get("coordinator")
+        if coordinator:
+            async_add_entities([
+                BoschPoinTTAPIWaterHeaterEntity(coordinator, config_entry.entry_id, uuid)
+            ])
+        else:
+            async_add_entities([])
+        return True
     uuid = config_entry.data[UUID]
     data = hass.data[DOMAIN][uuid]
     data[WATER_HEATER] = [
