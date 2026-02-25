@@ -28,6 +28,10 @@ _LOGGER = logging.getLogger(__name__)
 
 VALUE_KEY = "value"
 
+# Water heater operation mode mapping: API value <-> user-friendly label
+_API_TO_OP = {"ownprogram": "Auto", "off": "Off", "on": "On"}
+_OP_TO_API = {v: k for k, v in _API_TO_OP.items()}
+
 
 def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     """Get key (default 'value') from data[path] if present."""
@@ -167,7 +171,8 @@ class BoschPoinTTAPIWaterHeaterEntity(
         self._target_temp: float | None = None
         self._state: str | None = None
         self._operation_mode: str | None = None
-        self._attr_operation_list = ["ownprogram", "off", "on"]
+        # User-friendly labels; mapped to/from API values via _OP_TO_API / _API_TO_OP
+        self._attr_operation_list = ["Auto", "Off", "On"]
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -176,7 +181,8 @@ class BoschPoinTTAPIWaterHeaterEntity(
         self._current_temp = _val(data, "/dhwCircuits/dhw1/actualTemp")
         self._target_temp = _val(data, "/dhwCircuits/dhw1/temperatureLevels/high")
         self._state = _val(data, "/dhwCircuits/dhw1/state")
-        self._operation_mode = _val(data, "/dhwCircuits/dhw1/operationMode")
+        raw_op = _val(data, "/dhwCircuits/dhw1/operationMode")
+        self._operation_mode = _API_TO_OP.get(raw_op, raw_op)
         self.async_write_ha_state()
 
     @property
@@ -225,12 +231,13 @@ class BoschPoinTTAPIWaterHeaterEntity(
             await self.coordinator.async_request_refresh()
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
-        """Set operation mode via POINTTAPI PUT (task 6.3)."""
+        """Set operation mode via POINTTAPI PUT."""
         if operation_mode not in self._attr_operation_list:
             return
+        api_value = _OP_TO_API.get(operation_mode, operation_mode)
         path = "/dhwCircuits/dhw1/operationMode"
         try:
-            await self.coordinator.client.put(path, operation_mode)
+            await self.coordinator.client.put(path, api_value)
             self._operation_mode = operation_mode
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
