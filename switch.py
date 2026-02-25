@@ -13,18 +13,34 @@ from .bosch_entity import BoschEntity
 from .const import (
     CIRCUITS,
     CIRCUITS_SENSOR_NAMES,
+    CONF_PROTOCOL,
     DOMAIN,
+    POINTTAPI,
     SIGNAL_BOSCH,
     SIGNAL_SWITCH,
     SWITCH,
     UUID,
 )
+from .pointtapi_entities import BoschPoinTTAPIBoostSwitchEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Switch from a config entry."""
+    if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+        uuid = config_entry.data.get(UUID)
+        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
+        coordinator = data.get("coordinator")
+        if coordinator:
+            async_add_entities([
+                BoschPoinTTAPIBoostSwitchEntity(
+                    coordinator, config_entry.entry_id, uuid
+                )
+            ])
+        else:
+            async_add_entities([])
+        return True
     uuid = config_entry.data[UUID]
     data = hass.data[DOMAIN][uuid]
     enabled_switches = config_entry.data.get(SWITCH, [])
