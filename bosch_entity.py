@@ -35,9 +35,10 @@ class BoschEntity:
 
     @property
     def _domain_identifier(self):
+        """Device registry identifiers: set of (domain, unique_id) 2-tuples."""
         if self._bosch_object.parent_id:
-            return {(DOMAIN, self._bosch_object.parent_id, self._uuid)}
-        return {(DOMAIN, self._domain_name, self._uuid)}
+            return {(DOMAIN, f"{self._uuid}_{self._bosch_object.parent_id}")}
+        return {(DOMAIN, f"{self._uuid}_{self._domain_name}")}
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -67,7 +68,8 @@ class BoschClimateWaterEntity(BoschEntity):
 
     @property
     def _domain_identifier(self):
-        return {(DOMAIN, self._bosch_object.id, self._uuid)}
+        """Device registry identifiers: set of (domain, unique_id) 2-tuples."""
+        return {(DOMAIN, f"{self._uuid}_{self._bosch_object.id}")}
 
     @property
     def device_name(self):

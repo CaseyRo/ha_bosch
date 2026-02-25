@@ -50,7 +50,8 @@ class RecordingSensor(StatisticHelper):
         ):
             self._attr_state_class = "measurement"
 
-        self._attr_last_reset = last_reset
+        if self._attr_state_class == "total":
+            self._attr_last_reset = last_reset
         if self._update_init:
             self._update_init = False
         self.async_schedule_update_ha_state()
@@ -80,7 +81,12 @@ class RecordingSensor(StatisticHelper):
 
     async def async_update(self) -> None:
         """Update state of device."""
-        _LOGGER.debug("Update of sensor %s called.", self.unique_id)
+        _LOGGER.debug(
+            "Updating recording sensor: unique_id=%s, name=%s, statistic_id=%s",
+            self.unique_id,
+            self._name,
+            self.statistic_id,
+        )
         if self._new_stats_api:
             self._unit_of_measurement = UNITS_CONVERTER.get(
                 self._bosch_object.unit_of_measurement

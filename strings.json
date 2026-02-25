@@ -9,18 +9,18 @@
                 }
             },
             "protocol": {
-              "title": "Bosch IVT Protocol. HTTP is local. XMPP is cloud!",
-              "data": {
-                  "Protocol": "Either http or xmpp"
-              }
+                "title": "Bosch IVT Protocol. HTTP is local. XMPP is cloud!",
+                "data": {
+                    "Protocol": "Either http or xmpp"
+                }
             },
             "http_config": {
-              "title": "Bosch thermostat HTTP config",
-              "data": {
-                  "address": "IP address",
-                  "access_token": "Access token",
-                  "password": "Password"
-              }
+                "title": "Bosch thermostat HTTP config",
+                "data": {
+                    "address": "IP address",
+                    "access_token": "Access token",
+                    "password": "Password"
+                }
             },
             "xmpp_config": {
                 "title": "Bosch thermostat XMPP config",
@@ -29,26 +29,56 @@
                     "access_token": "Access token",
                     "password": "Password"
                 }
-              }
+            },
+            "easycontrol_protocol": {
+                "title": "EasyControl connection",
+                "description": "XMPP connects directly to your device on the local network. Cloud login uses your Bosch account and works remotely.",
+                "data": {
+                    "protocol": "Connection type"
+                }
+            },
+            "pointtapi_device_id": {
+                "title": "Your EasyControl serial number",
+                "description": "Enter your device serial number (with or without dashes). You'll find it on the label on the device or in the Bosch EasyControl app under Settings → Device info.",
+                "data": {
+                    "device_id": "Serial number"
+                }
+            },
+            "pointtapi_oauth_open": {
+                "title": "Log in with your Bosch account",
+                "description": "Click **[this link]({auth_url})** to open the Bosch login page in a new browser tab and sign in with your Bosch account.\n\nAfter logging in, your browser will show a \"Cannot open page\" error — **that is expected**. Leave that tab open and click **Submit** below."
+            },
+            "pointtapi_oauth": {
+                "title": "Complete sign-in",
+                "description": "In the browser tab showing \"Cannot open page\", copy the **full URL** from the address bar — it starts with `com.bosch.tt.dashtt.pointt://app/login?code=` — and paste it below.",
+                "data": {
+                    "oauth_callback_url": "URL from browser address bar"
+                }
+            }
         },
         "error": {
-            "service_unavailable": "No service available"
+            "service_unavailable": "No service available",
+            "invalid_device_id": "Device ID must be digits only (serial number without dashes).",
+            "oauth_callback_empty": "Please paste the URL from the browser address bar.",
+            "oauth_callback_invalid": "Could not read the login code from that URL. Make sure you copied the full URL after the page showed \"Cannot open page\".",
+            "oauth_token_failed": "Failed to complete sign-in with Bosch. The login code may have expired — please try again from the start."
         },
         "abort": {
             "faulty_credentials": "Bad user credentials or wrong IP",
             "already_configured": "Controller site is already configured",
-            "unknown": "Unknown reason. Check LOGS."
+            "unknown": "Unknown reason. Check LOGS.",
+            "reauth_invalid": "Re-authentication only applies to POINTTAPI entries."
         }
     },
     "options": {
         "step": {
-          "init": {
-            "title": "Bosch options",
-            "data": {
-              "new_stats_api": "Use new statistic API",
-              "optimistic_mode": "Use optimistic mode for some functions (currently CT200 Operation mode set)."
+            "init": {
+                "title": "Bosch options",
+                "data": {
+                    "new_stats_api": "Use new statistic API",
+                    "optimistic_mode": "Use optimistic mode for some functions (currently CT200 Operation mode set)."
+                }
             }
-          }
         }
-      }
+    }
 }

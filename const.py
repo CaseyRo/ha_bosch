@@ -14,6 +14,8 @@ UUID = "uuid"
 
 CONF_PROTOCOL = "http_xmpp"
 CONF_DEVICE_TYPE = "device_type"
+CONF_DEVICE_ID = "device_id"  # POINTTAPI: serial without dashes
+POINTTAPI = "pointtapi"
 
 GATEWAY = "gateway"
 CLIMATE = "climate"

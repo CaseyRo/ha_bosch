@@ -8,8 +8,10 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .bosch_entity import BoschEntity
 from .const import (
     BINARY_SENSOR,
+    CONF_PROTOCOL,
     DOMAIN,
     GATEWAY,
+    POINTTAPI,
     SIGNAL_BINARY_SENSOR_UPDATE_BOSCH,
     SIGNAL_BOSCH,
     UUID,
@@ -20,6 +22,9 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Thermostat from a config entry."""
+    if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+        async_add_entities([])
+        return True
     uuid = config_entry.data[UUID]
     data = hass.data[DOMAIN][uuid]
     enabled_sensors = config_entry.data.get(BINARY_SENSOR, [])
@@ -109,3 +114,8 @@ class BoschBinarySensor(BoschEntity, BinarySensorEntity):
         if self._update_init:
             self._update_init = False
             self.async_schedule_update_ha_state()
+
+    @property
+    def should_poll(self):
+        """Don't poll."""
+        return False
