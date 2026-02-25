@@ -21,7 +21,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, UUID
+from .const import DOMAIN
 from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)

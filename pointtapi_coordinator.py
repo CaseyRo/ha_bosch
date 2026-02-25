@@ -1,6 +1,7 @@
 """DataUpdateCoordinator for Bosch POINTTAPI: single poll, path-keyed payload."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -108,11 +109,14 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch path-keyed payload; raise ConfigEntryAuthFailed on 401/403, UpdateFailed on connection error."""
         try:
-            return await _fetch_paths(self._client)
+            async with asyncio.timeout(120):
+                return await _fetch_paths(self._client)
         except ConfigEntryAuthFailed:
             raise
         except UpdateFailed:
             raise
+        except TimeoutError as err:
+            raise UpdateFailed("POINTTAPI update timed out") from err
         except Exception as err:
             _LOGGER.warning("POINTTAPI coordinator update failed: %s", err)
             raise UpdateFailed(f"POINTTAPI update failed: {err}") from err

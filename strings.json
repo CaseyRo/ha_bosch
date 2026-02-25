@@ -67,7 +67,8 @@
             "faulty_credentials": "Bad user credentials or wrong IP",
             "already_configured": "Controller site is already configured",
             "unknown": "Unknown reason. Check LOGS.",
-            "reauth_invalid": "Re-authentication only applies to POINTTAPI entries."
+            "reauth_invalid": "Re-authentication only applies to POINTTAPI entries.",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
         }
     },
     "options": {
