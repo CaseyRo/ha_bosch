@@ -67,8 +67,10 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.debug("POINTTAPI fetch %s failed: %s", root, err)
-            raise UpdateFailed(f"POINTTAPI fetch failed: {err}") from err
+            if root == "/gateway":
+                _LOGGER.warning("POINTTAPI gateway fetch failed: %s", err)
+                raise UpdateFailed(f"POINTTAPI fetch failed: {err}") from err
+            _LOGGER.debug("POINTTAPI optional path %s not available, skipping: %s", root, err)
     return data
 
 

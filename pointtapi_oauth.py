@@ -101,8 +101,7 @@ async def exchange_code_for_tokens(session, code: str) -> dict[str, Any]:
     }
     async with session.post(TOKEN_URL, data=data) as resp:
         if resp.status != 200:
-            text = await resp.text()
-            _LOGGER.warning("Token exchange failed: status=%s", resp.status)
+            _LOGGER.warning("Token exchange failed: status=%s body=%s", resp.status, await resp.text())
             raise ConfigEntryAuthFailed(
                 "OAuth token exchange failed. Try the callback URL again."
             ) from None
@@ -128,7 +127,6 @@ async def refresh_access_token(session, refresh_token: str) -> dict[str, Any]:
         "refresh_token": refresh_token,
         "scope": " ".join(SCOPES),
         "client_id": CLIENT_ID,
-        "code_verifier": CODE_VERIFIER,
     }
     async with session.post(TOKEN_URL, data=data) as resp:
         if resp.status in (401, 400):
@@ -137,8 +135,7 @@ async def refresh_access_token(session, refresh_token: str) -> dict[str, Any]:
                 "Token expired or revoked. Please re-authenticate."
             ) from None
         if resp.status != 200:
-            text = await resp.text()
-            _LOGGER.warning("Token refresh failed: status=%s", resp.status)
+            _LOGGER.warning("Token refresh failed: status=%s body=%s", resp.status, await resp.text())
             raise ConfigEntryAuthFailed(
                 "Token refresh failed. Please re-authenticate."
             ) from None

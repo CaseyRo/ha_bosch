@@ -9,6 +9,8 @@ import json
 import logging
 from urllib.parse import urljoin
 
+import aiohttp
+
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,7 +43,7 @@ class PoinTTAPIClient:
         token = await self._token_callback()
         url = self._url(uri)
         headers = {"Authorization": f"Bearer {token}"}
-        async with self._session.get(url, headers=headers, timeout=30) as resp:
+        async with self._session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status in (401, 403):
                 _LOGGER.warning("POINTTAPI auth failed: %s", resp.status)
                 raise ConfigEntryAuthFailed(
@@ -59,7 +61,7 @@ class PoinTTAPIClient:
         url = self._url(uri)
         headers = {"Authorization": f"Bearer {token}", "Content-Type": APP_JSON}
         body = json.dumps({"value": value})
-        async with self._session.put(url, headers=headers, data=body, timeout=30) as resp:
+        async with self._session.put(url, headers=headers, data=body, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status in (401, 403):
                 _LOGGER.warning("POINTTAPI auth failed on PUT: %s", resp.status)
                 raise ConfigEntryAuthFailed(
