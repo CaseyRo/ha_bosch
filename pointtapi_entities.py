@@ -8,7 +8,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
-from homeassistant.components.number import NumberEntity
+from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.components.water_heater import (
     STATE_OFF,
@@ -41,7 +41,6 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
 
 
 PRESET_BOOST = "Boost"
-PRESET_NONE = "none"
 
 
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
@@ -51,7 +50,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     _attr_name = None
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    _attr_preset_modes = [PRESET_NONE, PRESET_BOOST]
+    _attr_preset_modes = [PRESET_BOOST]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.TURN_OFF
@@ -79,7 +78,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._current: float | None = None
         self._target: float | None = None
         self._hvac_mode = HVACMode.HEAT
-        self._preset_mode: str = PRESET_NONE
+        self._preset_mode: str | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -93,7 +92,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         else:
             self._hvac_mode = HVACMode.HEAT
         boost = _val(data, "/heatingCircuits/hc1/boostMode")
-        self._preset_mode = PRESET_BOOST if boost == "on" else PRESET_NONE
+        self._preset_mode = PRESET_BOOST if boost == "on" else None
         self.async_write_ha_state()
 
     @property
@@ -109,7 +108,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         return self._hvac_mode
 
     @property
-    def preset_mode(self) -> str:
+    def preset_mode(self) -> str | None:
         return self._preset_mode
 
     @property
@@ -122,11 +121,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Toggle boost mode via POINTTAPI PUT."""
-        value = "on" if preset_mode == PRESET_BOOST else "off"
+        is_boost = preset_mode == PRESET_BOOST
+        value = "on" if is_boost else "off"
         path = "/heatingCircuits/hc1/boostMode"
         try:
             await self.coordinator.client.put(path, value)
-            self._preset_mode = preset_mode
+            self._preset_mode = PRESET_BOOST if is_boost else None
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
@@ -381,36 +381,24 @@ class BoschPoinTTAPISensorEntity(
 # ── Number entities (boost settings) ─────────────────────────────────────────
 
 
-class _PoinTTAPINumberDesc:
-    """Simple descriptor for POINTTAPI number entities."""
-
-    def __init__(self, path: str, name: str, unit: str | None, min_val: float, max_val: float, step: float):
-        self.path = path
-        self.name = name
-        self.unit = unit
-        self.min_val = min_val
-        self.max_val = max_val
-        self.step = step
-
-
-POINTTAPI_NUMBER_DESCRIPTIONS = [
-    _PoinTTAPINumberDesc(
-        path="/heatingCircuits/hc1/boostTemperature",
+POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/boostTemperature",
         name="Boost temperature",
-        unit=UnitOfTemperature.CELSIUS,
-        min_val=5.0,
-        max_val=30.0,
-        step=0.5,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=5.0,
+        native_max_value=30.0,
+        native_step=0.5,
     ),
-    _PoinTTAPINumberDesc(
-        path="/heatingCircuits/hc1/boostDuration",
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/boostDuration",
         name="Boost duration",
-        unit=UnitOfTime.MINUTES,
-        min_val=5.0,
-        max_val=60.0,
-        step=5.0,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        native_min_value=5.0,
+        native_max_value=60.0,
+        native_step=5.0,
     ),
-]
+)
 
 
 class BoschPoinTTAPINumberEntity(
@@ -420,24 +408,22 @@ class BoschPoinTTAPINumberEntity(
 
     _attr_has_entity_name = True
 
+    entity_description: NumberEntityDescription
+
     def __init__(
         self,
         coordinator: PoinTTAPIDataUpdateCoordinator,
         entry_id: str,
         uuid: str,
-        desc: _PoinTTAPINumberDesc,
+        description: NumberEntityDescription,
     ) -> None:
         super().__init__(coordinator)
+        self.entity_description = description
         self._entry_id = entry_id
         self._uuid = uuid
-        self._path = desc.path
-        slug = desc.path.strip("/").replace("/", "_")
+        self._path = description.key
+        slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_number_{slug}"
-        self._attr_name = desc.name
-        self._attr_native_unit_of_measurement = desc.unit
-        self._attr_native_min_value = desc.min_val
-        self._attr_native_max_value = desc.max_val
-        self._attr_native_step = desc.step
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, uuid)},
         )
