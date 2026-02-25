@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.water_heater import (
     STATE_OFF,
     STATE_ON,
@@ -40,9 +41,6 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     return obj.get(key) if isinstance(obj, dict) else None
 
 
-PRESET_BOOST = "Boost"
-
-
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
     """Climate entity for POINTTAPI zone (zn1): current/setpoint from coordinator.data."""
 
@@ -50,12 +48,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     _attr_name = None
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    _attr_preset_modes = [PRESET_BOOST]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.TURN_OFF
         | ClimateEntityFeature.TURN_ON
-        | ClimateEntityFeature.PRESET_MODE
     )
 
     def __init__(
@@ -78,7 +74,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._current: float | None = None
         self._target: float | None = None
         self._hvac_mode = HVACMode.HEAT
-        self._preset_mode: str | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -91,8 +86,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             self._hvac_mode = HVACMode.OFF
         else:
             self._hvac_mode = HVACMode.HEAT
-        boost = _val(data, "/heatingCircuits/hc1/boostMode")
-        self._preset_mode = PRESET_BOOST if boost == "on" else None
         self.async_write_ha_state()
 
     @property
@@ -108,32 +101,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         return self._hvac_mode
 
     @property
-    def preset_mode(self) -> str | None:
-        return self._preset_mode
-
-    @property
     def min_temp(self) -> float:
         return 5.0
 
     @property
     def max_temp(self) -> float:
         return 30.0
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Toggle boost mode via POINTTAPI PUT."""
-        is_boost = preset_mode == PRESET_BOOST
-        value = "on" if is_boost else "off"
-        path = "/heatingCircuits/hc1/boostMode"
-        try:
-            await self.coordinator.client.put(path, value)
-            self._preset_mode = PRESET_BOOST if is_boost else None
-            self.async_write_ha_state()
-            await self.coordinator.async_request_refresh()
-        except ConfigEntryAuthFailed:
-            raise
-        except Exception as err:
-            _LOGGER.warning("POINTTAPI set boost mode failed: %s", err)
-            await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs) -> None:
         """Set target temperature via POINTTAPI PUT."""
@@ -393,10 +366,10 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     NumberEntityDescription(
         key="/heatingCircuits/hc1/boostDuration",
         name="Boost duration",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        native_min_value=5.0,
-        native_max_value=60.0,
-        native_step=5.0,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        native_min_value=0.5,
+        native_max_value=24.0,
+        native_step=0.5,
     ),
 )
 
@@ -451,4 +424,68 @@ class BoschPoinTTAPINumberEntity(
             raise
         except Exception as err:
             _LOGGER.warning("POINTTAPI set %s failed: %s", self._path, err)
+            await self.coordinator.async_request_refresh()
+
+
+# ── Switch entity (boost toggle) ─────────────────────────────────────────────
+
+
+class BoschPoinTTAPIBoostSwitchEntity(
+    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
+):
+    """Switch entity for POINTTAPI: one-tap boost on/off."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Boost"
+
+    def __init__(
+        self,
+        coordinator: PoinTTAPIDataUpdateCoordinator,
+        entry_id: str,
+        uuid: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._entry_id = entry_id
+        self._uuid = uuid
+        self._attr_unique_id = f"{entry_id}_pointtapi_boost"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, uuid)},
+        )
+        self._is_on: bool = False
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        data = self.coordinator.data or {}
+        boost = _val(data, "/heatingCircuits/hc1/boostMode")
+        self._is_on = boost == "on"
+        self.async_write_ha_state()
+
+    @property
+    def is_on(self) -> bool:
+        return self._is_on
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn boost on."""
+        try:
+            await self.coordinator.client.put("/heatingCircuits/hc1/boostMode", "on")
+            self._is_on = True
+            self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("POINTTAPI boost turn_on failed: %s", err)
+            await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn boost off."""
+        try:
+            await self.coordinator.client.put("/heatingCircuits/hc1/boostMode", "off")
+            self._is_on = False
+            self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("POINTTAPI boost turn_off failed: %s", err)
             await self.coordinator.async_request_refresh()
