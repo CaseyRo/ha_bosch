@@ -5,19 +5,27 @@ All use CoordinatorEntity; device_info and unique_id follow 2-tuple and entry_id
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.components.water_heater import (
     STATE_OFF,
     STATE_ON,
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
-from homeassistant.const import UnitOfPressure, UnitOfTemperature, UnitOfTime
+from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
@@ -39,6 +47,43 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     """Get key (default 'value') from data[path] if present."""
     obj = data.get(path) if data else None
     return obj.get(key) if isinstance(obj, dict) else None
+
+
+# ── Custom sensor description with optional value_fn ─────────────────────────
+
+
+@dataclass(frozen=True)
+class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
+    """Sensor description with optional value_fn for computed/derived values."""
+
+    value_fn: Callable[[dict[str, Any]], Any] | None = None
+
+
+# ── Gas usage helper functions ────────────────────────────────────────────────
+
+
+def _gas_history_entries(data: dict[str, Any]) -> list | None:
+    history = data.get("/energy/history") or {}
+    entries = history.get("value") if isinstance(history, dict) else None
+    return entries if isinstance(entries, list) and entries else None
+
+
+def _gas_ch_today(data: dict[str, Any]) -> float | None:
+    entries = _gas_history_entries(data)
+    return entries[-1].get("gCh") if entries is not None else None
+
+
+def _gas_hw_today(data: dict[str, Any]) -> float | None:
+    entries = _gas_history_entries(data)
+    return entries[-1].get("gHw") if entries is not None else None
+
+
+def _gas_total_today(data: dict[str, Any]) -> float | None:
+    entries = _gas_history_entries(data)
+    if entries is None:
+        return None
+    last = entries[-1]
+    return (last.get("gCh") or 0.0) + (last.get("gHw") or 0.0)
 
 
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
@@ -250,52 +295,123 @@ class BoschPoinTTAPIWaterHeaterEntity(
             await self.coordinator.async_request_refresh()
 
 
-# Curated POINTTAPI sensors: path, name, device_class, entity_category (5.3 + 5.4)
-def _pointtapi_sensor_descriptions():
-    from homeassistant.components.sensor import SensorDeviceClass
+# Curated POINTTAPI sensors: path, name, device_class, entity_category
+def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return all curated POINTTAPI sensor descriptions."""
     return (
-        SensorEntityDescription(
+        # ── Existing sensors ─────────────────────────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
             key="/system/sensors/temperatures/outdoor_t1",
             translation_key="outdoor_temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
-        SensorEntityDescription(
+        BoschPoinTTAPISensorEntityDescription(
             key="/system/sensors/humidity/indoor_h1",
             translation_key="indoor_humidity",
             device_class=SensorDeviceClass.HUMIDITY,
             native_unit_of_measurement="%",
         ),
-        SensorEntityDescription(
+        BoschPoinTTAPISensorEntityDescription(
             key="/zones/zn1/actualValvePosition",
             translation_key="valve_position",
             native_unit_of_measurement="%",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
-        SensorEntityDescription(
+        BoschPoinTTAPISensorEntityDescription(
             key="/system/appliance/systemPressure",
             translation_key="system_pressure",
             device_class=SensorDeviceClass.PRESSURE,
             native_unit_of_measurement=UnitOfPressure.BAR,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
-        SensorEntityDescription(
+        BoschPoinTTAPISensorEntityDescription(
             key="/gateway/wifi/rssi",
             translation_key="wifi_rssi",
             device_class=SensorDeviceClass.SIGNAL_STRENGTH,
             native_unit_of_measurement="dBm",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
-        SensorEntityDescription(
+        BoschPoinTTAPISensorEntityDescription(
             key="/gateway/update/state",
             translation_key="update_state",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
-        SensorEntityDescription(
+        BoschPoinTTAPISensorEntityDescription(
             key="/heatingCircuits/hc1/boostRemainingTime",
             translation_key="boost_remaining_time",
             device_class=SensorDeviceClass.DURATION,
             native_unit_of_measurement=UnitOfTime.MINUTES,
+        ),
+        # ── Gas usage sensors (1a) ────────────────────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/energy/history_ch",
+            translation_key="gas_heating_today",
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_gas_ch_today,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/energy/history_hw",
+            translation_key="gas_hot_water_today",
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_gas_hw_today,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/energy/history_total",
+            translation_key="gas_total_today",
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_gas_total_today,
+        ),
+        # ── Error / maintenance diagnostics (1b) ──────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/blockingError",
+            translation_key="blocking_error",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/lockingError",
+            translation_key="locking_error",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/maintenanceRequest",
+            translation_key="maintenance_request",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/displayCode",
+            translation_key="display_code",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/causeCode",
+            translation_key="cause_code",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        # ── Firmware & circuit info (1c) ──────────────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/gateway/versionFirmware",
+            translation_key="firmware_version",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatingCircuits/hc1/supplyTemperatureSetpoint",
+            translation_key="supply_temp_setpoint",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatingCircuits/hc1/powerSetpoint",
+            translation_key="boiler_power",
+            native_unit_of_measurement="%",
+            entity_category=EntityCategory.DIAGNOSTIC,
         ),
     )
 
@@ -343,7 +459,11 @@ class BoschPoinTTAPISensorEntity(
     def _handle_coordinator_update(self) -> None:
         """Read value from coordinator.data for this path."""
         data = self.coordinator.data or {}
-        self._native_value = _val(data, self._path)
+        desc = self.entity_description
+        if isinstance(desc, BoschPoinTTAPISensorEntityDescription) and desc.value_fn is not None:
+            self._native_value = desc.value_fn(data)
+        else:
+            self._native_value = _val(data, self._path)
         self.async_write_ha_state()
 
     @property
@@ -370,6 +490,69 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_min_value=0.5,
         native_max_value=24.0,
         native_step=0.5,
+    ),
+    # ── Heating circuit configuration (2b) ───────────────────────────────────
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/maxSupply",
+        name="Max supply temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=25.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/minSupply",
+        name="Min supply temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=10.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/nightThreshold",
+        name="Night setback threshold",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=5.0,
+        native_max_value=30.0,
+        native_step=0.5,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/suWiThreshold",
+        name="Summer/winter threshold",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=10.0,
+        native_max_value=30.0,
+        native_step=0.5,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/roomInfluence",
+        name="Room influence",
+        native_min_value=0.0,
+        native_max_value=3.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/system/sensors/temperatures/offset",
+        name="Temperature calibration offset",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-5.0,
+        native_max_value=5.0,
+        native_step=0.5,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/energy/gas/annualGoal",
+        name="Annual gas goal",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        native_min_value=0.0,
+        native_max_value=1000000.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
     ),
 )
 
@@ -488,4 +671,200 @@ class BoschPoinTTAPIBoostSwitchEntity(
             raise
         except Exception as err:
             _LOGGER.warning("POINTTAPI boost turn_off failed: %s", err)
+            await self.coordinator.async_request_refresh()
+
+
+# ── Generic switch entity (firmware update, notification light, etc.) ─────────
+
+
+@dataclass(frozen=True)
+class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
+    """Switch description for POINTTAPI generic boolean ("true"/"false") paths."""
+
+    on_value: str = "true"
+    off_value: str = "false"
+    device_id_suffix: str | None = None
+    device_name_override: str | None = None
+
+
+POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
+    BoschPoinTTAPISwitchEntityDescription(
+        key="/gateway/update/enabled",
+        name="Auto firmware update",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    BoschPoinTTAPISwitchEntityDescription(
+        key="/gateway/notificationLight/enabled",
+        name="Notification light",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    BoschPoinTTAPISwitchEntityDescription(
+        key="/dhwCircuits/dhw1/thermalDisinfect/state",
+        name="Thermal disinfect",
+        device_id_suffix="dhw1",
+        device_name_override="Water heater",
+    ),
+)
+
+
+class BoschPoinTTAPIGenericSwitchEntity(
+    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
+):
+    """Generic switch entity for POINTTAPI boolean paths (true/false string values)."""
+
+    _attr_has_entity_name = True
+    entity_description: BoschPoinTTAPISwitchEntityDescription
+
+    def __init__(
+        self,
+        coordinator: PoinTTAPIDataUpdateCoordinator,
+        entry_id: str,
+        uuid: str,
+        description: BoschPoinTTAPISwitchEntityDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._uuid = uuid
+        self._path = description.key
+        slug = description.key.strip("/").replace("/", "_")
+        self._attr_unique_id = f"{entry_id}_pointtapi_switch_{slug}"
+        if description.device_id_suffix:
+            device_id = f"{uuid}_{description.device_id_suffix}"
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, device_id)},
+                via_device=(DOMAIN, uuid),
+                name=description.device_name_override or description.device_id_suffix,
+            )
+        else:
+            self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, uuid)})
+        self._is_on: bool = False
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        data = self.coordinator.data or {}
+        val = _val(data, self._path)
+        self._is_on = val == self.entity_description.on_value
+        self.async_write_ha_state()
+
+    @property
+    def is_on(self) -> bool:
+        return self._is_on
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        try:
+            await self.coordinator.client.put(self._path, self.entity_description.on_value)
+            self._is_on = True
+            self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("POINTTAPI switch %s turn_on failed: %s", self._path, err)
+            await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        try:
+            await self.coordinator.client.put(self._path, self.entity_description.off_value)
+            self._is_on = False
+            self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("POINTTAPI switch %s turn_off failed: %s", self._path, err)
+            await self.coordinator.async_request_refresh()
+
+
+# ── Select entity ─────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class BoschPoinTTAPISelectEntityDescription(SelectEntityDescription):
+    """Select description for POINTTAPI option paths."""
+
+    options: tuple[str, ...] = ()
+
+
+POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
+    BoschPoinTTAPISelectEntityDescription(
+        key="/zones/zn1/userMode",
+        name="Zone mode",
+        options=("clock", "manual"),
+    ),
+    BoschPoinTTAPISelectEntityDescription(
+        key="/gateway/pirSensitivity",
+        name="PIR sensitivity",
+        options=("high", "medium", "low"),
+        entity_category=EntityCategory.CONFIG,
+    ),
+    BoschPoinTTAPISelectEntityDescription(
+        key="/heatingCircuits/hc1/suWiSwitchMode",
+        name="Summer/winter mode",
+        options=("automatic", "manual"),
+        entity_category=EntityCategory.CONFIG,
+    ),
+    BoschPoinTTAPISelectEntityDescription(
+        key="/heatingCircuits/hc1/nightSwitchMode",
+        name="Night switch mode",
+        options=("automatic", "reduced"),
+        entity_category=EntityCategory.CONFIG,
+    ),
+)
+
+
+class BoschPoinTTAPISelectEntity(
+    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SelectEntity
+):
+    """Select entity for POINTTAPI option paths."""
+
+    _attr_has_entity_name = True
+    entity_description: BoschPoinTTAPISelectEntityDescription
+
+    def __init__(
+        self,
+        coordinator: PoinTTAPIDataUpdateCoordinator,
+        entry_id: str,
+        uuid: str,
+        description: BoschPoinTTAPISelectEntityDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._uuid = uuid
+        self._path = description.key
+        slug = description.key.strip("/").replace("/", "_")
+        self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
+        self._attr_options = list(description.options)
+        if description.key.startswith("/zones"):
+            device_id = f"{uuid}_zn1"
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, device_id)},
+                via_device=(DOMAIN, uuid),
+                name="Zone zn1",
+            )
+        else:
+            self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, uuid)})
+        self._current_option: str | None = None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        data = self.coordinator.data or {}
+        self._current_option = _val(data, self._path)
+        self.async_write_ha_state()
+
+    @property
+    def current_option(self) -> str | None:
+        return self._current_option
+
+    async def async_select_option(self, option: str) -> None:
+        try:
+            await self.coordinator.client.put(self._path, option)
+            self._current_option = option
+            self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("POINTTAPI select %s failed: %s", self._path, err)
             await self.coordinator.async_request_refresh()
