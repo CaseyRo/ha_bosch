@@ -47,12 +47,39 @@ Token refresh is automatic. If your session expires, HA triggers a re-authentica
 
 ## Installation
 
-Copy this folder to `custom_components/bosch` in your Home Assistant config directory (or install via HACS as a custom repository), then restart HA.
-
 ### Requirements
 - Home Assistant 2024.1+
-- A Bosch EasyControl device
-- A Bosch account (the one you use in the EasyControl app)
+- A Bosch EasyControl device (CT200, EasyControl 7)
+- A Bosch/SingleKey ID account (the one you use in the EasyControl app)
+
+### Fresh install
+
+In your HA config directory, clone the repo into `custom_components/bosch`:
+
+```bash
+cd config/custom_components
+git clone https://github.com/CaseyRo/ha_bosch.git bosch
+```
+
+Then restart Home Assistant and go to **Settings → Devices & Services → Add Integration** → search for **Bosch**.
+
+**Via HACS:** add `https://github.com/CaseyRo/ha_bosch` as a custom repository (category: Integration), install it, then restart.
+
+### Upgrading from the original integration
+
+This is a drop-in replacement for `bosch-thermostat/home-assistant-bosch-custom-component`. Your existing config entry and XMPP/HTTP setups are fully preserved — new entities only appear for POINTTAPI entries.
+
+1. Back up your existing `config/custom_components/bosch/` folder
+2. Delete it, then clone this repo in its place (see above)
+3. Restart Home Assistant — existing entities carry over, new ones appear automatically
+
+### Keeping up to date
+
+```bash
+cd config/custom_components/bosch && git pull
+```
+
+Then restart HA.
 
 ## Development
 
