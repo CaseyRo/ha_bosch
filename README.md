@@ -23,20 +23,45 @@ Token refresh is automatic. If your session expires, HA triggers a re-authentica
 
 ### Entities
 
-| Platform | Entity | What it does |
+| Platform | Entity | Notes |
 |---|---|---|
-| Climate | Zone zn1 | Room temperature, heating setpoint, Heat/Off mode |
+| Climate | Zone zn1 | Room temp, heating setpoint, Heat/Off mode |
 | Water heater | DHW1 | Hot water temp, target temp, operation mode (Auto/Off/On) |
-| Switch | Boost | One-tap boost mode toggle |
-| Number | Boost temperature | Target temperature during boost (5–30 °C) |
-| Number | Boost duration | How long boost runs (0.5–24 hours) |
-| Sensor | Outdoor temperature | Outside temp from the device |
-| Sensor | Indoor humidity | Room humidity reading |
+| **Switch** | Boost | One-tap boost mode toggle |
+| Switch | Auto firmware update | Enable/disable automatic firmware updates |
+| Switch | Notification light | Gateway LED on/off |
+| Switch | Thermal disinfect | DHW legionella protection cycle |
+| **Number** | Boost temperature | Target temp during boost (5–30 °C) |
+| Number | Boost duration | How long boost runs (0.5–24 h) |
+| Number | Max supply temperature | Upper heating circuit limit (25–90 °C) |
+| Number | Min supply temperature | Lower heating circuit limit (10–90 °C) |
+| Number | Night setback threshold | Outdoor temp below which night setback activates (5–30 °C) |
+| Number | Summer/winter threshold | Outdoor temp for summer/winter switchover (10–30 °C) |
+| Number | Room influence | How much room sensor affects supply temp (0–3) |
+| Number | Temperature calibration offset | Room sensor offset correction (-5–5 °C) |
+| Number | Annual gas goal | Energy target for the year (kWh) |
+| **Select** | Zone mode | `clock` (scheduled) / `manual` |
+| Select | PIR sensitivity | Motion sensor sensitivity: `high` / `medium` / `low` |
+| Select | Summer/winter mode | `automatic` (by threshold) / `manual` |
+| Select | Night switch mode | `automatic` / `reduced` |
+| **Sensor** | Outdoor temperature | Outside temp from device |
+| Sensor | Indoor humidity | Room humidity (%) |
 | Sensor | Valve position | Current valve opening (%) |
 | Sensor | System pressure | Heating system pressure (bar) |
-| Sensor | WiFi signal strength | Device WiFi RSSI (dBm) |
+| Sensor | Gas heating today | CH gas usage today (kWh) |
+| Sensor | Gas hot water today | DHW gas usage today (kWh) |
+| Sensor | Gas total today | Total gas usage today (kWh) |
+| Sensor | WiFi signal strength | Device WiFi RSSI (dBm) — disabled by default |
 | Sensor | Firmware update state | Whether an update is available |
 | Sensor | Boost remaining time | Minutes left on active boost |
+| Sensor | Blocking error | Active blocking fault code |
+| Sensor | Locking error | Active locking fault code |
+| Sensor | Maintenance request | Maintenance due flag |
+| Sensor | Display code | Current display code |
+| Sensor | Cause code | Current cause code |
+| Sensor | Firmware version | Installed firmware version string |
+| Sensor | Supply temp setpoint | Current calculated supply temp target (°C) |
+| Sensor | Boiler power | Current boiler power output (%) |
 
 ### Under the hood
 - **Coordinator-based polling** — all data fetched every 60 seconds through a `DataUpdateCoordinator`, not per-entity polling
