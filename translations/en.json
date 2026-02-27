@@ -7,7 +7,18 @@
       "system_pressure": {"name": "System pressure"},
       "wifi_rssi": {"name": "WiFi signal strength"},
       "update_state": {"name": "Firmware update state"},
-      "boost_remaining_time": {"name": "Boost remaining time"}
+      "boost_remaining_time": {"name": "Boost remaining time"},
+      "gas_heating_today": {"name": "Gas heating today"},
+      "gas_hot_water_today": {"name": "Gas hot water today"},
+      "gas_total_today": {"name": "Gas total today"},
+      "blocking_error": {"name": "Blocking error"},
+      "locking_error": {"name": "Locking error"},
+      "maintenance_request": {"name": "Maintenance request"},
+      "display_code": {"name": "Display code"},
+      "cause_code": {"name": "Cause code"},
+      "firmware_version": {"name": "Firmware version"},
+      "supply_temp_setpoint": {"name": "Supply temperature setpoint"},
+      "boiler_power": {"name": "Boiler power"}
     }
   },
   "config": {

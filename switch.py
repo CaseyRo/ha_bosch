@@ -21,7 +21,11 @@ from .const import (
     SWITCH,
     UUID,
 )
-from .pointtapi_entities import BoschPoinTTAPIBoostSwitchEntity
+from .pointtapi_entities import (
+    BoschPoinTTAPIBoostSwitchEntity,
+    BoschPoinTTAPIGenericSwitchEntity,
+    POINTTAPI_SWITCH_DESCRIPTIONS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,11 +37,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
         coordinator = data.get("coordinator")
         if coordinator:
-            async_add_entities([
+            entities = [
                 BoschPoinTTAPIBoostSwitchEntity(
                     coordinator, config_entry.entry_id, uuid
                 )
-            ])
+            ]
+            entities.extend(
+                BoschPoinTTAPIGenericSwitchEntity(
+                    coordinator, config_entry.entry_id, uuid, desc
+                )
+                for desc in POINTTAPI_SWITCH_DESCRIPTIONS
+            )
+            async_add_entities(entities)
         else:
             async_add_entities([])
         return True
