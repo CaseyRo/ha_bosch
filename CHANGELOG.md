@@ -4,6 +4,26 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [2026-02-27] POINTTAPI: 25 new entities
+
+**Sensors (11)**
+- `gas_heating_today` / `gas_hot_water_today` / `gas_total_today` — kWh from `/energy/history`, today's last entry
+- `blocking_error`, `locking_error`, `maintenance_request`, `display_code`, `cause_code` — diagnostic
+- `firmware_version`, `supply_temp_setpoint`, `boiler_power` — diagnostic
+
+**Switches (3)**
+- Auto firmware update (`/gateway/update/enabled`)
+- Notification light (`/gateway/notificationLight/enabled`)
+- Thermal disinfect (`/dhwCircuits/dhw1/thermalDisinfect/state`) — on DHW device
+
+**Numbers (7)**
+- Max/min supply temp, night setback threshold, summer/winter threshold, room influence, temp calibration offset, annual gas goal (kWh)
+
+**Selects (4)** — new platform for POINTTAPI
+- Zone mode (`clock`/`manual`), PIR sensitivity (`high`/`medium`/`low`), summer/winter mode (`automatic`/`manual`), night switch mode (`automatic`/`reduced`)
+
+All paths already polled by coordinator — no new API calls. All writeable entities do optimistic update + coordinator refresh.
+
 ### Fixed
 - Fixed blocking SSL operations warning by wrapping gateway instantiation in executor thread
   - SSL operations (`set_default_verify_paths`, `load_default_certs`, `load_verify_locations`) 
