@@ -23,7 +23,8 @@
       "actual_modulation": {"name": "Actual modulation"},
       "solar_collector_temperature": {"name": "Solar collector temperature"},
       "solar_storage_temperature": {"name": "Solar storage temperature"},
-      "solar_pump_active": {"name": "Solar pump active"}
+      "solar_pump_modulation": {"name": "Solar pump modulation"},
+      "solar_total_gain": {"name": "Total solar gain"}
     }
   },
   "config": {
