@@ -25,6 +25,7 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/system/appliance",
     "/zones/zn1",
     "/energy",
+    "/energy/history",
     "/heatSources",
 ]
 REFERENCES_KEY = "references"
