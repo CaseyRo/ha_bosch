@@ -27,6 +27,7 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/energy",
     "/energy/history",
     "/heatSources",
+    "/solarCircuits/sc1",
 ]
 REFERENCES_KEY = "references"
 ID_KEY = "id"
