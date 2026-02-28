@@ -45,7 +45,7 @@ class PoinTTAPIClient:
         headers = {"Authorization": f"Bearer {token}"}
         async with self._session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status in (401, 403):
-                _LOGGER.warning("POINTTAPI auth failed on GET %s: HTTP %s", uri, resp.status)
+                _LOGGER.debug("POINTTAPI auth failed on GET %s: HTTP %s", uri, resp.status)
                 raise ConfigEntryAuthFailed(
                     f"POINTTAPI GET {uri}: HTTP {resp.status}"
                 ) from None
