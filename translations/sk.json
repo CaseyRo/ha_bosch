@@ -1,4 +1,13 @@
 {
+  "entity": {
+    "sensor": {
+      "gas_heating_yesterday": {"name": "Plyn vykurovanie včera"},
+      "gas_hot_water_yesterday": {"name": "Plyn teplá voda včera"},
+      "gas_total_yesterday": {"name": "Plyn celkom včera"},
+      "actual_supply_temperature": {"name": "Aktuálna teplota prívodu"},
+      "actual_modulation": {"name": "Aktuálna modulácia"}
+    }
+  },
   "config": {
       "title": "Bosch thermostat",
       "step": {

@@ -1,4 +1,13 @@
 {
+  "entity": {
+    "sensor": {
+      "gas_heating_yesterday": {"name": "Gas verwarming gisteren"},
+      "gas_hot_water_yesterday": {"name": "Gas warm water gisteren"},
+      "gas_total_yesterday": {"name": "Gas totaal gisteren"},
+      "actual_supply_temperature": {"name": "Actuele aanvoertemperatuur"},
+      "actual_modulation": {"name": "Actuele modulatie"}
+    }
+  },
   "config": {
       "title": "Bosch thermostaat",
       "step": {

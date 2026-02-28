@@ -1,4 +1,13 @@
 {
+    "entity": {
+        "sensor": {
+            "gas_heating_yesterday": {"name": "Gas riscaldamento ieri"},
+            "gas_hot_water_yesterday": {"name": "Gas acqua calda ieri"},
+            "gas_total_yesterday": {"name": "Gas totale ieri"},
+            "actual_supply_temperature": {"name": "Temperatura di mandata attuale"},
+            "actual_modulation": {"name": "Modulazione attuale"}
+        }
+    },
     "config": {
         "title": "Termostato Bosch",
         "step": {
