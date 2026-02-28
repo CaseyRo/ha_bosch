@@ -20,7 +20,10 @@
       "supply_temp_setpoint": {"name": "Supply temperature setpoint"},
       "boiler_power": {"name": "Boiler power"},
       "actual_supply_temperature": {"name": "Actual supply temperature"},
-      "actual_modulation": {"name": "Actual modulation"}
+      "actual_modulation": {"name": "Actual modulation"},
+      "solar_collector_temperature": {"name": "Solar collector temperature"},
+      "solar_storage_temperature": {"name": "Solar storage temperature"},
+      "solar_pump_active": {"name": "Solar pump active"}
     }
   },
   "config": {

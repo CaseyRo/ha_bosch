@@ -426,6 +426,24 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             native_unit_of_measurement="%",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
+        # ── Solar circuit sensors ─────────────────────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/solarCircuits/sc1/collectorTemperature",
+            translation_key="solar_collector_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/solarCircuits/sc1/storageTemperature",
+            translation_key="solar_storage_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/solarCircuits/sc1/pumpActive",
+            translation_key="solar_pump_active",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
     )
 
 
@@ -456,6 +474,13 @@ class BoschPoinTTAPISensorEntity(
                 identifiers={(DOMAIN, device_id)},
                 via_device=(DOMAIN, uuid),
                 name="Zone zn1",
+            )
+        elif path.startswith("/solarCircuits"):
+            device_id = f"{uuid}_solar"
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, device_id)},
+                via_device=(DOMAIN, uuid),
+                name="Solar",
             )
         else:
             self._attr_device_info = DeviceInfo(
