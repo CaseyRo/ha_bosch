@@ -23,17 +23,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # heavily and has side effects (builtins.print patching).
 
 _cc = ModuleType("custom_components")
-_cc.__path__ = [str(REPO_ROOT.parent)]
+_cc.__path__ = [str(REPO_ROOT / "custom_components")]
 sys.modules.setdefault("custom_components", _cc)
 
 _bosch_pkg = ModuleType("custom_components.bosch")
-_bosch_pkg.__path__ = [str(REPO_ROOT)]
+_bosch_pkg.__path__ = [str(REPO_ROOT / "custom_components" / "bosch")]
 _bosch_pkg.__package__ = "custom_components.bosch"
 sys.modules.setdefault("custom_components.bosch", _bosch_pkg)
 
 # Also make the sensor sub-package discoverable
 _sensor_pkg = ModuleType("custom_components.bosch.sensor")
-_sensor_pkg.__path__ = [str(REPO_ROOT / "sensor")]
+_sensor_pkg.__path__ = [str(REPO_ROOT / "custom_components" / "bosch" / "sensor")]
 _sensor_pkg.__package__ = "custom_components.bosch.sensor"
 sys.modules.setdefault("custom_components.bosch.sensor", _sensor_pkg)
 

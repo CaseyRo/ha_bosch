@@ -79,7 +79,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 from homeassistant.util.json import load_json
 
-from custom_components.bosch.switch import SWITCH
+from .switch import SWITCH
 
 from .pointtapi_client import PoinTTAPIClient
 from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
