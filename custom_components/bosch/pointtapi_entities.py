@@ -434,15 +434,23 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
         BoschPoinTTAPISensorEntityDescription(
-            key="/solarCircuits/sc1/storageTemperature",
+            key="/solarCircuits/sc1/dhwTankBottomTemperature",
             translation_key="solar_storage_temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
         BoschPoinTTAPISensorEntityDescription(
-            key="/solarCircuits/sc1/pumpActive",
-            translation_key="solar_pump_active",
+            key="/solarCircuits/sc1/pumpModulation",
+            translation_key="solar_pump_modulation",
+            native_unit_of_measurement="%",
             entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/solarCircuits/sc1/totalSolarGain",
+            translation_key="solar_total_gain",
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            state_class=SensorStateClass.TOTAL_INCREASING,
         ),
     )
 
