@@ -98,11 +98,12 @@ Token refresh is automatic. If your session expires, HA triggers a re-authentica
 
 ### Fresh install
 
-In your HA config directory, clone the repo into `custom_components/bosch`:
+In your HA config directory, clone the repo and symlink the integration:
 
 ```bash
-cd config/custom_components
-git clone https://github.com/CaseyRo/ha_bosch.git bosch
+cd config
+git clone https://github.com/CaseyRo/ha_bosch.git ha_bosch
+ln -s ../ha_bosch/custom_components/bosch custom_components/bosch
 ```
 
 Then restart Home Assistant and go to **Settings → Devices & Services → Add Integration** → search for **Bosch**.
@@ -114,16 +115,22 @@ Then restart Home Assistant and go to **Settings → Devices & Services → Add 
 This is a drop-in replacement for `bosch-thermostat/home-assistant-bosch-custom-component`. Your existing config entry and XMPP/HTTP setups are fully preserved — new entities only appear for POINTTAPI entries.
 
 1. Back up your existing `config/custom_components/bosch/` folder
-2. Delete it, then clone this repo in its place (see above)
+2. Delete it, then clone this repo and symlink (see above)
 3. Restart Home Assistant — existing entities carry over, new ones appear automatically
 
 ### Keeping up to date
 
 ```bash
-cd config/custom_components/bosch && git pull
+cd config/ha_bosch && git pull
 ```
 
 Then restart HA.
+
+### Removing the integration
+
+1. In HA, go to **Settings → Devices & Services**, find **Bosch**, click the three-dot menu → **Delete**
+2. Restart Home Assistant
+3. Delete the `config/custom_components/bosch` folder (or the cloned repo if installed manually)
 
 ## Development
 

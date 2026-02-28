@@ -39,6 +39,4 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Run from parent dir so select.py in repo root doesn't shadow stdlib select module
-          cd ..
-          python3 -m pytest --tb=short -q "$GITHUB_WORKSPACE/unittests" --override-ini="asyncio_mode=auto"
+          python3 -m pytest --tb=short -q unittests --override-ini="asyncio_mode=auto"
