@@ -4,6 +4,22 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [0.28.7] — 2026-02-28 — POINTTAPI: Bug fixes + heat source sensors
+
+### Fixed
+- **Climate set temperature** — PUT now targets `/zones/{zone_id}/manualTemperatureHeating` instead of the read-only `temperatureHeatingSetpoint`; fixes HTTP 403 error when calling `climate.set_temperature`
+- **Gas sensor unit & label** — corrected device class from `ENERGY` → `GAS`, unit from `kWh` → `m³` (the API returns gas volume, not energy), and renamed sensors from "today" → "yesterday" (the API value reflects the last completed day)
+- **Night switch mode** — added `"off"` to select options; entity no longer shows blank state when the boiler reports `"off"`, and switching away from `"off"` now works
+- **Summer/winter mode** — added `"off"` to select options; same fix as above
+
+### Added
+- **Actual supply temperature** sensor (`/heatSources/actualSupplyTemperature`) — diagnostic, °C
+- **Actual modulation** sensor (`/heatSources/actualModulation`) — diagnostic, %
+- Both sensors poll via the new `/heatSources` coordinator root (added to `POINTTAPI_COORDINATOR_ROOTS`)
+- Translations for all new/renamed sensor keys in: en, de, fr, it, nl, pl, sk
+
+---
+
 ## [2026-02-27] POINTTAPI: 25 new entities
 
 **Sensors (11)**

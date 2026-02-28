@@ -1,4 +1,13 @@
 {
+  "entity": {
+    "sensor": {
+      "gas_heating_yesterday": {"name": "Gas Heizung gestern"},
+      "gas_hot_water_yesterday": {"name": "Gas Warmwasser gestern"},
+      "gas_total_yesterday": {"name": "Gas gesamt gestern"},
+      "actual_supply_temperature": {"name": "Aktuelle Vorlauftemperatur"},
+      "actual_modulation": {"name": "Aktuelle Modulation"}
+    }
+  },
   "config": {
       "title": "Bosch Thermostat",
       "step": {

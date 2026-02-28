@@ -25,7 +25,7 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
+from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime, UnitOfVolume
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
@@ -158,7 +158,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-        path = f"/zones/{self._zone_id}/temperatureHeatingSetpoint"
+        path = f"/zones/{self._zone_id}/manualTemperatureHeating"
         try:
             await self.coordinator.client.put(path, float(temperature))
             self._target = float(temperature)
@@ -346,25 +346,25 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         # ── Gas usage sensors (1a) ────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_ch",
-            translation_key="gas_heating_today",
-            device_class=SensorDeviceClass.ENERGY,
-            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            translation_key="gas_heating_yesterday",
+            device_class=SensorDeviceClass.GAS,
+            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_ch_today,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_hw",
-            translation_key="gas_hot_water_today",
-            device_class=SensorDeviceClass.ENERGY,
-            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            translation_key="gas_hot_water_yesterday",
+            device_class=SensorDeviceClass.GAS,
+            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_hw_today,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_total",
-            translation_key="gas_total_today",
-            device_class=SensorDeviceClass.ENERGY,
-            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            translation_key="gas_total_yesterday",
+            device_class=SensorDeviceClass.GAS,
+            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_total_today,
         ),
@@ -410,6 +410,19 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         BoschPoinTTAPISensorEntityDescription(
             key="/heatingCircuits/hc1/powerSetpoint",
             translation_key="boiler_power",
+            native_unit_of_measurement="%",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/actualSupplyTemperature",
+            translation_key="actual_supply_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/actualModulation",
+            translation_key="actual_modulation",
             native_unit_of_measurement="%",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
@@ -801,13 +814,13 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
     BoschPoinTTAPISelectEntityDescription(
         key="/heatingCircuits/hc1/suWiSwitchMode",
         name="Summer/winter mode",
-        options=("automatic", "manual"),
+        options=("off", "automatic", "manual"),
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/heatingCircuits/hc1/nightSwitchMode",
         name="Night switch mode",
-        options=("automatic", "reduced"),
+        options=("off", "automatic", "reduced"),
         entity_category=EntityCategory.CONFIG,
     ),
 )
