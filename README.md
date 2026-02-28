@@ -2,6 +2,25 @@
 
 A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component) with an added **POINTTAPI cloud path** for Bosch EasyControl devices (CT200, EasyControl 7).
 
+---
+
+> **A note on attribution**
+>
+> This is a personal fork built for my own use and shared in case it helps others.
+> It is **not** affiliated with Bosch, nor is it meant to replace or compete with the
+> excellent work by the original maintainers.
+>
+> The foundation of this integration — the XMPP/HTTP path, device handling, and the
+> `bosch-thermostat-client` Python library — was built by [@pszafer](https://github.com/pszafer)
+> and the contributors to:
+> - **[home-assistant-bosch-custom-component](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component)** — the HA integration this fork is based on
+> - **[bosch-thermostat-client-python](https://github.com/bosch-thermostat/bosch-thermostat-client-python)** — the Python client library that inspired the protocol understanding behind the POINTTAPI cloud path
+>
+> All credit for the original integration goes to them. If you don't need the POINTTAPI cloud
+> path, please use the original — it is actively maintained and has a broader community.
+
+---
+
 ## Why this fork exists
 
 The original integration supports EasyControl devices over XMPP, which works well on the local network. But for many users — especially those with strict network setups or who want remote access — the XMPP path can be unreliable or hard to configure.
@@ -129,5 +148,6 @@ If this integration is useful to you, consider buying me a coffee:
 
 ## Credits
 
-- Original integration by [@pszafer](https://github.com/pszafer) and contributors
+All credit for the original integration goes to [@pszafer](https://github.com/pszafer) and the contributors to the upstream projects — see the attribution note at the top of this README. This fork adds only the POINTTAPI cloud path; everything else is their work.
+
 - POINTTAPI path and EasyControl cloud support by [@CaseyRo](https://github.com/CaseyRo)
