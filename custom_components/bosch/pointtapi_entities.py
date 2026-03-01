@@ -249,7 +249,7 @@ class BoschPoinTTAPIWaterHeaterEntity(
         return self._state
 
     @property
-    def operation_mode(self) -> str | None:
+    def current_operation(self) -> str | None:
         return self._operation_mode
 
     @property
