@@ -8,7 +8,6 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     UnitOfEnergy,
     UnitOfTemperature,
-    UnitOfVolume,
     STATE_UNAVAILABLE,
 )
 from homeassistant.util import dt as dt_util
@@ -54,14 +53,14 @@ EcusRecordingSensors = [
     {
         "name": "central heating",
         "attr": "CH",
-        "unitOfMeasure": UnitOfVolume.CUBIC_METERS,
-        "deviceClass": SensorDeviceClass.GAS,
+        "unitOfMeasure": UnitOfEnergy.KILO_WATT_HOUR,
+        "deviceClass": SensorDeviceClass.ENERGY,
     },
     {
         "name": "hot water",
         "attr": "HW",
-        "unitOfMeasure": UnitOfVolume.CUBIC_METERS,
-        "deviceClass": SensorDeviceClass.GAS,
+        "unitOfMeasure": UnitOfEnergy.KILO_WATT_HOUR,
+        "deviceClass": SensorDeviceClass.ENERGY,
     },
 ]
 
@@ -123,7 +122,6 @@ class EnergySensor(StatisticHelper):
 
         if self._new_stats_api and (
             self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR
-            or self._unit_of_measurement == UnitOfVolume.CUBIC_METERS
         ):
             await self._insert_statistics()
         else:

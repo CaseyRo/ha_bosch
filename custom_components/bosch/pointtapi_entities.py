@@ -25,7 +25,7 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime, UnitOfVolume
+from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
@@ -347,24 +347,24 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_ch",
             translation_key="gas_heating_yesterday",
-            device_class=SensorDeviceClass.GAS,
-            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_ch_today,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_hw",
             translation_key="gas_hot_water_yesterday",
-            device_class=SensorDeviceClass.GAS,
-            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_hw_today,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_total",
             translation_key="gas_total_yesterday",
-            device_class=SensorDeviceClass.GAS,
-            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_total_today,
         ),
