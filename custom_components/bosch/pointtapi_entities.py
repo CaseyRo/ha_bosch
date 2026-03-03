@@ -20,8 +20,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.components.water_heater import (
-    STATE_OFF,
-    STATE_ON,
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
@@ -216,20 +214,24 @@ class BoschPoinTTAPIWaterHeaterEntity(
         )
         self._current_temp: float | None = None
         self._target_temp: float | None = None
-        self._state: str | None = None
         self._operation_mode: str | None = None
         # User-friendly labels; mapped to/from API values via _OP_TO_API / _API_TO_OP
         self._attr_operation_list = ["Auto", "Off", "On"]
+        # Populate initial state from already-fetched coordinator data
+        self._sync_from_data()
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Read from coordinator.data and set state."""
+    def _sync_from_data(self) -> None:
+        """Populate local state from coordinator.data (no HA state write)."""
         data = self.coordinator.data or {}
         self._current_temp = _val(data, "/dhwCircuits/dhw1/actualTemp")
         self._target_temp = _val(data, "/dhwCircuits/dhw1/temperatureLevels/high")
-        self._state = _val(data, "/dhwCircuits/dhw1/state")
         raw_op = _val(data, "/dhwCircuits/dhw1/operationMode")
-        self._operation_mode = _API_TO_OP.get(raw_op, raw_op)
+        self._operation_mode = _API_TO_OP.get(raw_op, raw_op) if raw_op else None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Read from coordinator.data and update HA state."""
+        self._sync_from_data()
         self.async_write_ha_state()
 
     @property
@@ -239,14 +241,6 @@ class BoschPoinTTAPIWaterHeaterEntity(
     @property
     def target_temperature(self) -> float | None:
         return self._target_temp
-
-    @property
-    def state(self) -> str | None:
-        if self._state == "on":
-            return STATE_ON
-        if self._state == "off":
-            return STATE_OFF
-        return self._state
 
     @property
     def current_operation(self) -> str | None:
