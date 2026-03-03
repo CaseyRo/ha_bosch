@@ -62,7 +62,12 @@ class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
 
 def _gas_history_entries(data: dict[str, Any]) -> list | None:
     history = data.get("/energy/history") or {}
+    _LOGGER.debug("Gas history raw: %s", history)
     entries = history.get("value") if isinstance(history, dict) else None
+    if entries and isinstance(entries, list):
+        _LOGGER.debug("Gas history entries count=%d, last=%s", len(entries), entries[-1])
+    else:
+        _LOGGER.debug("Gas history entries not a list or empty: %s", type(entries))
     return entries if isinstance(entries, list) and entries else None
 
 
