@@ -68,6 +68,8 @@ class PoinTTAPIClient:
                     f"POINTTAPI PUT {uri}: HTTP {resp.status}"
                 ) from None
             if resp.status not in (200, 204):
+                body_text = await resp.text()
+                _LOGGER.debug("POINTTAPI PUT %s HTTP %s body: %s", uri, resp.status, body_text[:500])
                 raise RuntimeError(f"POINTTAPI PUT {uri} failed: {resp.status}")
             return True
 
