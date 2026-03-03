@@ -231,6 +231,7 @@ class BoschPoinTTAPIWaterHeaterEntity(
         self._current_temp = _val(data, "/dhwCircuits/dhw1/actualTemp")
         self._target_temp = _val(data, "/dhwCircuits/dhw1/temperatureLevels/high")
         raw_op = _val(data, "/dhwCircuits/dhw1/operationMode")
+        _LOGGER.debug("Water heater operationMode raw response: %s", data.get("/dhwCircuits/dhw1/operationMode"))
         self._operation_mode = _API_TO_OP.get(raw_op, raw_op) if raw_op else None
 
     @callback
@@ -282,6 +283,7 @@ class BoschPoinTTAPIWaterHeaterEntity(
             return
         api_value = _OP_TO_API.get(operation_mode, operation_mode)
         path = "/dhwCircuits/dhw1/operationMode"
+        _LOGGER.debug("Setting water heater mode: %s -> API value: %s", operation_mode, api_value)
         try:
             await self.coordinator.client.put(path, api_value)
             self._operation_mode = operation_mode
@@ -346,7 +348,6 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_ch",
             translation_key="gas_heating_yesterday",
-            device_class=SensorDeviceClass.ENERGY,
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_ch_today,
@@ -354,7 +355,6 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_hw",
             translation_key="gas_hot_water_yesterday",
-            device_class=SensorDeviceClass.ENERGY,
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_hw_today,
@@ -362,7 +362,6 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_total",
             translation_key="gas_total_yesterday",
-            device_class=SensorDeviceClass.ENERGY,
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
             value_fn=_gas_total_today,
