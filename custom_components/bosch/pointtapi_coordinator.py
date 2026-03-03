@@ -21,6 +21,7 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/gateway",
     "/heatingCircuits/hc1",
     "/dhwCircuits/dhw1",
+    "/dhwCircuits/dhw1/operationMode",
     "/system/sensors",
     "/system/appliance",
     "/zones/zn1",
