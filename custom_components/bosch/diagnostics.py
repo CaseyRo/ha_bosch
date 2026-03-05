@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
-from .const import CONF_PROTOCOL, DOMAIN, POINTTAPI, UUID
+from .const import CONF_PROTOCOL, POINTTAPI
 
 TO_REDACT_CONFIG = {
     "access_token",
@@ -29,9 +29,7 @@ async def async_get_config_entry_diagnostics(
         diag["note"] = "Diagnostics details are only available for POINTTAPI entries."
         return diag
 
-    uuid = entry.data.get(UUID)
-    domain_data = hass.data.get(DOMAIN, {}).get(uuid, {})
-    coordinator = domain_data.get("coordinator")
+    coordinator = entry.runtime_data.coordinator if hasattr(entry, "runtime_data") and entry.runtime_data else None
     if coordinator and coordinator.data:
         diag["coordinator_data"] = {
             path: _redact_path_response(path, resp)

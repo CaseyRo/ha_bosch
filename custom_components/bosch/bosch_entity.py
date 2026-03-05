@@ -8,6 +8,8 @@ from homeassistant.helpers.entity import DeviceInfo
 class BoschEntity:
     """Bosch base entity class."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, **kwargs):
         """Initialize the entity."""
         if not hasattr(self, "_domain_name"):
@@ -16,11 +18,6 @@ class BoschEntity:
         self._bosch_object = kwargs.get("bosch_object")
         self._gateway = kwargs.get("gateway")
         self._uuid = kwargs.get("uuid")
-
-    @property
-    def name(self):
-        """Return the name of the entity."""
-        return self._name
 
     @property
     def bosch_object(self):
@@ -59,7 +56,8 @@ class BoschClimateWaterEntity(BoschEntity):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._name = self._bosch_object.name
+        self._attr_name = None
+        self._bosch_name = self._bosch_object.name
         self._temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_unique_id = f"{self._uuid}{self._bosch_object.id}"
         self._current_temperature = None
@@ -74,7 +72,7 @@ class BoschClimateWaterEntity(BoschEntity):
     @property
     def device_name(self):
         """Return name displayed in device_info."""
-        return f"{self._name_prefix} {self._name}"
+        return f"{self._name_prefix} {self._bosch_name}"
 
     @property
     def temperature_unit(self):

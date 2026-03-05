@@ -56,7 +56,7 @@ class StatisticHelper(BoschBaseSensor):
                     {
                         StatisticsMeta.statistic_id: self.statistic_id,
                         StatisticsMeta.source: self._domain_name.lower(),
-                        StatisticsMeta.name: f"Stats {self._name}",
+                        StatisticsMeta.name: f"Stats {self._attr_name}",
                     }
                 )
         except IntegrityError as err:
@@ -78,7 +78,7 @@ class StatisticHelper(BoschBaseSensor):
         kwargs = {
             "has_mean": False,
             "has_sum": True,
-            "name": f"Stats {self._name}",
+            "name": f"Stats {self._attr_name}",
             "source": self._domain_name.lower(),
             "statistic_id": self.statistic_id,
             "unit_of_measurement": self._unit_of_measurement,

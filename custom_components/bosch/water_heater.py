@@ -6,7 +6,7 @@ For more details about this platform, please refer to the documentation at...
 from __future__ import annotations
 import logging
 
-from bosch_thermostat_client.const import GATEWAY, SETPOINT
+from bosch_thermostat_client.const import SETPOINT
 from homeassistant.components.water_heater import (
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
@@ -23,7 +23,6 @@ from .const import (
     BOSCH_STATE,
     CHARGE,
     CONF_PROTOCOL,
-    DOMAIN,
     POINTTAPI,
     SERVICE_CHARGE_SCHEMA,
     SERVICE_CHARGE_START,
@@ -32,7 +31,6 @@ from .const import (
     SWITCHPOINT,
     UNITS_CONVERTER,
     UUID,
-    WATER_HEATER,
 )
 from .pointtapi_entities import BoschPoinTTAPIWaterHeaterEntity
 
@@ -41,11 +39,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities) -> bool:
     """Set up the Bosch Water heater from a config entry."""
+    data = config_entry.runtime_data
     if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-        uuid = config_entry.data.get(UUID)
-        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
-        coordinator = data.get("coordinator")
+        coordinator = data.coordinator
         if coordinator:
+            uuid = config_entry.data.get(UUID)
             async_add_entities([
                 BoschPoinTTAPIWaterHeaterEntity(coordinator, config_entry.entry_id, uuid)
             ])
@@ -53,12 +51,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities) -> bool:
             async_add_entities([])
         return True
     uuid = config_entry.data[UUID]
-    data = hass.data[DOMAIN][uuid]
-    data[WATER_HEATER] = [
-        BoschWaterHeater(hass, uuid, dhw, data[GATEWAY])
-        for dhw in data[GATEWAY].dhw_circuits
+    gateway = data.gateway
+    data.water_heater = [
+        BoschWaterHeater(hass, uuid, dhw, gateway)
+        for dhw in gateway.dhw_circuits
     ]
-    async_add_entities(data[WATER_HEATER])
+    async_add_entities(data.water_heater)
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     platform = entity_platform.current_platform.get()
     platform.async_register_entity_service(
@@ -89,7 +87,7 @@ class BoschWaterHeater(BoschClimateWaterEntity, WaterHeaterEntity):
 
         Upstream lib doesn't check if value is proper!
         """
-        _LOGGER.info("Setting %s %s with value %s", self._name, CHARGE, value)
+        _LOGGER.info("Setting %s %s with value %s", self._bosch_name, CHARGE, value)
         await self._bosch_object.set_service_call(CHARGE, value)
 
     @property
@@ -146,7 +144,7 @@ class BoschWaterHeater(BoschClimateWaterEntity, WaterHeaterEntity):
 
     async def async_set_operation_mode(self, operation_mode):
         """Set operation mode."""
-        _LOGGER.debug(f"Setting operation mode of {self._name} to {operation_mode}.")
+        _LOGGER.debug(f"Setting operation mode of {self._bosch_name} to {operation_mode}.")
         status = await self.bosch_object.set_ha_mode(operation_mode)
         if status > 0:
             return True

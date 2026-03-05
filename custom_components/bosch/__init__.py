@@ -89,18 +89,13 @@ from .const import (
     ACCESS_KEY,
     ACCESS_TOKEN,
     BINARY_SENSOR,
-    BOSCH_GATEWAY_ENTRY,
     CLIMATE,
     CONF_DEVICE_TYPE,
     CONF_PROTOCOL,
     DOMAIN,
     FIRMWARE_SCAN_INTERVAL,
-    FW_INTERVAL,
-    GATEWAY,
-    INTERVAL,
     NOTIFICATION_ID,
     POINTTAPI,
-    RECORDING_INTERVAL,
     SCAN_INTERVAL,
     SIGNAL_BINARY_SENSOR_UPDATE_BOSCH,
     SIGNAL_BOSCH,
@@ -115,6 +110,7 @@ from .const import (
     UUID,
     WATER_HEATER,
 )
+from .models import BoschConfigEntry, BoschRuntimeData
 from .services import (
     async_register_debug_service,
     async_register_services,
@@ -165,17 +161,16 @@ HOUR = timedelta(hours=1)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Initialize the Bosch platform."""
-    hass.data[DOMAIN] = {}
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
     """Create entry for Bosch thermostat device."""
     uuid = entry.data[UUID]
     host = entry.data[CONF_ADDRESS]
     protocol = entry.data[CONF_PROTOCOL]
     device_type = entry.data[CONF_DEVICE_TYPE]
-    
+
     _LOGGER.info(
         "Setting up Bosch component version %s for device %s (%s) at %s via %s",
         LIBVERSION,
@@ -184,13 +179,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         host,
         protocol,
     )
-    
+
     # Sync library logger level with component logger level
     # This enables debug logging for the library when component debug is enabled
     log_level = _LOGGER.getEffectiveLevel()
     _LIBRARY_LOGGER.setLevel(log_level)
     _LOGGER.debug("Library logger level set to %s", logging.getLevelName(log_level))
-    
+
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     gateway_entry = BoschGatewayEntry(
         hass=hass,
@@ -202,7 +197,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         access_token=entry.data[ACCESS_TOKEN],
         entry=entry,
     )
-    hass.data[DOMAIN][uuid] = {BOSCH_GATEWAY_ENTRY: gateway_entry}
+    runtime_data = BoschRuntimeData(gateway_entry=gateway_entry)
+    entry.runtime_data = runtime_data
     _init_status: bool = await gateway_entry.async_init()
     if not _init_status:
         _LOGGER.error("Failed to initialize Bosch gateway for UUID %s", uuid)
@@ -212,25 +208,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: BoschConfigEntry):
     """Unload a config entry."""
     _LOGGER.debug("Removing entry.")
-    uuid = entry.data[UUID]
-    if uuid not in hass.data[DOMAIN]:
-        async_remove_services(hass, entry)
-        return True
-    data = hass.data[DOMAIN][uuid]
+    data = entry.runtime_data
 
-    def remove_entry(key):
-        value = data.pop(key, None)
+    def cancel_interval(attr):
+        value = getattr(data, attr, None)
         if value:
             value()
+            setattr(data, attr, None)
 
-    remove_entry(INTERVAL)
-    remove_entry(FW_INTERVAL)
-    remove_entry(RECORDING_INTERVAL)
-    bosch = hass.data[DOMAIN].pop(uuid)
-    unload_ok = await bosch[BOSCH_GATEWAY_ENTRY].async_reset()
+    cancel_interval("interval")
+    cancel_interval("fw_interval")
+    cancel_interval("recording_interval")
+    unload_ok = await data.gateway_entry.async_reset()
     async_remove_services(hass, entry)
     return unload_ok
 
@@ -284,6 +276,10 @@ class BoschGatewayEntry:
     def device_id(self) -> str:
         return self.config_entry.entry_id
 
+    @property
+    def _data(self) -> BoschRuntimeData:
+        return self.config_entry.runtime_data
+
     async def async_init(self) -> bool:
         """Init async items in entry."""
         _LOGGER.debug(
@@ -316,11 +312,11 @@ class BoschGatewayEntry:
                     f"Could not reach POINTTAPI: {err}"
                 ) from err
             self.supported_platforms = [CLIMATE, WATER_HEATER, "sensor", BINARY_SENSOR, NUMBER, SWITCH, "select"]
-            self.hass.data[DOMAIN][self.uuid][GATEWAY] = self.gateway
+            self._data.gateway = self.gateway
             coordinator = PoinTTAPIDataUpdateCoordinator(
                 self.hass, self.config_entry, self.gateway
             )
-            self.hass.data[DOMAIN][self.uuid]["coordinator"] = coordinator
+            self._data.coordinator = coordinator
             await coordinator.async_config_entry_first_refresh()
             device_registry = dr.async_get(self.hass)
             device_registry.async_get_or_create(
@@ -421,7 +417,7 @@ class BoschGatewayEntry:
                 self.config_entry,
                 [component for component in self.supported_platforms if component != SOLAR]
             )
-            if GATEWAY in self.hass.data[DOMAIN][self.uuid]:
+            if self._data.gateway:
                 _LOGGER.debug("Registering debug services.")
                 async_register_debug_service(hass=self.hass, entry=self)
             _LOGGER.debug(
@@ -434,18 +430,16 @@ class BoschGatewayEntry:
     @callback
     def async_get_signals(self) -> None:
         """Prepare update after all entities are loaded."""
-        if not self._signal_registered and all(
-            k in self.hass.data[DOMAIN][self.uuid] for k in self.supported_platforms
-        ):
+        if not self._signal_registered:
             _LOGGER.debug("Registering thermostat update interval.")
             self._signal_registered = True
-            self.hass.data[DOMAIN][self.uuid][INTERVAL] = async_track_time_interval(
+            self._data.interval = async_track_time_interval(
                 self.hass, self.thermostat_refresh, SCAN_INTERVAL
             )
-            self.hass.data[DOMAIN][self.uuid][FW_INTERVAL] = async_track_time_interval(
+            self._data.fw_interval = async_track_time_interval(
                 self.hass,
                 self.firmware_refresh,
-                FIRMWARE_SCAN_INTERVAL,  # Firmware scan interval
+                FIRMWARE_SCAN_INTERVAL,
             )
             async_call_later(self.hass, 1, self.thermostat_refresh)
             asyncio.run_coroutine_threadsafe(self.recording_sensors_update(),
@@ -528,7 +522,7 @@ class BoschGatewayEntry:
                 "Supported platforms determined: %s",
                 self.supported_platforms,
             )
-        self.hass.data[DOMAIN][self.uuid][GATEWAY] = self.gateway
+        self._data.gateway = self.gateway
         _LOGGER.info(
             "Bosch initialized successfully: uuid=%s, device_name=%s, platforms=%s",
             self.gateway.uuid,
@@ -543,15 +537,13 @@ class BoschGatewayEntry:
         It suppose to be called only once an hour
         so sensor get's average data from Bosch.
         """
-        entities = self.hass.data[DOMAIN][self.uuid].get(RECORDING, [])
+        entities = self._data.recording
         if not entities:
             return
-        recording_callback = self.hass.data[DOMAIN][self.uuid].pop(
-            RECORDING_INTERVAL, None
-        )
+        recording_callback = self._data.recording_interval
         if recording_callback is not None:
             recording_callback()
-            recording_callback = None
+            self._data.recording_interval = None
         updated = False
         signals = []
         now = dt_util.now()
@@ -579,9 +571,7 @@ class BoschGatewayEntry:
             )
 
         nexti = rounder(now + timedelta(seconds=1))
-        self.hass.data[DOMAIN][self.uuid][
-            RECORDING_INTERVAL
-        ] = async_track_point_in_utc_time(
+        self._data.recording_interval = async_track_point_in_utc_time(
             self.hass, self.recording_sensors_update, nexti
         )
         _LOGGER.debug("Next update of 1-hour sensors scheduled at: %s", nexti)
@@ -604,7 +594,7 @@ class BoschGatewayEntry:
         """Update data from HC, DHW, ZN, Sensors, Switch."""
         if component_type in self.supported_platforms:
             updated = False
-            entities = self.hass.data[DOMAIN][self.uuid][component_type]
+            entities = getattr(self._data, component_type, [])
             entity_count = len(entities)
             _LOGGER.debug(
                 "Updating component type %s: uuid=%s, entity_count=%d",

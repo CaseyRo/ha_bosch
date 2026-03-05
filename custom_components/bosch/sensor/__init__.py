@@ -10,7 +10,7 @@ from bosch_thermostat_client.const import (
 from bosch_thermostat_client.const.easycontrol import ENERGY
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from ..const import CIRCUITS, CONF_PROTOCOL, DOMAIN, GATEWAY, POINTTAPI, SIGNAL_BOSCH, UUID
+from ..const import CIRCUITS, CONF_PROTOCOL, POINTTAPI, SIGNAL_BOSCH, UUID
 from ..pointtapi_entities import (
     BoschPoinTTAPISensorEntity,
     _pointtapi_sensor_descriptions,
@@ -39,11 +39,11 @@ SensorKinds = {
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Thermostat from a config entry."""
+    rt_data = config_entry.runtime_data
     if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-        uuid = config_entry.data.get(UUID)
-        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
-        coordinator = data.get("coordinator")
+        coordinator = rt_data.coordinator
         if coordinator:
+            uuid = config_entry.data.get(UUID)
             entities = [
                 BoschPoinTTAPISensorEntity(
                     coordinator,
@@ -58,13 +58,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             async_add_entities([])
         return True
     uuid = config_entry.data[UUID]
-    data = hass.data[DOMAIN][uuid]
+    gateway = rt_data.gateway
     enabled_sensors = config_entry.data.get(SENSORS, [])
 
     new_stats_api = config_entry.options.get("new_stats_api", False)
-    gateway = data[GATEWAY]
-    data[SENSOR] = []
-    data[RECORDING] = []
+    rt_data.sensor = []
+    rt_data.recording = []
 
     def get_sensors(sensor):
         if sensor.kind in (RECORDING, REGULAR, "notification"):
@@ -126,23 +125,24 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             )
         return (None, None)
 
+    target_map = {SENSOR: rt_data.sensor, RECORDING: rt_data.recording}
     for bosch_sensor in gateway.sensors:
         (target, sensors) = get_sensors(bosch_sensor)
         if not target:
             continue
         for sensor_entity in sensors:
-            data[target].append(sensor_entity)
+            target_map[target].append(sensor_entity)
 
     for circ_type in CIRCUITS:
-        circuits = data[GATEWAY].get_circuits(circ_type)
+        circuits = gateway.get_circuits(circ_type)
         for circuit in circuits:
             for sensor in circuit.sensors:
-                data[SENSOR].append(
+                rt_data.sensor.append(
                     CircuitSensor(
                         hass=hass,
                         uuid=uuid,
                         bosch_object=sensor,
-                        gateway=data[GATEWAY],
+                        gateway=gateway,
                         name=sensor.name,
                         attr_uri=sensor.attr_id,
                         domain_name=circuit.name,
@@ -150,10 +150,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         is_enabled=sensor.attr_id in enabled_sensors,
                     )
                 )
-    async_add_entities(data[SENSOR])
-    async_add_entities(data[RECORDING])
-    if data[RECORDING]:
-        pass
-        # Service registration removed as move_old_entity_data_to_new is currently broken
+    async_add_entities(rt_data.sensor)
+    async_add_entities(rt_data.recording)
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     return True

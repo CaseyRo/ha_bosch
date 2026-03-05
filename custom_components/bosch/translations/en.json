@@ -24,26 +24,20 @@
       "solar_collector_temperature": {"name": "Solar collector temperature"},
       "solar_storage_temperature": {"name": "Solar storage temperature"},
       "solar_pump_modulation": {"name": "Solar pump modulation"},
-      "solar_total_gain": {"name": "Total solar gain"}
+      "solar_total_gain": {"name": "Total solar gain"},
+      "indoor_air_temperature": {"name": "Indoor air temperature"},
+      "indoor_chip_temperature": {"name": "Indoor chip temperature"},
+      "indoor_pcb_temperature": {"name": "Indoor PCB temperature"},
+      "ch_pump_modulation": {"name": "CH pump modulation"},
+      "burner_starts": {"name": "Burner starts"},
+      "total_working_time": {"name": "Total working time"},
+      "return_temperature": {"name": "Return temperature"},
+      "refill_needed": {"name": "Refill needed"}
     }
   },
   "config": {
-      "title": "Bosch thermostat",
+      "title": "Bosch EasyControl",
       "step": {
-          "choose_type": {
-              "title": "Choose device type.",
-              "data": {
-                  "device_type": "Choose type of your device."
-              }
-          },
-          "http_config": {
-            "title": "Bosch thermostat HTTP config",
-            "data": {
-                "address": "IP address",
-                "access_token": "Access token",
-                "password": "Password"
-            }
-          },
           "xmpp_config": {
               "title": "Bosch thermostat XMPP config",
               "data": {
@@ -52,12 +46,6 @@
                   "password": "Password"
               }
             },
-          "protocol": {
-            "title": "Bosch IVT Protocol. HTTP is local. XMPP is cloud!",
-            "data": {
-                "Protocol": "Either http or xmpp"
-            }
-          },
           "easycontrol_protocol": {
               "title": "EasyControl connection",
               "description": "XMPP connects directly to your device on the local network. Cloud login uses your Bosch account and works remotely.",
