@@ -8,12 +8,10 @@ from homeassistant.util import dt as dt_util
 from homeassistant.config_entries import ConfigEntry
 import homeassistant.helpers.device_registry as dr
 import homeassistant.helpers.config_validation as cv
-from bosch_thermostat_client.const import RECORDING
 from .const import (
     DOMAIN,
     SERVICE_DEBUG,
     SERVICE_UPDATE,
-    BOSCH_GATEWAY_ENTRY,
     RECORDING_SERVICE_UPDATE,
     SERVICE_PUT_STRING,
     SERVICE_PUT_FLOAT,
@@ -36,30 +34,25 @@ SERVICE_PUT_FLOAT_SCHEMA = SERVICE_GET_SCHEMA.extend(
 )
 
 
-def find_gateway_entry(hass: HomeAssistant, devices_id: str) -> list[ConfigEntry]:
+def find_gateway_entry(hass: HomeAssistant, devices_id: str) -> list:
     """Find gateway in config entries."""
-    config_entries = list[ConfigEntry]()
+    matched_entries = list[ConfigEntry]()
     registry = dr.async_get(hass)
     for target in devices_id:
         device = registry.async_get(target)
         if device:
-            device_entries = list[ConfigEntry]()
             for entry_id in device.config_entries:
                 entry = hass.config_entries.async_get_entry(entry_id)
-                if entry and entry.domain == DOMAIN and entry not in config_entries:
-                    device_entries.append(entry)
-                if not device_entries:
-                    continue
-                config_entries.extend(device_entries)
+                if entry and entry.domain == DOMAIN and entry not in matched_entries:
+                    matched_entries.append(entry)
         else:
             _LOGGER.warn(
                 f"Device '{target}' not found in device registry"
             )
     bosch_gateway_entries = []
-    for entry in hass.data[DOMAIN].values():
-        for config_entry in config_entries:
-            if entry[BOSCH_GATEWAY_ENTRY].device_id == config_entry.entry_id:
-                bosch_gateway_entries.append(entry[BOSCH_GATEWAY_ENTRY])
+    for entry in matched_entries:
+        if hasattr(entry, "runtime_data") and entry.runtime_data:
+            bosch_gateway_entries.append(entry.runtime_data.gateway_entry)
     return bosch_gateway_entries
 
 
@@ -117,7 +110,7 @@ def async_register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
         if not _gateway_entries:
             return
         for _gateway_entry in _gateway_entries:
-            recording_entities: list[RecordingSensor] = _gateway_entry.hass.data[DOMAIN][_gateway_entry.uuid].get(RECORDING, [])
+            recording_entities: list[RecordingSensor] = _gateway_entry.config_entry.runtime_data.recording
             for entity in recording_entities:
                 if entity.enabled and entity.statistic_id == statistic_id:
                     _LOGGER.debug("Fetching single day by service request. UUID: %s, statistic_id: %s, day: %s", _gateway_entry.uuid, statistic_id, day)

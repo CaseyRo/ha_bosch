@@ -4,14 +4,13 @@ Support for water heaters connected to Bosch thermostat.
 For more details about this platform, please refer to the documentation at...
 """
 from __future__ import annotations
-from bosch_thermostat_client.const import GATEWAY, SELECT
+from bosch_thermostat_client.const import SELECT
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .bosch_entity import BoschEntity
 from .const import (
     CONF_PROTOCOL,
-    DOMAIN,
     POINTTAPI,
     SIGNAL_BOSCH,
     SIGNAL_SELECT,
@@ -25,11 +24,11 @@ from .pointtapi_entities import (
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Select from a config entry."""
+    rt_data = config_entry.runtime_data
     if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-        uuid = config_entry.data.get(UUID)
-        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
-        coordinator = data.get("coordinator")
+        coordinator = rt_data.coordinator
         if coordinator:
+            uuid = config_entry.data.get(UUID)
             async_add_entities([
                 BoschPoinTTAPISelectEntity(
                     coordinator, config_entry.entry_id, uuid, desc
@@ -40,24 +39,24 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             async_add_entities([])
         return True
     uuid = config_entry.data[UUID]
-    data = hass.data[DOMAIN][uuid]
+    gateway = rt_data.gateway
     enabled = config_entry.data.get(SELECT, [])
-    data[SELECT] = []
-    selects = data[GATEWAY].switches.selects
+    rt_data.select = []
+    selects = gateway.switches.selects
     for select in selects:
-        data[SELECT].append(
+        rt_data.select.append(
             BoschSelect(
                 hass=hass,
                 uuid=uuid,
                 bosch_object=select,
-                gateway=data[GATEWAY],
+                gateway=gateway,
                 name=select.name,
                 attr_uri=select.attr_id,
                 domain_name="Select",
                 is_enabled=select.attr_id in enabled,
             )
         )
-    async_add_entities(data[SELECT])
+    async_add_entities(rt_data.select)
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     return True
 
@@ -88,11 +87,11 @@ class BoschSelect(BoschEntity, SelectEntity):
             hass=hass, uuid=uuid, bosch_object=bosch_object, gateway=gateway
         )
         self._domain_name = domain_name
-        self._name = name
+        self._attr_name = name
         self._attr_uri = attr_uri
         self._state = bosch_object.state
         self._update_init = True
-        self._attr_unique_id = f"{self._domain_name}{self._name}{self._uuid}"
+        self._attr_unique_id = f"{self._domain_name}{name}{self._uuid}"
         self._attrs = {}
         self._attr_entity_registry_enabled_default = is_enabled
 

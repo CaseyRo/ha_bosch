@@ -7,7 +7,6 @@ from bosch_thermostat_client.const.easycontrol import DV
 from homeassistant.const import UnitOfEnergy, UnitOfTemperature
 
 DOMAIN = "bosch"
-BOSCH_GATEWAY_ENTRY = "BoschGatewayEntry"
 ACCESS_KEY = "access_key"
 ACCESS_TOKEN = "access_token"
 UUID = "uuid"
@@ -83,9 +82,6 @@ NOTIFICATION_ID = "bosch_notification"
 SCAN_INTERVAL = timedelta(seconds=60)
 FIRMWARE_SCAN_INTERVAL = timedelta(hours=4)
 SCAN_SENSOR_INTERVAL = timedelta(seconds=120)
-INTERVAL = "interval"
-FW_INTERVAL = "fw_interval"
-RECORDING_INTERVAL = "recording_interval"
 
 CIRCUITS = [DHW, HC, SC, ZN, DV]
 CIRCUITS_SENSOR_NAMES = {

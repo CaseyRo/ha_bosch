@@ -7,32 +7,37 @@
       "system_pressure": {"name": "System pressure"},
       "wifi_rssi": {"name": "WiFi signal strength"},
       "update_state": {"name": "Firmware update state"},
-      "boost_remaining_time": {"name": "Boost remaining time"}
+      "boost_remaining_time": {"name": "Boost remaining time"},
+      "gas_heating_yesterday": {"name": "Gas heating yesterday"},
+      "gas_hot_water_yesterday": {"name": "Gas hot water yesterday"},
+      "gas_total_yesterday": {"name": "Gas total yesterday"},
+      "blocking_error": {"name": "Blocking error"},
+      "locking_error": {"name": "Locking error"},
+      "maintenance_request": {"name": "Maintenance request"},
+      "display_code": {"name": "Display code"},
+      "cause_code": {"name": "Cause code"},
+      "firmware_version": {"name": "Firmware version"},
+      "supply_temp_setpoint": {"name": "Supply temperature setpoint"},
+      "boiler_power": {"name": "Boiler power"},
+      "actual_supply_temperature": {"name": "Actual supply temperature"},
+      "actual_modulation": {"name": "Actual modulation"},
+      "solar_collector_temperature": {"name": "Solar collector temperature"},
+      "solar_storage_temperature": {"name": "Solar storage temperature"},
+      "solar_pump_modulation": {"name": "Solar pump modulation"},
+      "solar_total_gain": {"name": "Total solar gain"},
+      "indoor_air_temperature": {"name": "Indoor air temperature"},
+      "indoor_chip_temperature": {"name": "Indoor chip temperature"},
+      "indoor_pcb_temperature": {"name": "Indoor PCB temperature"},
+      "ch_pump_modulation": {"name": "CH pump modulation"},
+      "burner_starts": {"name": "Burner starts"},
+      "total_working_time": {"name": "Total working time"},
+      "return_temperature": {"name": "Return temperature"},
+      "refill_needed": {"name": "Refill needed"}
     }
   },
   "config": {
-        "title": "Bosch thermostat",
+        "title": "Bosch EasyControl",
         "step": {
-            "choose_type": {
-                "title": "Choose device type.",
-                "data": {
-                    "device_type": "Choose type of your device."
-                }
-            },
-            "protocol": {
-                "title": "Bosch IVT Protocol. HTTP is local. XMPP is cloud!",
-                "data": {
-                    "Protocol": "Either http or xmpp"
-                }
-            },
-            "http_config": {
-                "title": "Bosch thermostat HTTP config",
-                "data": {
-                    "address": "IP address",
-                    "access_token": "Access token",
-                    "password": "Password"
-                }
-            },
             "xmpp_config": {
                 "title": "Bosch thermostat XMPP config",
                 "data": {

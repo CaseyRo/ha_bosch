@@ -84,7 +84,7 @@ class RecordingSensor(StatisticHelper):
         _LOGGER.debug(
             "Updating recording sensor: unique_id=%s, name=%s, statistic_id=%s",
             self.unique_id,
-            self._name,
+            self._attr_name,
             self.statistic_id,
         )
         if self._new_stats_api:

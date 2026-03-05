@@ -42,13 +42,13 @@ class BoschBaseSensor(BoschEntity, SensorEntity):
             domain_name=domain_name,
         )
         if not circuit_type:
-            self._name = (
+            self._attr_name = (
                 f"{domain_name} {name}"
                 if domain_name != "Sensors" and domain_name
                 else name
             )
         else:
-            self._name = f"{self._bosch_object.parent_id} {name}"
+            self._attr_name = f"{self._bosch_object.parent_id} {name}"
         self._attr_uri = attr_uri
         self._attr_device_class = None
         self._attr_state_class = None
@@ -104,7 +104,7 @@ class BoschBaseSensor(BoschEntity, SensorEntity):
         _LOGGER.debug(
             "Updating sensor: unique_id=%s, name=%s, uri=%s",
             self.unique_id,
-            self._name,
+            self._attr_name,
             self._attr_uri,
         )
         data = self._bosch_object.get_property(self._attr_uri)
@@ -115,8 +115,8 @@ class BoschBaseSensor(BoschEntity, SensorEntity):
             return None
 
         def check_name():
-            if data.get(NAME, "") != self._name:
-                self._name = data.get(NAME)
+            if data.get(NAME, "") != self._attr_name:
+                self._attr_name = data.get(NAME)
 
         units = get_units()
 

@@ -1,12 +1,10 @@
-"""Config flow to configure esphome component."""
+"""Config flow for Bosch EasyControl CT200."""
 import logging
 
 import voluptuous as vol
 from bosch_thermostat_client import gateway_chooser
 from bosch_thermostat_client.const import HTTP, XMPP
 from bosch_thermostat_client.const.easycontrol import EASYCONTROL
-from bosch_thermostat_client.const.ivt import IVT, IVT_MBLAN
-from bosch_thermostat_client.const.nefit import NEFIT
 from bosch_thermostat_client.exceptions import (
     DeviceException,
     EncryptionException,
@@ -42,10 +40,6 @@ from .const import (
     UUID,
 )
 
-DEVICE_TYPE = [NEFIT, IVT, EASYCONTROL, IVT_MBLAN]
-PROTOCOLS = [HTTP, XMPP]
-EASYCONTROL_PROTOCOLS = [XMPP, POINTTAPI]
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,57 +60,9 @@ class BoschFlowHandler(config_entries.ConfigFlow):
         self._device_type = None
 
     async def async_step_user(self, user_input=None):
-        """Handle flow initiated by user."""
-        return await self.async_step_choose_type(user_input)
-
-    async def async_step_choose_type(self, user_input=None):
-        """Choose if setup is for IVT, IVT/MBLAN, NEFIT or EASYCONTROL."""
-        errors = {}
-        if user_input is not None:
-            self._choose_type = user_input[CONF_DEVICE_TYPE]
-            if self._choose_type == IVT:
-                return self.async_show_form(
-                    step_id="protocol",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required(CONF_PROTOCOL): vol.All(
-                                vol.Upper, vol.In(PROTOCOLS)
-                            ),
-                        }
-                    ),
-                    errors=errors,
-                )
-            if self._choose_type == EASYCONTROL:
-                return self.async_show_form(
-                    step_id="easycontrol_protocol",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required(CONF_PROTOCOL): SelectSelector(
-                                SelectSelectorConfig(
-                                    options=[
-                                        {"value": XMPP, "label": "Local connection (XMPP)"},
-                                        {"value": POINTTAPI, "label": "Cloud / Bosch Account"},
-                                    ],
-                                    mode=SelectSelectorMode.LIST,
-                                )
-                            ),
-                        }
-                    ),
-                    errors=errors,
-                )
-            if self._choose_type in (NEFIT, IVT_MBLAN):
-                return await self.async_step_protocol({CONF_PROTOCOL: XMPP})
-        return self.async_show_form(
-            step_id="choose_type",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_DEVICE_TYPE): vol.All(
-                        vol.Upper, vol.In(DEVICE_TYPE)
-                    ),
-                }
-            ),
-            errors=errors,
-        )
+        """Handle flow initiated by user — go straight to EasyControl protocol choice."""
+        self._choose_type = EASYCONTROL
+        return await self.async_step_easycontrol_protocol(user_input)
 
     async def async_step_easycontrol_protocol(self, user_input=None):
         """Handle EasyControl protocol choice: XMPP or POINTTAPI."""
@@ -159,45 +105,6 @@ class BoschFlowHandler(config_entries.ConfigFlow):
             ),
             errors=errors,
         )
-
-    async def async_step_protocol(self, user_input=None):
-        errors = {}
-        if user_input is not None:
-            self._protocol = user_input[CONF_PROTOCOL]
-            return self.async_show_form(
-                step_id=f"{self._protocol.lower()}_config",
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(CONF_ADDRESS): str,
-                        vol.Required(CONF_ACCESS_TOKEN): str,
-                        vol.Optional(CONF_PASSWORD): str,
-                    }
-                ),
-                errors=errors,
-            )
-        return self.async_show_form(
-            step_id="protocol",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_PROTOCOL): vol.All(vol.Upper, vol.In(PROTOCOLS)),
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_http_config(self, user_input=None):
-        if user_input is not None:
-            self._host = user_input[CONF_ADDRESS]
-            self._access_token = user_input[CONF_ACCESS_TOKEN]
-            self._password = user_input.get(CONF_PASSWORD)
-            return await self.configure_gateway(
-                device_type=self._choose_type,
-                session=async_get_clientsession(self.hass, verify_ssl=False),
-                session_type=self._protocol,
-                host=self._host,
-                access_token=self._access_token,
-                password=self._password,
-            )
 
     async def async_step_pointtapi_device_id(self, user_input=None):
         """Handle POINTTAPI device ID (serial without dashes)."""

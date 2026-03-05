@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bosch_thermostat_client.const import GATEWAY, NUMBER
+from bosch_thermostat_client.const import NUMBER
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.number.const import NumberMode
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -12,7 +12,6 @@ from .const import (
     CIRCUITS,
     CIRCUITS_SENSOR_NAMES,
     CONF_PROTOCOL,
-    DOMAIN,
     POINTTAPI,
     SIGNAL_BOSCH,
     SIGNAL_NUMBER,
@@ -27,11 +26,11 @@ from .pointtapi_entities import (
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch number entities from a config entry."""
+    rt_data = config_entry.runtime_data
     if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-        uuid = config_entry.data.get(UUID)
-        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
-        coordinator = data.get("coordinator")
+        coordinator = rt_data.coordinator
         if coordinator:
+            uuid = config_entry.data.get(UUID)
             async_add_entities([
                 BoschPoinTTAPINumberEntity(
                     coordinator, config_entry.entry_id, uuid, description
@@ -42,16 +41,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             async_add_entities([])
         return True
     uuid = config_entry.data[UUID]
-    data = hass.data[DOMAIN][uuid]
+    gateway = rt_data.gateway
     enabled_switches = config_entry.data.get(NUMBER, [])
     data_number = []
-    for switch in data[GATEWAY].number_switches:
+    for switch in gateway.number_switches:
         data_number.append(
             BoschNumber(
                 hass=hass,
                 uuid=uuid,
                 bosch_object=switch,
-                gateway=data[GATEWAY],
+                gateway=gateway,
                 name=switch.name,
                 attr_uri=switch.attr_id,
                 domain_name="Switches",
@@ -59,7 +58,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             )
         )
     for circ_type in CIRCUITS:
-        circuits = data[GATEWAY].get_circuits(circ_type)
+        circuits = gateway.get_circuits(circ_type)
         for circuit in circuits:
             for switch in circuit.number_switches:
                 data_number.append(
@@ -67,7 +66,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         hass=hass,
                         uuid=uuid,
                         bosch_object=switch,
-                        gateway=data[GATEWAY],
+                        gateway=gateway,
                         name=switch.name,
                         attr_uri=switch.attr_id,
                         domain_name=circuit.name,
@@ -75,8 +74,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         is_enabled=switch.attr_id in enabled_switches,
                     )
                 )
-    data[NUMBER] = data_number
-    async_add_entities(data[NUMBER])
+    rt_data.number = data_number
+    async_add_entities(rt_data.number)
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     return True
 
@@ -109,11 +108,11 @@ class BoschNumber(BoschEntity, NumberEntity):
             hass=hass, uuid=uuid, bosch_object=bosch_object, gateway=gateway
         )
         self._domain_name = domain_name
-        self._name = name
+        self._attr_name = name
         self._attr_uri = attr_uri
         self._state = bosch_object.state
         self._update_init = True
-        self._attr_unique_id = f"{self._domain_name}{self._name}{self._uuid}"
+        self._attr_unique_id = f"{self._domain_name}{name}{self._uuid}"
         self._attrs = {}
         self._circuit_type = circuit_type
         self._attr_entity_registry_enabled_default = is_enabled
@@ -121,7 +120,7 @@ class BoschNumber(BoschEntity, NumberEntity):
     @property
     def device_name(self) -> str:
         """Return device name."""
-        return "Bosch switches"
+        return "Bosch numbers"
 
     @property
     def native_min_value(self) -> float:

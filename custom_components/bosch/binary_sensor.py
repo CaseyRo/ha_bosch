@@ -9,8 +9,6 @@ from .bosch_entity import BoschEntity
 from .const import (
     BINARY_SENSOR,
     CONF_PROTOCOL,
-    DOMAIN,
-    GATEWAY,
     POINTTAPI,
     SIGNAL_BINARY_SENSOR_UPDATE_BOSCH,
     SIGNAL_BOSCH,
@@ -26,25 +24,26 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities([])
         return True
     uuid = config_entry.data[UUID]
-    data = hass.data[DOMAIN][uuid]
+    rt_data = config_entry.runtime_data
+    gateway = rt_data.gateway
     enabled_sensors = config_entry.data.get(BINARY_SENSOR, [])
-    data[BINARY_SENSOR] = []
+    rt_data.binary_sensor = []
 
-    for bosch_sensor in data[GATEWAY].sensors:
+    for bosch_sensor in gateway.sensors:
         if bosch_sensor.kind == BINARY:
-            data[BINARY_SENSOR].append(
+            rt_data.binary_sensor.append(
                 BoschBinarySensor(
                     hass=hass,
                     uuid=uuid,
                     bosch_object=bosch_sensor,
-                    gateway=data[GATEWAY],
+                    gateway=gateway,
                     name=bosch_sensor.name,
                     attr_uri=bosch_sensor.attr_id,
                     is_enabled=bosch_sensor.attr_id in enabled_sensors,
                 )
             )
 
-    async_add_entities(data[BINARY_SENSOR])
+    async_add_entities(rt_data.binary_sensor)
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     return True
 
@@ -70,12 +69,12 @@ class BoschBinarySensor(BoschEntity, BinarySensorEntity):
             hass=hass, uuid=uuid, bosch_object=bosch_object, gateway=gateway
         )
 
-        self._name = name
+        self._attr_name = name
         self._attr_uri = attr_uri
         self._state = None
         self._update_init = True
 
-        self._attr_unique_id = f"{self._domain_name}{self._name}{self._uuid}"
+        self._attr_unique_id = f"{self._domain_name}{name}{self._uuid}"
         self._attrs = {}
         self._attr_entity_registry_enabled_default = is_enabled
 

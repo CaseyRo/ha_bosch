@@ -16,10 +16,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .bosch_entity import BoschClimateWaterEntity
 from .const import (
     BOSCH_STATE,
-    CLIMATE,
     CONF_PROTOCOL,
-    DOMAIN,
-    GATEWAY,
     POINTTAPI,
     SIGNAL_BOSCH,
     SIGNAL_CLIMATE_UPDATE_BOSCH,
@@ -34,11 +31,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch thermostat from a config entry."""
+    data = config_entry.runtime_data
     if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-        uuid = config_entry.data.get(UUID)
-        data = hass.data.get(DOMAIN, {}).get(uuid) if uuid else {}
-        coordinator = data.get("coordinator")
+        coordinator = data.coordinator
         if coordinator:
+            uuid = config_entry.data.get(UUID)
             async_add_entities([
                 BoschPoinTTAPIClimateEntity(
                     coordinator, config_entry.entry_id, uuid, zone_id="zn1"
@@ -48,19 +45,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             async_add_entities([])
         return True
     uuid = config_entry.data[UUID]
-    data = hass.data[DOMAIN][uuid]
+    gateway = data.gateway
     optimistic_mode = config_entry.options.get("optimistic_mode", False)
-    data[CLIMATE] = [
+    data.climate = [
         BoschThermostat(
             hass=hass,
             uuid=uuid,
             bosch_object=hc,
-            gateway=data[GATEWAY],
+            gateway=gateway,
             optimistic_mode=optimistic_mode,
         )
-        for hc in data[GATEWAY].heating_circuits
+        for hc in gateway.heating_circuits
     ]
-    async_add_entities(data[CLIMATE])
+    async_add_entities(data.climate)
     async_dispatcher_send(hass, SIGNAL_BOSCH)
     return True
 
@@ -182,7 +179,7 @@ class BoschThermostat(BoschClimateWaterEntity, ClimateEntity):
         """Update state of device."""
         _LOGGER.debug(
             "Updating climate entity: name=%s, entity_id=%s, unique_id=%s",
-            self._name,
+            self._bosch_name,
             self.entity_id,
             self.unique_id,
         )
