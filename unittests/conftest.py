@@ -31,6 +31,11 @@ _bosch_pkg.__path__ = [str(REPO_ROOT / "custom_components" / "bosch")]
 _bosch_pkg.__package__ = "custom_components.bosch"
 sys.modules.setdefault("custom_components.bosch", _bosch_pkg)
 
+# Provide stubs for attributes that config_flow.py imports from __init__.py
+# (from . import create_notification_firmware) so the import succeeds without
+# executing the real __init__.py.
+_bosch_pkg.create_notification_firmware = MagicMock()
+
 # Also make the sensor sub-package discoverable
 _sensor_pkg = ModuleType("custom_components.bosch.sensor")
 _sensor_pkg.__path__ = [str(REPO_ROOT / "custom_components" / "bosch" / "sensor")]
