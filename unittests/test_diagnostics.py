@@ -59,8 +59,12 @@ class TestAsyncGetDiagnostics:
             "/system/sensors": {"id": "/system/sensors", "value": 42},
         }
 
+        runtime_data = MagicMock()
+        runtime_data.coordinator = coordinator
+
+        entry.runtime_data = runtime_data
+
         hass = MagicMock()
-        hass.data = {"bosch": {"123": {"coordinator": coordinator}}}
 
         diag = await async_get_config_entry_diagnostics(hass, entry)
 
@@ -98,8 +102,9 @@ class TestAsyncGetDiagnostics:
             "access_token": "tok",
         }
 
+        entry.runtime_data = None
+
         hass = MagicMock()
-        hass.data = {"bosch": {"789": {}}}
 
         diag = await async_get_config_entry_diagnostics(hass, entry)
         assert diag["coordinator_data"] is None
