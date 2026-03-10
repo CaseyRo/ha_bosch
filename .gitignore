@@ -28,6 +28,9 @@ home-assistant.log
 # Local Debug Scripts
 debug_connection.py
 debug_screenshots/
+test_easycontrol_connection.py
+explore_easycontrol.py
+easycontrol_dump_*.json
 
 # Flask stuff:
 instance/
