@@ -340,11 +340,13 @@ class BoschGatewayEntry:
         import bosch_thermostat_client as bosch
         BoschGateway = bosch.gateway_chooser(device_type=self._device_type)
         
-        # Get session in event loop before executor call (for HTTP only)
+        # Get session: event loop for XMPP, aiohttp session for HTTP
         session = None
         if self._protocol == HTTP:
             session = async_get_clientsession(self.hass, verify_ssl=False)
             _LOGGER.debug("Created HTTP session for gateway connection")
+        elif self._protocol == XMPP:
+            session = self.hass.loop
         
         # Wrap gateway instantiation in executor to avoid blocking SSL operations
         # SSL operations (set_default_verify_paths, load_default_certs, load_verify_locations)

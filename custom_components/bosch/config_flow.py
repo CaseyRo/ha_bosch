@@ -225,6 +225,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 host=self._host,
                 access_token=self._access_token,
                 password=self._password,
+                session=self.hass.loop,
             )
 
     async def configure_gateway(
