@@ -58,6 +58,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_ADDRESS,
+    CONF_PASSWORD,
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -196,6 +197,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
         access_key=entry.data[ACCESS_KEY],
         access_token=entry.data[ACCESS_TOKEN],
         entry=entry,
+        password=entry.data.get(CONF_PASSWORD),
     )
     runtime_data = BoschRuntimeData(gateway_entry=gateway_entry)
     entry.runtime_data = runtime_data
@@ -253,7 +255,7 @@ class BoschGatewayEntry:
     """Bosch gateway entry config class."""
 
     def __init__(
-        self, hass, uuid, host, protocol, device_type, access_key, access_token, entry
+        self, hass, uuid, host, protocol, device_type, access_key, access_token, entry, password=None
     ) -> None:
         """Init Bosch gateway entry config class."""
         self.hass = hass
@@ -261,6 +263,7 @@ class BoschGatewayEntry:
         self._host = host
         self._access_key = access_key
         self._access_token = access_token
+        self._password = password
         self._device_type = device_type
         self._protocol = protocol
         self.config_entry = entry
@@ -359,6 +362,7 @@ class BoschGatewayEntry:
                 host=self._host,
                 access_key=self._access_key,
                 access_token=self._access_token,
+                password=self._password,
             )
             # Log XMPP endpoint for EasyControl devices
             if self._protocol == XMPP and hasattr(gateway, '_connector'):

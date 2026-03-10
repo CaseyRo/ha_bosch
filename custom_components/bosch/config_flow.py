@@ -292,6 +292,8 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 CONF_DEVICE_TYPE: self._choose_type,
                 CONF_PROTOCOL: session_type,
             }
+            if self._password:
+                data[CONF_PASSWORD] = self._password
             return self.async_create_entry(
                 title=device.device_name or "Unknown model",
                 data=data,
