@@ -24,6 +24,7 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityFeature,
 )
 from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
+from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
@@ -37,7 +38,8 @@ _LOGGER = logging.getLogger(__name__)
 VALUE_KEY = "value"
 
 # Water heater operation mode mapping: API value <-> user-friendly label
-_API_TO_OP = {"ownprogram": "Auto", "off": "Off", "on": "On"}
+# API accepts: "ownprogram" (auto/schedule), "Off", "high" (always on at high temp)
+_API_TO_OP = {"ownprogram": "Auto", "Off": "Off", "high": "On"}
 _OP_TO_API = {v: k for k, v in _API_TO_OP.items()}
 
 
@@ -52,9 +54,10 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
 
 @dataclass(frozen=True)
 class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
-    """Sensor description with optional value_fn for computed/derived values."""
+    """Sensor description with optional value_fn and last_reset_fn."""
 
     value_fn: Callable[[dict[str, Any]], Any] | None = None
+    last_reset_fn: Callable[[], Any] | None = None
 
 
 # ── Gas usage helper functions ────────────────────────────────────────────────
@@ -85,6 +88,60 @@ def _gas_total_today(data: dict[str, Any]) -> float | None:
     entries = _gas_history_entries(data)
     if entries is None:
         return None
+    last = entries[-1]
+    return (last.get("gCh") or 0.0) + (last.get("gHw") or 0.0)
+
+
+def _start_of_today() -> Any:
+    """Return start of today in local timezone for last_reset."""
+    return dt_util.start_of_local_day()
+
+
+# ── Hourly gas usage helper functions ────────────────────────────────────────
+
+
+def _gas_hourly_entries(data: dict[str, Any]) -> list | None:
+    """Extract hourly entries from /energy/historyHourly coordinator data."""
+    history = data.get("/energy/historyHourly") or {}
+    val = history.get("value") if isinstance(history, dict) else None
+    if not val or not isinstance(val, list):
+        return None
+    # The API returns [{entries: [...], next: N}] or a flat list
+    if isinstance(val[0], dict) and "entries" in val[0]:
+        return val[0].get("entries") or None
+    return val
+
+
+def _gas_ch_hourly(data: dict[str, Any]) -> float | None:
+    entries = _gas_hourly_entries(data)
+    if not entries:
+        return None
+    now_h = str(dt_util.now().hour)
+    for entry in reversed(entries):
+        if str(entry.get("h")) == now_h:
+            return entry.get("gCh")
+    return entries[-1].get("gCh")
+
+
+def _gas_hw_hourly(data: dict[str, Any]) -> float | None:
+    entries = _gas_hourly_entries(data)
+    if not entries:
+        return None
+    now_h = str(dt_util.now().hour)
+    for entry in reversed(entries):
+        if str(entry.get("h")) == now_h:
+            return entry.get("gHw")
+    return entries[-1].get("gHw")
+
+
+def _gas_total_hourly(data: dict[str, Any]) -> float | None:
+    entries = _gas_hourly_entries(data)
+    if not entries:
+        return None
+    now_h = str(dt_util.now().hour)
+    for entry in reversed(entries):
+        if str(entry.get("h")) == now_h:
+            return (entry.get("gCh") or 0.0) + (entry.get("gHw") or 0.0)
     last = entries[-1]
     return (last.get("gCh") or 0.0) + (last.get("gHw") or 0.0)
 
@@ -125,12 +182,19 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Read from coordinator.data and set state."""
+        """Read from coordinator.data and set state.
+
+        OFF detection: the API doesn't support hc1/control="off", so we
+        implement OFF as manual mode + min temp. Detect this state to keep
+        the OFF indicator stable across coordinator polls.
+        """
         data = self.coordinator.data or {}
         self._current = _val(data, f"/zones/{self._zone_id}/temperatureActual")
         self._target = _val(data, f"/zones/{self._zone_id}/temperatureHeatingSetpoint")
-        control = _val(data, "/heatingCircuits/hc1/control")
-        if control == "off":
+        user_mode = _val(data, f"/zones/{self._zone_id}/userMode")
+        manual_temp = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
+        # OFF = manual mode with temp at or below minimum
+        if user_mode == "manual" and manual_temp is not None and float(manual_temp) <= self.min_temp:
             self._hvac_mode = HVACMode.OFF
         else:
             self._hvac_mode = HVACMode.HEAT
@@ -157,12 +221,18 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         return 30.0
 
     async def async_set_temperature(self, **kwargs) -> None:
-        """Set target temperature via POINTTAPI PUT."""
+        """Set target temperature via POINTTAPI PUT.
+
+        Automatically switches zone to manual mode first, since writing to
+        manualTemperatureHeating has no effect when zone is in clock mode.
+        """
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-        path = f"/zones/{self._zone_id}/manualTemperatureHeating"
         try:
+            # Switch to manual mode so the setpoint takes effect
+            await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
+            path = f"/zones/{self._zone_id}/manualTemperatureHeating"
             await self.coordinator.client.put(path, float(temperature))
             self._target = float(temperature)
             self.async_write_ha_state()
@@ -174,8 +244,27 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        """Set HVAC mode via POINTTAPI PUT (task 6.2)."""
-        value = "off" if hvac_mode == HVACMode.OFF else "auto"
+        """Set HVAC mode via POINTTAPI PUT (task 6.2).
+
+        API accepts: "weather" (auto/weather-compensated), "room" (room-based), not "off"/"auto".
+        OFF is not directly supported by the hc1/control endpoint; we set zone userMode to manual
+        with a low setpoint instead.
+        """
+        if hvac_mode == HVACMode.OFF:
+            # No direct "off" for hc1/control; set zone to manual with min temp
+            try:
+                await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
+                await self.coordinator.client.put(f"/zones/{self._zone_id}/manualTemperatureHeating", self.min_temp)
+                self._hvac_mode = hvac_mode
+                self.async_write_ha_state()
+                await self.coordinator.async_request_refresh()
+            except ConfigEntryAuthFailed:
+                raise
+            except Exception as err:
+                _LOGGER.warning("POINTTAPI set hvac_mode OFF failed: %s", err)
+                await self.coordinator.async_request_refresh()
+            return
+        value = "weather"
         path = "/heatingCircuits/hc1/control"
         try:
             await self.coordinator.client.put(path, value)
@@ -344,27 +433,55 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             device_class=SensorDeviceClass.DURATION,
             native_unit_of_measurement=UnitOfTime.MINUTES,
         ),
-        # ── Gas usage sensors (1a) ────────────────────────────────────────────
+        # ── Gas usage sensors — daily totals for Energy Dashboard ────────────
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_ch",
-            translation_key="gas_heating_yesterday",
+            translation_key="gas_heating_today",
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.ENERGY,
+            state_class=SensorStateClass.TOTAL,
             value_fn=_gas_ch_today,
+            last_reset_fn=_start_of_today,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_hw",
-            translation_key="gas_hot_water_yesterday",
+            translation_key="gas_hot_water_today",
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.ENERGY,
+            state_class=SensorStateClass.TOTAL,
             value_fn=_gas_hw_today,
+            last_reset_fn=_start_of_today,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/energy/history_total",
-            translation_key="gas_total_yesterday",
+            translation_key="gas_total_today",
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            device_class=SensorDeviceClass.ENERGY,
+            state_class=SensorStateClass.TOTAL,
+            value_fn=_gas_total_today,
+            last_reset_fn=_start_of_today,
+        ),
+        # ── Gas usage sensors — hourly breakdown ─────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/energy/historyHourly_ch",
+            translation_key="gas_heating_hourly",
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
-            value_fn=_gas_total_today,
+            value_fn=_gas_ch_hourly,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/energy/historyHourly_hw",
+            translation_key="gas_hot_water_hourly",
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_gas_hw_hourly,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/energy/historyHourly_total",
+            translation_key="gas_total_hourly",
+            native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_gas_total_hourly,
         ),
         # ── Error / maintenance diagnostics (1b) ──────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
@@ -495,9 +612,8 @@ class BoschPoinTTAPISensorEntity(
             )
         self._path = path
         self._native_value: Any = None
-        # Disable by default for high-churn diagnostic (e.g. RSSI) - task 8.3
-        if path == "/gateway/wifi/rssi":
-            self._attr_entity_registry_enabled_default = False
+        self._last_reset: Any = None
+        # RSSI was previously disabled by default (task 8.3) — now enabled for monitoring
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -506,6 +622,8 @@ class BoschPoinTTAPISensorEntity(
         desc = self.entity_description
         if isinstance(desc, BoschPoinTTAPISensorEntityDescription) and desc.value_fn is not None:
             self._native_value = desc.value_fn(data)
+            if desc.last_reset_fn is not None:
+                self._last_reset = desc.last_reset_fn()
         else:
             self._native_value = _val(data, self._path)
         self.async_write_ha_state()
@@ -513,6 +631,10 @@ class BoschPoinTTAPISensorEntity(
     @property
     def native_value(self) -> Any:
         return self._native_value
+
+    @property
+    def last_reset(self) -> Any:
+        return self._last_reset
 
 
 # ── Number entities (boost settings) ─────────────────────────────────────────
@@ -660,7 +782,12 @@ class BoschPoinTTAPINumberEntity(
 class BoschPoinTTAPIBoostSwitchEntity(
     CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
 ):
-    """Switch entity for POINTTAPI: one-tap boost on/off."""
+    """Switch entity for POINTTAPI: one-tap boost on/off.
+
+    The native /heatingCircuits/hc1/boostMode endpoint is 403-blocked by the
+    POINTTAPI cloud scope. Workaround: boost ON = switch zone to manual mode
+    at the configured boost temperature; boost OFF = restore clock mode.
+    """
 
     _attr_has_entity_name = True
     _attr_name = "Boost"
@@ -679,12 +806,19 @@ class BoschPoinTTAPIBoostSwitchEntity(
             identifiers={(DOMAIN, uuid)},
         )
         self._is_on: bool = False
+        self._pre_boost_mode: str | None = None
+        # Track boost state explicitly rather than deriving from zone state,
+        # because the zone state lags behind PUT calls and causes flicker.
+        self._boost_set_by_us: bool = False
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        data = self.coordinator.data or {}
-        boost = _val(data, "/heatingCircuits/hc1/boostMode")
-        self._is_on = boost == "on"
+        # Only update from coordinator data if we didn't explicitly set boost.
+        # When we set boost, _is_on is already correct from turn_on/turn_off.
+        if not self._boost_set_by_us:
+            data = self.coordinator.data or {}
+            boost_mode = _val(data, "/heatingCircuits/hc1/boostMode")
+            self._is_on = boost_mode == "on"
         self.async_write_ha_state()
 
     @property
@@ -692,9 +826,17 @@ class BoschPoinTTAPIBoostSwitchEntity(
         return self._is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn boost on."""
+        """Turn boost on: switch zone to manual + set boost temperature."""
         try:
-            await self.coordinator.client.put("/heatingCircuits/hc1/boostMode", "on")
+            data = self.coordinator.data or {}
+            boost_temp = _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+            # Remember current mode so we can restore it
+            self._pre_boost_mode = _val(data, "/zones/zn1/userMode") or "clock"
+            await self.coordinator.client.put("/zones/zn1/userMode", "manual")
+            await self.coordinator.client.put(
+                "/zones/zn1/manualTemperatureHeating", float(boost_temp)
+            )
+            self._boost_set_by_us = True
             self._is_on = True
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
@@ -702,20 +844,34 @@ class BoschPoinTTAPIBoostSwitchEntity(
             raise
         except Exception as err:
             _LOGGER.warning("POINTTAPI boost turn_on failed: %s", err)
+            self._boost_set_by_us = False
             await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn boost off."""
+        """Turn boost off: restore zone to clock mode."""
         try:
-            await self.coordinator.client.put("/heatingCircuits/hc1/boostMode", "off")
+            restore_mode = self._pre_boost_mode or "clock"
+            await self.coordinator.client.put("/zones/zn1/userMode", restore_mode)
+            self._boost_set_by_us = True
             self._is_on = False
+            self._pre_boost_mode = None
             self.async_write_ha_state()
+            # After one successful refresh with the restored state, stop overriding
+            self.coordinator.async_add_listener(self._clear_boost_flag)
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
             _LOGGER.warning("POINTTAPI boost turn_off failed: %s", err)
+            self._boost_set_by_us = False
             await self.coordinator.async_request_refresh()
+
+    @callback
+    def _clear_boost_flag(self) -> None:
+        """Clear the boost override flag after one coordinator cycle."""
+        self._boost_set_by_us = False
+        # Remove ourselves — one-shot listener
+        self.coordinator.async_remove_listener(self._clear_boost_flag)
 
 
 # ── Generic switch entity (firmware update, notification light, etc.) ─────────

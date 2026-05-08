@@ -1,53 +1,72 @@
 {
   "entity": {
     "sensor": {
-      "gas_heating_yesterday": {"name": "Gas verwarming gisteren"},
-      "gas_hot_water_yesterday": {"name": "Gas warm water gisteren"},
-      "gas_total_yesterday": {"name": "Gas totaal gisteren"},
-      "actual_supply_temperature": {"name": "Actuele aanvoertemperatuur"},
-      "actual_modulation": {"name": "Actuele modulatie"}
+      "actual_supply_temperature": {
+        "name": "Actuele aanvoertemperatuur"
+      },
+      "actual_modulation": {
+        "name": "Actuele modulatie"
+      },
+      "gas_heating_today": {
+        "name": "Gas verwarming vandaag"
+      },
+      "gas_hot_water_today": {
+        "name": "Gas warm water vandaag"
+      },
+      "gas_total_today": {
+        "name": "Gas totaal vandaag"
+      },
+      "gas_heating_hourly": {
+        "name": "Gas verwarming dit uur"
+      },
+      "gas_hot_water_hourly": {
+        "name": "Gas warm water dit uur"
+      },
+      "gas_total_hourly": {
+        "name": "Gas totaal dit uur"
+      }
     }
   },
   "config": {
-      "title": "Bosch thermostaat",
-      "step": {
-          "choose_type": {
-              "title": "Kies apparaattype.",
-              "data": {
-                  "device_type": "Kies het type van uw apparaat."
-              }
-          },
-          "http_config": {
-            "title": "Bosch thermostaat HTTP configuratie",
-            "data": {
-                "address": "IP adres",
-                "access_token": "Toegangstoken",
-                "password": "Wachtwoord"
-            }
-          },
-          "xmpp_config": {
-              "title": "Bosch thermostaat XMPP configuratie",
-              "data": {
-                  "address": "Serienummer van het apparaat",
-                  "access_token": "Toegangstoken",
-                  "password": "Wachtwoord"
-              }
-            },
-          "protocol": {
-            "title": "Bosch IVT Protocol. HTTP is lokaal. XMPP is cloud!",
-            "data": {
-                "Protocol": "Een van beide http of xmpp"
-            }
-          }
+    "title": "Bosch thermostaat",
+    "step": {
+      "choose_type": {
+        "title": "Kies apparaattype.",
+        "data": {
+          "device_type": "Kies het type van uw apparaat."
+        }
       },
-      "error": {
-          "service_unavailable": "Geen dienst beschikbaar"
+      "http_config": {
+        "title": "Bosch thermostaat HTTP configuratie",
+        "data": {
+          "address": "IP adres",
+          "access_token": "Toegangstoken",
+          "password": "Wachtwoord"
+        }
       },
-      "abort": {
-          "faulty_credentials": "Ongeldige logingegevens of verkeerd IP-adres",
-          "already_configured": "Controllersite is al geconfigureerd",
-          "unknown": "Onbekende reden. Controleer LOGS."
+      "xmpp_config": {
+        "title": "Bosch thermostaat XMPP configuratie",
+        "data": {
+          "address": "Serienummer van het apparaat",
+          "access_token": "Toegangstoken",
+          "password": "Wachtwoord"
+        }
+      },
+      "protocol": {
+        "title": "Bosch IVT Protocol. HTTP is lokaal. XMPP is cloud!",
+        "data": {
+          "Protocol": "Een van beide http of xmpp"
+        }
       }
+    },
+    "error": {
+      "service_unavailable": "Geen dienst beschikbaar"
+    },
+    "abort": {
+      "faulty_credentials": "Ongeldige logingegevens of verkeerd IP-adres",
+      "already_configured": "Controllersite is al geconfigureerd",
+      "unknown": "Onbekende reden. Controleer LOGS."
+    }
   },
   "options": {
     "step": {

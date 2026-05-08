@@ -10,11 +10,12 @@ from bosch_thermostat_client.const import (
 from bosch_thermostat_client.const.easycontrol import ENERGY
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from ..const import CIRCUITS, CONF_PROTOCOL, POINTTAPI, SIGNAL_BOSCH, UUID
+from ..const import CIRCUITS, CONF_PROTOCOL, DOMAIN, POINTTAPI, SIGNAL_BOSCH, UUID
 from ..pointtapi_entities import (
     BoschPoinTTAPISensorEntity,
     _pointtapi_sensor_descriptions,
 )
+from ..pointtapi_statistics import async_backfill_gas_history
 from .bosch import BoschSensor
 from .circuit import CircuitSensor
 from .energy import EcusRecordingSensors, EnergySensor, EnergySensors
@@ -54,6 +55,31 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 for desc in _pointtapi_sensor_descriptions()
             ]
             async_add_entities(entities)
+
+            # Backfill gas history once after first coordinator update
+            backfill_key = f"{DOMAIN}_gas_backfill_{config_entry.entry_id}"
+            if backfill_key not in hass.data:
+                hass.data[backfill_key] = True
+                import logging
+                _LOGGER = logging.getLogger(__name__)
+
+                async def _do_backfill(_now=None):
+                    _LOGGER.info("Gas history backfill: starting")
+                    try:
+                        if not coordinator.data:
+                            await coordinator.async_request_refresh()
+                        if coordinator.data:
+                            await async_backfill_gas_history(
+                                hass, coordinator.data, "sensor.pointtapi"
+                            )
+                        else:
+                            _LOGGER.warning("Gas history backfill: no coordinator data available")
+                    except Exception as err:
+                        _LOGGER.warning("Gas history backfill failed: %s", err, exc_info=True)
+
+                # Schedule after a short delay to let recorder initialize
+                from homeassistant.helpers.event import async_call_later
+                async_call_later(hass, 60, _do_backfill)
         else:
             async_add_entities([])
         return True

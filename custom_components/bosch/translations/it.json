@@ -1,64 +1,82 @@
 {
-    "entity": {
-        "sensor": {
-            "gas_heating_yesterday": {"name": "Gas riscaldamento ieri"},
-            "gas_hot_water_yesterday": {"name": "Gas acqua calda ieri"},
-            "gas_total_yesterday": {"name": "Gas totale ieri"},
-            "actual_supply_temperature": {"name": "Temperatura di mandata attuale"},
-            "actual_modulation": {"name": "Modulazione attuale"}
+  "entity": {
+    "sensor": {
+      "actual_supply_temperature": {
+        "name": "Temperatura di mandata attuale"
+      },
+      "actual_modulation": {
+        "name": "Modulazione attuale"
+      },
+      "gas_heating_today": {
+        "name": "Gas riscaldamento oggi"
+      },
+      "gas_hot_water_today": {
+        "name": "Gas acqua calda oggi"
+      },
+      "gas_total_today": {
+        "name": "Gas totale oggi"
+      },
+      "gas_heating_hourly": {
+        "name": "Gas riscaldamento ora corrente"
+      },
+      "gas_hot_water_hourly": {
+        "name": "Gas acqua calda ora corrente"
+      },
+      "gas_total_hourly": {
+        "name": "Gas totale ora corrente"
+      }
+    }
+  },
+  "config": {
+    "title": "Termostato Bosch",
+    "step": {
+      "choose_type": {
+        "title": "Selezione dispositivo.",
+        "data": {
+          "device_type": "Seleziona il tipo di dispositivo."
         }
-    },
-    "config": {
-        "title": "Termostato Bosch",
-        "step": {
-            "choose_type": {
-                "title": "Selezione dispositivo.",
-                "data": {
-                    "device_type": "Seleziona il tipo di dispositivo."
-                }
-            },
-            "http_config": {
-              "title": "Configurazione HTTP",
-              "data": {
-                  "address": "Indirizzo IP",
-                  "access_token": "Token di accesso",
-                  "password": "Password"
-              }
-            },
-            "xmpp_config": {
-                "title": "Configurazione XMPP",
-                "data": {
-                    "address": "Numero seriale del dispositivo",
-                    "access_token": "Token di accesso",
-                    "password": "Password"
-                }
-              },
-            "protocol": {
-              "title": "Protocollo IVT Bosch. HTTP utilizza comunicazioni nella rete locale. XMPP invece utilizza il cloud!",
-              "data": {
-                  "Protocol": "HTTP oppure XMPP"
-              }
-            }
-        },
-        "error": {
-            "service_unavailable": "Nessun servizio disponibile"
-        },
-        "abort": {
-            "faulty_credentials": "Credenziali utente errate oppure IP errato",
-            "already_configured": "La zona del controller è gia configurata",
-            "unknown": "Causa sconosciuta. Controllare i log."
+      },
+      "http_config": {
+        "title": "Configurazione HTTP",
+        "data": {
+          "address": "Indirizzo IP",
+          "access_token": "Token di accesso",
+          "password": "Password"
         }
-    },
-    "options": {
-        "step": {
-          "init": {
-            "title": "Bosch options",
-            "data": {
-              "new_stats_api": "Utilizza la nuova API statistica (New statistic API)",
-              "optimistic_mode": "Utilizza modalità \"ottimista\" per alcune funzioni (impostazione di default per EasyControl)."
-            }
-          }
+      },
+      "xmpp_config": {
+        "title": "Configurazione XMPP",
+        "data": {
+          "address": "Numero seriale del dispositivo",
+          "access_token": "Token di accesso",
+          "password": "Password"
+        }
+      },
+      "protocol": {
+        "title": "Protocollo IVT Bosch. HTTP utilizza comunicazioni nella rete locale. XMPP invece utilizza il cloud!",
+        "data": {
+          "Protocol": "HTTP oppure XMPP"
         }
       }
+    },
+    "error": {
+      "service_unavailable": "Nessun servizio disponibile"
+    },
+    "abort": {
+      "faulty_credentials": "Credenziali utente errate oppure IP errato",
+      "already_configured": "La zona del controller è gia configurata",
+      "unknown": "Causa sconosciuta. Controllare i log."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Bosch options",
+        "data": {
+          "new_stats_api": "Utilizza la nuova API statistica (New statistic API)",
+          "optimistic_mode": "Utilizza modalità \"ottimista\" per alcune funzioni (impostazione di default per EasyControl)."
+        }
+      }
+    }
   }
-  
+}

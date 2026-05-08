@@ -17,6 +17,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import ACCESS_TOKEN
 
@@ -121,25 +122,34 @@ async def exchange_code_for_tokens(session, code: str) -> dict[str, Any]:
 
 
 async def refresh_access_token(session, refresh_token: str) -> dict[str, Any]:
-    """Refresh access token using refresh_token. Raises ConfigEntryAuthFailed on failure."""
+    """Refresh access token using refresh_token.
+
+    Raises ConfigEntryAuthFailed on genuine auth failure (400/401).
+    Raises UpdateFailed on transient errors (5xx, network) so the coordinator
+    retries next cycle without killing the integration.
+    """
     data = {
         "grant_type": "refresh_token",
         "refresh_token": refresh_token,
         "scope": " ".join(SCOPES),
         "client_id": CLIENT_ID,
     }
-    async with session.post(TOKEN_URL, data=data) as resp:
-        if resp.status in (401, 400):
-            _LOGGER.warning("Token refresh failed: status=%s", resp.status)
-            raise ConfigEntryAuthFailed(
-                "Token expired or revoked. Please re-authenticate."
-            ) from None
-        if resp.status != 200:
-            _LOGGER.warning("Token refresh failed: status=%s body=%s", resp.status, await resp.text())
-            raise ConfigEntryAuthFailed(
-                "Token refresh failed. Please re-authenticate."
-            ) from None
-        out = await resp.json()
+    try:
+        async with session.post(TOKEN_URL, data=data) as resp:
+            if resp.status in (400, 401):
+                _LOGGER.warning("Token refresh rejected (HTTP %s) — re-auth required", resp.status)
+                raise ConfigEntryAuthFailed(
+                    "Token expired or revoked. Please re-authenticate."
+                ) from None
+            if resp.status != 200:
+                _LOGGER.warning("Token refresh transient error (HTTP %s), will retry next cycle", resp.status)
+                raise UpdateFailed(
+                    f"Token refresh failed with HTTP {resp.status}"
+                )
+            out = await resp.json()
+    except (IOError, TimeoutError) as err:
+        _LOGGER.warning("Token refresh network error: %s, will retry next cycle", err)
+        raise UpdateFailed(f"Token refresh network error: {err}") from err
     if "access_token" not in out:
         raise ConfigEntryAuthFailed(
             "Token refresh response invalid. Please re-authenticate."
@@ -168,7 +178,12 @@ def is_token_expired(expires_at: str | None, margin_seconds: int = 300) -> bool:
 async def ensure_valid_token(
     hass: HomeAssistant, entry: ConfigEntry, session
 ) -> str:
-    """Ensure entry has a valid access token; refresh if needed. Updates entry.data. Returns access_token. Raises ConfigEntryAuthFailed on refresh failure."""
+    """Ensure entry has a valid access token; refresh if needed.
+
+    Updates entry.data on success. Returns access_token.
+    On transient refresh failure: returns existing token if not hard-expired,
+    letting the next poll cycle retry the refresh.
+    """
     data = entry.data
     access_token = data.get(ACCESS_TOKEN)
     refresh_token = data.get("refresh_token")
@@ -177,7 +192,14 @@ async def ensure_valid_token(
         raise ConfigEntryAuthFailed("No refresh token; please re-authenticate.")
     if not is_token_expired(expires_at):
         return access_token or ""
-    new_tokens = await refresh_access_token(session, refresh_token)
+    try:
+        new_tokens = await refresh_access_token(session, refresh_token)
+    except UpdateFailed:
+        # Transient failure — if token hasn't hard-expired yet, keep using it
+        if access_token and not is_token_expired(expires_at, margin_seconds=0):
+            _LOGGER.info("Token refresh failed transiently; using existing token (still valid)")
+            return access_token
+        raise
     hass.config_entries.async_update_entry(
         entry,
         data={

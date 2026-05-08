@@ -27,6 +27,7 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/zones/zn1",
     "/energy",
     "/energy/history",
+    "/energy/historyHourly",
     "/heatSources",
     "/solarCircuits/sc1",
 ]
