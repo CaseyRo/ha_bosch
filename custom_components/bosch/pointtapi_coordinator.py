@@ -35,6 +35,46 @@ REFERENCES_KEY = "references"
 ID_KEY = "id"
 
 
+async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
+    """Walk /energy/historyHourly pagination forward to collect every entry.
+
+    The API returns 15 entries per page plus a `next` cursor inside the
+    first element of `value`. The first page typically holds the OLDEST
+    history (often weeks behind), so we have to follow `next` to reach
+    today. Returns the original response shape with the entries flattened
+    across all pages, or None if the first fetch failed.
+    """
+    first = await client.get("/energy/historyHourly")
+    if not isinstance(first, dict):
+        return None
+    val = first.get("value") if isinstance(first, dict) else None
+    if not isinstance(val, list) or not val or not isinstance(val[0], dict):
+        return first  # nothing to walk
+    all_entries: list[dict[str, Any]] = list(val[0].get("entries") or [])
+    nxt = val[0].get("next")
+    seen_cursors: set[Any] = {nxt}
+    # Walk forward, capped to avoid runaway loops if the API misbehaves.
+    for _ in range(20):
+        if nxt is None:
+            break
+        try:
+            page = await client.get(f"/energy/historyHourly?next={nxt}")
+        except Exception as err:
+            _LOGGER.debug("historyHourly pagination stopped at next=%s: %s", nxt, err)
+            break
+        pv = page.get("value") if isinstance(page, dict) else None
+        if not isinstance(pv, list) or not pv or not isinstance(pv[0], dict):
+            break
+        all_entries.extend(pv[0].get("entries") or [])
+        nxt = pv[0].get("next")
+        if nxt in seen_cursors:
+            break
+        seen_cursors.add(nxt)
+    # Stuff the flattened list back into the same shape sensors expect.
+    first["value"] = [{"entries": all_entries, "next": None}]
+    return first
+
+
 async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
@@ -44,6 +84,16 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     """
     data: dict[str, Any] = {}
     for root in POINTTAPI_COORDINATOR_ROOTS:
+        if root == "/energy/historyHourly":
+            try:
+                merged = await _fetch_history_hourly_all(client)
+                if isinstance(merged, dict):
+                    data[root] = merged
+            except ConfigEntryAuthFailed:
+                _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", root)
+            except Exception as err:
+                _LOGGER.debug("POINTTAPI optional path %s not available: %s", root, err)
+            continue
         try:
             resp = await client.get(root)
             if not isinstance(resp, dict):

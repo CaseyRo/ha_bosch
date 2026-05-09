@@ -25,6 +25,11 @@ class BoschRuntimeData:
     interval: Any = None
     fw_interval: Any = None
     recording_interval: Any = None
+    # Snapshot of entry.options taken at setup; used to suppress reloads
+    # triggered by entry.data updates (POINTTAPI token refresh writes to data
+    # every ~55 min, which fires the update_listener — we only want to reload
+    # when the user actually changed an option).
+    options_snapshot: dict = field(default_factory=dict)
 
 
 type BoschConfigEntry = ConfigEntry[BoschRuntimeData]

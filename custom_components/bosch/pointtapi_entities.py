@@ -61,35 +61,56 @@ class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
 
 
 # ── Gas usage helper functions ────────────────────────────────────────────────
+#
+# The Bosch /energy/history endpoint returns ~20 daily entries from a window
+# that's typically 6+ weeks old (and rejects pagination params with 403), so
+# it's useless for "today". Instead, /energy/historyHourly is paginated
+# forward to today by the coordinator and the hourly entries are aggregated
+# into both daily and hourly sensor values below.
+#
+# Date format quirk: API returns "DD-MM-YYYY" with a frozen / wrong year
+# (commonly 2024 even now). We compare DD-MM only and trust the time-of-day
+# context for "today". Hour `h` is a stringified 0-23.
 
 
-def _gas_history_entries(data: dict[str, Any]) -> list | None:
-    history = data.get("/energy/history") or {}
-    _LOGGER.debug("Gas history raw: %s", history)
-    entries = history.get("value") if isinstance(history, dict) else None
-    if entries and isinstance(entries, list):
-        _LOGGER.debug("Gas history entries count=%d, last=%s", len(entries), entries[-1])
+def _today_dm() -> str:
+    """Return today's DD-MM string in local time (matches API date prefix)."""
+    return dt_util.now().strftime("%d-%m")
+
+
+def _today_hourly_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return all hourly entries whose date prefix matches today."""
+    history = data.get("/energy/historyHourly") or {}
+    val = history.get("value") if isinstance(history, dict) else None
+    if not isinstance(val, list) or not val:
+        return []
+    if isinstance(val[0], dict) and "entries" in val[0]:
+        entries = val[0].get("entries") or []
     else:
-        _LOGGER.debug("Gas history entries not a list or empty: %s", type(entries))
-    return entries if isinstance(entries, list) and entries else None
+        entries = val
+    today = _today_dm()
+    return [e for e in entries if isinstance(e, dict) and str(e.get("d", ""))[:5] == today]
 
 
 def _gas_ch_today(data: dict[str, Any]) -> float | None:
-    entries = _gas_history_entries(data)
-    return entries[-1].get("gCh") if entries is not None else None
+    entries = _today_hourly_entries(data)
+    if not entries:
+        return None
+    return round(sum((e.get("gCh") or 0.0) for e in entries), 2)
 
 
 def _gas_hw_today(data: dict[str, Any]) -> float | None:
-    entries = _gas_history_entries(data)
-    return entries[-1].get("gHw") if entries is not None else None
+    entries = _today_hourly_entries(data)
+    if not entries:
+        return None
+    return round(sum((e.get("gHw") or 0.0) for e in entries), 2)
 
 
 def _gas_total_today(data: dict[str, Any]) -> float | None:
-    entries = _gas_history_entries(data)
-    if entries is None:
+    entries = _today_hourly_entries(data)
+    if not entries:
         return None
-    last = entries[-1]
-    return (last.get("gCh") or 0.0) + (last.get("gHw") or 0.0)
+    return round(sum((e.get("gCh") or 0.0) + (e.get("gHw") or 0.0) for e in entries), 2)
 
 
 def _start_of_today() -> Any:
@@ -100,50 +121,37 @@ def _start_of_today() -> Any:
 # ── Hourly gas usage helper functions ────────────────────────────────────────
 
 
-def _gas_hourly_entries(data: dict[str, Any]) -> list | None:
-    """Extract hourly entries from /energy/historyHourly coordinator data."""
-    history = data.get("/energy/historyHourly") or {}
-    val = history.get("value") if isinstance(history, dict) else None
-    if not val or not isinstance(val, list):
+def _current_hour_entry(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Find the entry matching today's date AND the current local hour."""
+    entries = _today_hourly_entries(data)
+    if not entries:
         return None
-    # The API returns [{entries: [...], next: N}] or a flat list
-    if isinstance(val[0], dict) and "entries" in val[0]:
-        return val[0].get("entries") or None
-    return val
+    now_h = dt_util.now().hour
+    for entry in reversed(entries):
+        try:
+            if int(entry.get("h")) == now_h:
+                return entry
+        except (TypeError, ValueError):
+            continue
+    # No match for current hour yet — fall back to the latest available
+    return entries[-1]
 
 
 def _gas_ch_hourly(data: dict[str, Any]) -> float | None:
-    entries = _gas_hourly_entries(data)
-    if not entries:
-        return None
-    now_h = str(dt_util.now().hour)
-    for entry in reversed(entries):
-        if str(entry.get("h")) == now_h:
-            return entry.get("gCh")
-    return entries[-1].get("gCh")
+    e = _current_hour_entry(data)
+    return None if e is None else (e.get("gCh") or 0.0)
 
 
 def _gas_hw_hourly(data: dict[str, Any]) -> float | None:
-    entries = _gas_hourly_entries(data)
-    if not entries:
-        return None
-    now_h = str(dt_util.now().hour)
-    for entry in reversed(entries):
-        if str(entry.get("h")) == now_h:
-            return entry.get("gHw")
-    return entries[-1].get("gHw")
+    e = _current_hour_entry(data)
+    return None if e is None else (e.get("gHw") or 0.0)
 
 
 def _gas_total_hourly(data: dict[str, Any]) -> float | None:
-    entries = _gas_hourly_entries(data)
-    if not entries:
+    e = _current_hour_entry(data)
+    if e is None:
         return None
-    now_h = str(dt_util.now().hour)
-    for entry in reversed(entries):
-        if str(entry.get("h")) == now_h:
-            return (entry.get("gCh") or 0.0) + (entry.get("gHw") or 0.0)
-    last = entries[-1]
-    return (last.get("gCh") or 0.0) + (last.get("gHw") or 0.0)
+    return round((e.get("gCh") or 0.0) + (e.get("gHw") or 0.0), 2)
 
 
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):

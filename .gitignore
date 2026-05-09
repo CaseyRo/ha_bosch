@@ -91,3 +91,5 @@ venv.bak/
 # Data folder
 Daten/
 home-assistant-bosch-custom-component-master.code-workspace
+auth_refresh.py
+sync-to-ha.sh

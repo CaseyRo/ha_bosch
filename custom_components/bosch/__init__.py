@@ -200,6 +200,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
         password=entry.data.get(CONF_PASSWORD),
     )
     runtime_data = BoschRuntimeData(gateway_entry=gateway_entry)
+    runtime_data.options_snapshot = dict(entry.options or {})
     entry.runtime_data = runtime_data
     _init_status: bool = await gateway_entry.async_init()
     if not _init_status:
@@ -230,8 +231,22 @@ async def async_unload_entry(hass: HomeAssistant, entry: BoschConfigEntry):
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
-    """Reload entry if options change."""
-    _LOGGER.debug("Reloading entry %s", entry.entry_id)
+    """Reload entry only if options actually changed.
+
+    HA's update_listener fires for both data and options changes. The
+    POINTTAPI OAuth path writes refreshed tokens to entry.data every ~55 min
+    via async_update_entry, which fires this listener. Reloading on every
+    token refresh blew away entity state and re-initialized the integration
+    each cycle — comparing options against the setup snapshot suppresses
+    that loop while still honoring real options changes from the user.
+    """
+    runtime = getattr(entry, "runtime_data", None)
+    cur = dict(entry.options or {})
+    if runtime is not None and cur == runtime.options_snapshot:
+        return
+    if runtime is not None:
+        runtime.options_snapshot = cur
+    _LOGGER.debug("Reloading entry %s due to options change", entry.entry_id)
     await hass.config_entries.async_reload(entry.entry_id)
 
 
