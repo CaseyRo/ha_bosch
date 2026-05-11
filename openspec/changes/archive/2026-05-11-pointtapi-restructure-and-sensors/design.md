@@ -63,8 +63,10 @@ Switch, Number, Select, BinarySensor, Sensor, Climate, WaterHeater all delegate 
 |---|---|---|
 | Gateway | `(DOMAIN, uuid)` | `EasyControl Gateway` |
 | Boiler | `(DOMAIN, f"{uuid}_boiler")` | `Boiler` |
-| Hot Water Tank | `(DOMAIN, f"{uuid}_dhw")` | `Hot Water Tank` |
-| Heating Zone *id* | `(DOMAIN, f"{uuid}_zone_{zone_id}")` | `Heating Zone {zone_id}` (today `zn1` → `Heating Zone zn1`; we strip the API prefix for `zn1`-only systems and call it just `Heating Zone`) |
+| Hot Water Tank | `(DOMAIN, f"{uuid}_dhw1")` | `Hot Water Tank` |
+| Heating Zone *id* | `(DOMAIN, f"{uuid}_{zone_id}")` | `Heating Zone {zone_id}` (today `zn1` → `Heating Zone zn1`; we strip the API prefix for `zn1`-only systems and call it just `Heating Zone`) |
+
+**NB on identifier slugs:** the Hot Water Tank uses `_dhw1` (not the shorter `_dhw`) and the Heating Zone uses `_{zone_id}` (not `_zone_{zone_id}`) so the identifiers match what v0.30.x already had in the device registry for `water_heater.water_heater`'s device and the existing climate-entity's `f"{uuid}_zn1"` device. This avoids orphaning those devices on upgrade — they keep their identifiers, just get renamed display names and pick up new child entities.
 | Solar | `(DOMAIN, f"{uuid}_solar")` | `Solar` |
 
 All non-gateway devices set `via_device=(DOMAIN, uuid)` so HA's device tree shows them nested under the gateway.

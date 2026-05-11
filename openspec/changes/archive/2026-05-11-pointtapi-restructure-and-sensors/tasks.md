@@ -75,10 +75,10 @@
 
 ## 11. Release
 
-- [ ] 11.1 Commit changes with message `v0.31.0: physical-device restructure, DHW + burner sensors, conditional Solar, entity migration`.
-- [ ] 11.2 Tag `v0.31.0` and push master + tag.
-- [ ] 11.3 `gh release create v0.31.0 --latest` with notes that prominently call out: (a) breaking entity_id renames migrated automatically, (b) Lovelace YAML may need hand-updates for the renamed entity_ids, (c) the new device tree, (d) conditional Solar for non-solar households, (e) link to the openspec change directory.
-- [ ] 11.4 Confirm CI is green on the v0.31.0 push.
+- [x] 11.1 Commit changes with message `v0.31.0: physical-device restructure, DHW + burner sensors, conditional Solar, entity migration`.
+- [x] 11.2 Tag `v0.31.0` and push master + tag.
+- [x] 11.3 `gh release create v0.31.0 --latest` with notes that prominently call out: (a) breaking entity_id renames migrated automatically, (b) Lovelace YAML may need hand-updates for the renamed entity_ids, (c) the new device tree, (d) conditional Solar for non-solar households, (e) link to the openspec change directory.
+- [x] 11.4 Confirmed CI green on both master and tag pushes (53–60s runs; smoke tests pass on Python 3.12 + 3.13).
 
 ## 12. Post-release follow-up
 
