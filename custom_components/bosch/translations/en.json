@@ -24,10 +24,12 @@
       "boiler_power": {"name": "Boiler power"},
       "actual_supply_temperature": {"name": "Actual supply temperature"},
       "actual_modulation": {"name": "Actual modulation"},
-      "solar_collector_temperature": {"name": "Solar collector temperature"},
-      "solar_storage_temperature": {"name": "Solar storage temperature"},
-      "solar_pump_modulation": {"name": "Solar pump modulation"},
-      "solar_total_gain": {"name": "Total solar gain"},
+      "collector_temperature": {"name": "Collector temperature"},
+      "storage_temperature": {"name": "Storage temperature"},
+      "pump_modulation": {"name": "Pump modulation"},
+      "total_gain": {"name": "Total solar gain"},
+      "dhw_actual_temperature": {"name": "Temperature"},
+      "boiler_ignition_starts": {"name": "Ignition starts"},
       "indoor_air_temperature": {"name": "Indoor air temperature"},
       "indoor_chip_temperature": {"name": "Indoor chip temperature"},
       "indoor_pcb_temperature": {"name": "Indoor PCB temperature"},
@@ -36,6 +38,10 @@
       "total_working_time": {"name": "Total working time"},
       "return_temperature": {"name": "Return temperature"},
       "refill_needed": {"name": "Refill needed"}
+    },
+    "binary_sensor": {
+      "dhw_heating": {"name": "Heating"},
+      "burner_flame": {"name": "Flame"}
     }
   },
   "config": {

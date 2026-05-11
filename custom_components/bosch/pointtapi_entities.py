@@ -9,6 +9,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
@@ -47,6 +52,119 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     """Get key (default 'value') from data[path] if present."""
     obj = data.get(path) if data else None
     return obj.get(key) if isinstance(obj, dict) else None
+
+
+# ── Device-info routing: single source of truth for all POINTTAPI entities ──
+#
+# Routes paths and entity "kinds" to one of five logical devices:
+#   - EasyControl Gateway:  (DOMAIN, uuid)                  — gateway/wifi/firmware
+#   - Boiler:               (DOMAIN, f"{uuid}_boiler")      — heatSources, errors, gas usage
+#   - Hot Water Tank:       (DOMAIN, f"{uuid}_dhw")         — DHW circuit + water_heater
+#   - Heating Zone {zid}:   (DOMAIN, f"{uuid}_zone_{zid}")  — zones, heatingCircuits, zone-context sensors
+#   - Solar:                (DOMAIN, f"{uuid}_solar")       — solarCircuits (conditional, see solar setup)
+#
+# The `kind` parameter is for entities whose device is determined by something
+# other than the path alone — e.g. a Switch identified by its translation_key.
+
+_GATEWAY_KINDS = {
+    "notification_light",
+    "auto_firmware_update",
+    "pre_release",
+    "pir_sensitivity",
+}
+_DHW_KINDS = {
+    "thermal_disinfect",
+}
+_BOILER_KINDS = {
+    "annual_gas_goal",
+}
+
+
+def _zone_id_from_path(path: str) -> str:
+    """Parse zone id from /zones/{zid}/... or /heatingCircuits/{cid}/... — returns "zn1" by default."""
+    parts = (path or "").split("/")
+    if len(parts) >= 3:
+        if parts[1] == "zones":
+            return parts[2]
+        if parts[1] == "heatingCircuits":
+            # Map heating-circuit id (hc1) to its zone counterpart (zn1) — same index.
+            cid = parts[2]
+            if cid.startswith("hc"):
+                return "zn" + cid[2:]
+            return cid
+    return "zn1"
+
+
+def _resolve_device_info(
+    uuid: str,
+    path: str | None = None,
+    *,
+    kind: str | None = None,
+    zone_display_suffix: str | None = None,
+) -> DeviceInfo:
+    """Return the DeviceInfo for this entity based on its path and/or kind.
+
+    See module-level routing table comment above.
+    """
+    p = path or ""
+
+    # Explicit kind overrides (entities whose device isn't path-derivable)
+    if kind in _GATEWAY_KINDS:
+        return DeviceInfo(identifiers={(DOMAIN, uuid)}, name="EasyControl Gateway")
+    if kind in _DHW_KINDS:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{uuid}_dhw1")},
+            name="Hot Water Tank",
+            via_device=(DOMAIN, uuid),
+        )
+    if kind in _BOILER_KINDS:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{uuid}_boiler")},
+            name="Boiler",
+            via_device=(DOMAIN, uuid),
+        )
+
+    # Path-based routing — first match wins.
+    if p.startswith("/solarCircuits"):
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{uuid}_solar")},
+            name="Solar",
+            via_device=(DOMAIN, uuid),
+        )
+    if p.startswith("/dhwCircuits"):
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{uuid}_dhw1")},
+            name="Hot Water Tank",
+            via_device=(DOMAIN, uuid),
+        )
+    if (
+        p.startswith("/heatSources")
+        or p.startswith("/system/appliance")
+        or p.startswith("/energy")
+    ):
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{uuid}_boiler")},
+            name="Boiler",
+            via_device=(DOMAIN, uuid),
+        )
+    if (
+        p.startswith("/zones")
+        or p.startswith("/heatingCircuits")
+        or p.startswith("/system/sensors")
+    ):
+        zid = _zone_id_from_path(p)
+        suffix = zone_display_suffix if zone_display_suffix is not None else (
+            "" if zid == "zn1" else f" {zid}"
+        )
+        # NB: identifier is `{uuid}_{zid}` (no `_zone_` prefix) to match the
+        # existing climate-entity device id, so we don't orphan it.
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{uuid}_{zid}")},
+            name=f"Heating Zone{suffix}",
+            via_device=(DOMAIN, uuid),
+        )
+    # Gateway-level fallback (gateway/wifi/firmware/etc.)
+    return DeviceInfo(identifiers={(DOMAIN, uuid)}, name="EasyControl Gateway")
 
 
 # ── Custom sensor description with optional value_fn ─────────────────────────
@@ -179,11 +297,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._zone_id = zone_id
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{uuid}_{zone_id}")},
-            via_device=(DOMAIN, uuid),
-            name=f"Zone {zone_id}",
-        )
+        self._attr_device_info = _resolve_device_info(uuid, f"/zones/{zone_id}")
         self._current: float | None = None
         self._target: float | None = None
         self._hvac_mode = HVACMode.HEAT
@@ -309,11 +423,7 @@ class BoschPoinTTAPIWaterHeaterEntity(
         self._entry_id = entry_id
         self._uuid = uuid
         self._attr_unique_id = f"{entry_id}_pointtapi_dhw1"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{uuid}_dhw1")},
-            via_device=(DOMAIN, uuid),
-            name="Water heater",
-        )
+        self._attr_device_info = _resolve_device_info(uuid, "/dhwCircuits/dhw1")
         self._current_temp: float | None = None
         self._target_temp: float | None = None
         self._operation_mode: str | None = None
@@ -552,28 +662,43 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
         # ── Solar circuit sensors ─────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
             key="/solarCircuits/sc1/collectorTemperature",
-            translation_key="solar_collector_temperature",
+            translation_key="collector_temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/solarCircuits/sc1/dhwTankBottomTemperature",
-            translation_key="solar_storage_temperature",
+            translation_key="storage_temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/solarCircuits/sc1/pumpModulation",
-            translation_key="solar_pump_modulation",
+            translation_key="pump_modulation",
             native_unit_of_measurement="%",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/solarCircuits/sc1/totalSolarGain",
-            translation_key="solar_total_gain",
+            translation_key="total_gain",
             device_class=SensorDeviceClass.ENERGY,
             native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
             state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
+        # ── DHW detail sensors (v0.31.0) ──────────────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/dhwCircuits/dhw1/actualTemp",
+            translation_key="dhw_actual_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        # ── Heat-source / burner sensors (v0.31.0) ────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/numberOfStarts",
+            translation_key="boiler_ignition_starts",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+            entity_category=EntityCategory.DIAGNOSTIC,
         ),
     )
 
@@ -599,25 +724,7 @@ class BoschPoinTTAPISensorEntity(
         path = description.key
         slug = path.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_sensor_{slug}"
-        if path.startswith("/zones"):
-            device_id = f"{uuid}_zn1"
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, device_id)},
-                via_device=(DOMAIN, uuid),
-                name="Zone zn1",
-            )
-        elif path.startswith("/solarCircuits"):
-            device_id = f"{uuid}_solar"
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, device_id)},
-                via_device=(DOMAIN, uuid),
-                name="Solar",
-            )
-        else:
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, uuid)},
-                name="POINTTAPI",
-            )
+        self._attr_device_info = _resolve_device_info(uuid, path)
         self._path = path
         self._native_value: Any = None
         self._last_reset: Any = None
@@ -754,9 +861,7 @@ class BoschPoinTTAPINumberEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_number_{slug}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, uuid)},
-        )
+        self._attr_device_info = _resolve_device_info(uuid, description.key)
         self._native_value: float | None = None
 
     @callback
@@ -810,9 +915,8 @@ class BoschPoinTTAPIBoostSwitchEntity(
         self._entry_id = entry_id
         self._uuid = uuid
         self._attr_unique_id = f"{entry_id}_pointtapi_boost"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, uuid)},
-        )
+        # Boost operates on the zone, so live with the Heating Zone device
+        self._attr_device_info = _resolve_device_info(uuid, "/zones/zn1")
         self._is_on: bool = False
         self._pre_boost_mode: str | None = None
         # Track boost state explicitly rather than deriving from zone state,
@@ -937,15 +1041,9 @@ class BoschPoinTTAPIGenericSwitchEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_switch_{slug}"
-        if description.device_id_suffix:
-            device_id = f"{uuid}_{description.device_id_suffix}"
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, device_id)},
-                via_device=(DOMAIN, uuid),
-                name=description.device_name_override or description.device_id_suffix,
-            )
-        else:
-            self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, uuid)})
+        # Path-based routing via _resolve_device_info covers /gateway, /dhwCircuits, etc.
+        # device_id_suffix is retained on the description for compatibility but no longer used.
+        self._attr_device_info = _resolve_device_info(uuid, description.key)
         self._is_on: bool = False
 
     @callback
@@ -1044,15 +1142,7 @@ class BoschPoinTTAPISelectEntity(
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
         self._attr_options = list(description.options)
-        if description.key.startswith("/zones"):
-            device_id = f"{uuid}_zn1"
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, device_id)},
-                via_device=(DOMAIN, uuid),
-                name="Zone zn1",
-            )
-        else:
-            self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, uuid)})
+        self._attr_device_info = _resolve_device_info(uuid, description.key)
         self._current_option: str | None = None
 
     @callback
@@ -1076,3 +1166,84 @@ class BoschPoinTTAPISelectEntity(
         except Exception as err:
             _LOGGER.warning("POINTTAPI select %s failed: %s", self._path, err)
             await self.coordinator.async_request_refresh()
+
+
+# ── Binary-sensor surface for POINTTAPI ─────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class BoschPoinTTAPIBinarySensorEntityDescription(BinarySensorEntityDescription):
+    """Binary-sensor description with optional value_fn override.
+
+    When `value_fn` is None, the entity falls back to the default on/off-string
+    resolver on `coordinator.data[key]["value"]`.
+    """
+
+    value_fn: Callable[[dict[str, Any]], bool | None] | None = None
+
+
+def _resolve_on_off(raw: Any) -> bool | None:
+    """Map an API value to True/False/None (case-insensitive trim of 'on'/'off')."""
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        v = raw.strip().lower()
+        if v == "on":
+            return True
+        if v == "off":
+            return False
+    return None
+
+
+class BoschPoinTTAPIBinarySensorEntity(
+    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], BinarySensorEntity
+):
+    """Binary sensor entity for POINTTAPI; routes device via _resolve_device_info."""
+
+    _attr_has_entity_name = True
+    entity_description: BoschPoinTTAPIBinarySensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: PoinTTAPIDataUpdateCoordinator,
+        entry_id: str,
+        uuid: str,
+        description: BoschPoinTTAPIBinarySensorEntityDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._uuid = uuid
+        self._path = description.key
+        slug = description.key.strip("/").replace("/", "_")
+        self._attr_unique_id = f"{entry_id}_pointtapi_binary_sensor_{slug}"
+        self._attr_device_info = _resolve_device_info(uuid, description.key)
+        self._is_on: bool | None = None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        data = self.coordinator.data or {}
+        desc = self.entity_description
+        if desc.value_fn is not None:
+            self._is_on = desc.value_fn(data)
+        else:
+            self._is_on = _resolve_on_off(_val(data, self._path))
+        self.async_write_ha_state()
+
+    @property
+    def is_on(self) -> bool | None:
+        return self._is_on
+
+
+POINTTAPI_BINARY_SENSOR_DESCRIPTIONS: tuple[BoschPoinTTAPIBinarySensorEntityDescription, ...] = (
+    BoschPoinTTAPIBinarySensorEntityDescription(
+        key="/dhwCircuits/dhw1/state",
+        translation_key="dhw_heating",
+        device_class=BinarySensorDeviceClass.HEAT,
+    ),
+    BoschPoinTTAPIBinarySensorEntityDescription(
+        key="/heatSources/flameIndication",
+        translation_key="burner_flame",
+        device_class=BinarySensorDeviceClass.RUNNING,
+    ),
+)

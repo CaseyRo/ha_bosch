@@ -21,7 +21,26 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Thermostat from a config entry."""
     if config_entry.data.get(CONF_PROTOCOL) == POINTTAPI:
-        async_add_entities([])
+        from .pointtapi_entities import (
+            BoschPoinTTAPIBinarySensorEntity,
+            POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
+        )
+        rt_data = config_entry.runtime_data
+        coordinator = getattr(rt_data, "coordinator", None)
+        if coordinator is None:
+            async_add_entities([])
+            return True
+        uuid = config_entry.data.get(UUID)
+        entities = [
+            BoschPoinTTAPIBinarySensorEntity(
+                coordinator,
+                config_entry.entry_id,
+                uuid,
+                desc,
+            )
+            for desc in POINTTAPI_BINARY_SENSOR_DESCRIPTIONS
+        ]
+        async_add_entities(entities)
         return True
     uuid = config_entry.data[UUID]
     rt_data = config_entry.runtime_data

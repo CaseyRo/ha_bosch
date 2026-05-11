@@ -24,6 +24,32 @@
       },
       "gas_total_hourly": {
         "name": "Gas totaal dit uur"
+      },
+      "collector_temperature": {
+        "name": "Collectortemperatuur"
+      },
+      "storage_temperature": {
+        "name": "Boilertemperatuur"
+      },
+      "pump_modulation": {
+        "name": "Pompmodulatie"
+      },
+      "total_gain": {
+        "name": "Totale zonneopbrengst"
+      },
+      "dhw_actual_temperature": {
+        "name": "Temperatuur"
+      },
+      "boiler_ignition_starts": {
+        "name": "Ontstekingen"
+      }
+    },
+    "binary_sensor": {
+      "dhw_heating": {
+        "name": "Verwarmt"
+      },
+      "burner_flame": {
+        "name": "Vlam"
       }
     }
   },

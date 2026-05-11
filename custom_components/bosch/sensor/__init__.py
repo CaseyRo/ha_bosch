@@ -45,6 +45,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = rt_data.coordinator
         if coordinator:
             uuid = config_entry.data.get(UUID)
+            # Conditional solar: skip the four solar-circuit descriptions if the
+            # first coordinator refresh returned no usable /solarCircuits/sc1 data.
+            # This stops non-solar households from seeing four ghost entities.
+            solar_data = (coordinator.data or {}).get("/solarCircuits/sc1") or {}
+            solar_has_refs = bool(solar_data.get("references"))
+            descriptions = [
+                desc for desc in _pointtapi_sensor_descriptions()
+                if solar_has_refs or not desc.key.startswith("/solarCircuits")
+            ]
             entities = [
                 BoschPoinTTAPISensorEntity(
                     coordinator,
@@ -52,7 +61,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                     uuid,
                     desc,
                 )
-                for desc in _pointtapi_sensor_descriptions()
+                for desc in descriptions
             ]
             async_add_entities(entities)
 

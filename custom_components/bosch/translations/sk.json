@@ -24,6 +24,32 @@
       },
       "gas_total_hourly": {
         "name": "Plyn celkom túto hodinu"
+      },
+      "collector_temperature": {
+        "name": "Teplota kolektora"
+      },
+      "storage_temperature": {
+        "name": "Teplota zásobníka"
+      },
+      "pump_modulation": {
+        "name": "Modulácia čerpadla"
+      },
+      "total_gain": {
+        "name": "Celkový solárny zisk"
+      },
+      "dhw_actual_temperature": {
+        "name": "Teplota"
+      },
+      "boiler_ignition_starts": {
+        "name": "Počet zapálení"
+      }
+    },
+    "binary_sensor": {
+      "dhw_heating": {
+        "name": "Ohrev"
+      },
+      "burner_flame": {
+        "name": "Plameň"
       }
     }
   },

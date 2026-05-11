@@ -24,6 +24,32 @@
       },
       "gas_total_hourly": {
         "name": "Gaz łącznie w tej godzinie"
+      },
+      "collector_temperature": {
+        "name": "Temperatura kolektora"
+      },
+      "storage_temperature": {
+        "name": "Temperatura zasobnika"
+      },
+      "pump_modulation": {
+        "name": "Modulacja pompy"
+      },
+      "total_gain": {
+        "name": "Łączny uzysk solarny"
+      },
+      "dhw_actual_temperature": {
+        "name": "Temperatura"
+      },
+      "boiler_ignition_starts": {
+        "name": "Liczba zapłonów"
+      }
+    },
+    "binary_sensor": {
+      "dhw_heating": {
+        "name": "Grzanie"
+      },
+      "burner_flame": {
+        "name": "Płomień"
       }
     }
   },

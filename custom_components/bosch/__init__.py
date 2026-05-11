@@ -250,6 +250,48 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate POINTTAPI entity_ids from v0.30.x to v0.31.0 device-partition scheme.
+
+    Idempotent: returns True immediately on already-migrated entries.
+    Fault-tolerant: per-rename try/except so one failure doesn't abort the batch.
+    Bumps entry.version 1 → 2 after all renames are attempted.
+    """
+    if entry.version >= 2:
+        return True
+    if entry.data.get(CONF_PROTOCOL) != POINTTAPI:
+        hass.config_entries.async_update_entry(entry, version=2)
+        return True
+
+    from homeassistant.helpers import entity_registry as er
+    registry = er.async_get(hass)
+    renames = {
+        # solar_solar_* doubled prefix cleanup
+        "sensor.solar_solar_collector_temperature": "sensor.solar_collector_temperature",
+        "sensor.solar_solar_storage_temperature": "sensor.solar_storage_temperature",
+        "sensor.solar_solar_pump_modulation": "sensor.solar_pump_modulation",
+        "sensor.solar_total_solar_gain": "sensor.solar_total_gain",
+        # water_heater rename
+        "water_heater.water_heater": "water_heater.hot_water_tank",
+    }
+    renamed = 0
+    for old_id, new_id in renames.items():
+        try:
+            if registry.async_get(old_id) and not registry.async_get(new_id):
+                registry.async_update_entity(old_id, new_entity_id=new_id)
+                renamed += 1
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning(
+                "Migration could not rename %s -> %s: %s", old_id, new_id, err
+            )
+    hass.config_entries.async_update_entry(entry, version=2)
+    _LOGGER.info(
+        "Migrated POINTTAPI entry from version 1 to 2 (%d entity_ids renamed)",
+        renamed,
+    )
+    return True
+
+
 def create_notification_firmware(hass: HomeAssistant, msg):
     """Create notification about firmware to the user."""
     async_create_persistent_notification(

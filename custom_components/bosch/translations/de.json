@@ -24,6 +24,32 @@
       },
       "gas_total_hourly": {
         "name": "Gas gesamt diese Stunde"
+      },
+      "collector_temperature": {
+        "name": "Kollektortemperatur"
+      },
+      "storage_temperature": {
+        "name": "Speichertemperatur"
+      },
+      "pump_modulation": {
+        "name": "Pumpenmodulation"
+      },
+      "total_gain": {
+        "name": "Solarertrag gesamt"
+      },
+      "dhw_actual_temperature": {
+        "name": "Temperatur"
+      },
+      "boiler_ignition_starts": {
+        "name": "Brennerstarts"
+      }
+    },
+    "binary_sensor": {
+      "dhw_heating": {
+        "name": "Heizung"
+      },
+      "burner_flame": {
+        "name": "Flamme"
       }
     }
   },
