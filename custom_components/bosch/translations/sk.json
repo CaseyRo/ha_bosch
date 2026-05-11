@@ -42,6 +42,12 @@
       },
       "boiler_ignition_starts": {
         "name": "Počet zapálení"
+      },
+      "last_update_check": {
+        "name": "Posledná kontrola aktualizácie"
+      },
+      "last_update_applied": {
+        "name": "Posledná aplikovaná aktualizácia"
       }
     },
     "binary_sensor": {
@@ -50,6 +56,14 @@
       },
       "burner_flame": {
         "name": "Plameň"
+      },
+      "refill_needed": {
+        "name": "Potrebné doplnenie"
+      }
+    },
+    "update": {
+      "firmware_update": {
+        "name": "Firmvér"
       }
     }
   },

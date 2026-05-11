@@ -30,6 +30,8 @@
       "total_gain": {"name": "Total solar gain"},
       "dhw_actual_temperature": {"name": "Temperature"},
       "boiler_ignition_starts": {"name": "Ignition starts"},
+      "last_update_check": {"name": "Last update check"},
+      "last_update_applied": {"name": "Last update applied"},
       "indoor_air_temperature": {"name": "Indoor air temperature"},
       "indoor_chip_temperature": {"name": "Indoor chip temperature"},
       "indoor_pcb_temperature": {"name": "Indoor PCB temperature"},
@@ -41,7 +43,11 @@
     },
     "binary_sensor": {
       "dhw_heating": {"name": "Heating"},
-      "burner_flame": {"name": "Flame"}
+      "burner_flame": {"name": "Flame"},
+      "refill_needed": {"name": "Refill needed"}
+    },
+    "update": {
+      "firmware_update": {"name": "Firmware"}
     }
   },
   "config": {

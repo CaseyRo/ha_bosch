@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -24,6 +25,11 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.components.update import (
+    UpdateEntity,
+    UpdateEntityDescription,
+    UpdateEntityFeature,
+)
 from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
@@ -700,6 +706,21 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             state_class=SensorStateClass.TOTAL_INCREASING,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
+        # ── Firmware update diagnostic timestamps (v0.32.0) ──────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/gateway/update/lastCheck",
+            translation_key="last_update_check",
+            device_class=SensorDeviceClass.TIMESTAMP,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda d: _parse_update_timestamp(_val(d, "/gateway/update/lastCheck")),
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/gateway/update/lastUpdate",
+            translation_key="last_update_applied",
+            device_class=SensorDeviceClass.TIMESTAMP,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda d: _parse_update_timestamp(_val(d, "/gateway/update/lastUpdate")),
+        ),
     )
 
 
@@ -1183,16 +1204,38 @@ class BoschPoinTTAPIBinarySensorEntityDescription(BinarySensorEntityDescription)
 
 
 def _resolve_on_off(raw: Any) -> bool | None:
-    """Map an API value to True/False/None (case-insensitive trim of 'on'/'off')."""
+    """Map an API value to True/False/None.
+
+    Accepts either dialect Bosch returns:
+    - "on"/"off"   — used by /dhwCircuits/dhw1/state, /heatSources/flameIndication
+    - "true"/"false" — used by /heatSources/refillNeeded
+    Comparison is case-insensitive after trim. Any other value returns None
+    so HA renders the entity as "unknown".
+    """
     if isinstance(raw, bool):
         return raw
     if isinstance(raw, str):
         v = raw.strip().lower()
-        if v == "on":
+        if v in ("on", "true"):
             return True
-        if v == "off":
+        if v in ("off", "false"):
             return False
     return None
+
+
+def _parse_update_timestamp(raw: Any) -> datetime | None:
+    """Parse a Bosch update timestamp like '2026-05-11T01:02:00+02:00 Mo'.
+
+    The API appends a 2-letter English weekday abbreviation after a space.
+    Strip it before fromisoformat. Returns None on any parse failure.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    iso = raw.strip().rsplit(" ", 1)[0]
+    try:
+        return datetime.fromisoformat(iso)
+    except ValueError:
+        return None
 
 
 class BoschPoinTTAPIBinarySensorEntity(
@@ -1245,5 +1288,97 @@ POINTTAPI_BINARY_SENSOR_DESCRIPTIONS: tuple[BoschPoinTTAPIBinarySensorEntityDesc
         key="/heatSources/flameIndication",
         translation_key="burner_flame",
         device_class=BinarySensorDeviceClass.RUNNING,
+    ),
+    BoschPoinTTAPIBinarySensorEntityDescription(
+        key="/heatSources/refillNeeded",
+        translation_key="refill_needed",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+)
+
+
+# ── Update platform surface for POINTTAPI (v0.32.0) ─────────────────────────
+
+
+@dataclass(frozen=True)
+class BoschPoinTTAPIUpdateEntityDescription(UpdateEntityDescription):
+    """Update-platform description with version-resolution callables.
+
+    Both functions receive the coordinator.data dict and return a version
+    string. installed_version_fn is required; latest_version_fn is required
+    too — for read-only Update entities it typically returns either the
+    same string (no update) or a distinct sentinel (e.g. installed + ' (update available)').
+    """
+
+    installed_version_fn: Callable[[dict[str, Any]], str | None] | None = None
+    latest_version_fn: Callable[[dict[str, Any]], str | None] | None = None
+
+
+def _gateway_installed_version(data: dict[str, Any]) -> str | None:
+    return _val(data, "/gateway/versionFirmware")
+
+
+def _gateway_latest_version(data: dict[str, Any]) -> str | None:
+    """Derive latest_version from /gateway/update/state.
+
+    Bosch doesn't expose the available version number (the dedicated fields
+    return 403). Map the state string to either "no update" (=> installed)
+    or "update available" by returning a distinct synthetic value.
+    """
+    installed = _val(data, "/gateway/versionFirmware")
+    if installed is None:
+        return None
+    state = _val(data, "/gateway/update/state")
+    if isinstance(state, str) and state.strip().lower() != "no update":
+        return f"{installed} (update available)"
+    return installed
+
+
+class BoschPoinTTAPIUpdateEntity(
+    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], UpdateEntity
+):
+    """Read-only Update entity for POINTTAPI gateways.
+
+    No INSTALL or SKIP features — Bosch doesn't expose a programmatic install
+    path we can safely call. Surfacing in HA's Updates panel is the goal.
+    """
+
+    _attr_has_entity_name = True
+    _attr_supported_features = UpdateEntityFeature(0)
+    entity_description: BoschPoinTTAPIUpdateEntityDescription
+
+    def __init__(
+        self,
+        coordinator: PoinTTAPIDataUpdateCoordinator,
+        entry_id: str,
+        uuid: str,
+        description: BoschPoinTTAPIUpdateEntityDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._uuid = uuid
+        slug = description.key.strip("/").replace("/", "_")
+        self._attr_unique_id = f"{entry_id}_pointtapi_update_{slug}"
+        self._attr_device_info = _resolve_device_info(uuid, description.key)
+
+    @property
+    def installed_version(self) -> str | None:
+        fn = self.entity_description.installed_version_fn
+        return fn(self.coordinator.data or {}) if fn else None
+
+    @property
+    def latest_version(self) -> str | None:
+        fn = self.entity_description.latest_version_fn
+        return fn(self.coordinator.data or {}) if fn else None
+
+
+POINTTAPI_UPDATE_DESCRIPTIONS: tuple[BoschPoinTTAPIUpdateEntityDescription, ...] = (
+    BoschPoinTTAPIUpdateEntityDescription(
+        key="/gateway/versionFirmware",
+        translation_key="firmware_update",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        installed_version_fn=_gateway_installed_version,
+        latest_version_fn=_gateway_latest_version,
     ),
 )

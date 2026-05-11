@@ -42,6 +42,12 @@
       },
       "boiler_ignition_starts": {
         "name": "Brennerstarts"
+      },
+      "last_update_check": {
+        "name": "Letzte Update-Prüfung"
+      },
+      "last_update_applied": {
+        "name": "Letztes Update angewendet"
       }
     },
     "binary_sensor": {
@@ -50,6 +56,14 @@
       },
       "burner_flame": {
         "name": "Flamme"
+      },
+      "refill_needed": {
+        "name": "Nachfüllen erforderlich"
+      }
+    },
+    "update": {
+      "firmware_update": {
+        "name": "Firmware"
       }
     }
   },
