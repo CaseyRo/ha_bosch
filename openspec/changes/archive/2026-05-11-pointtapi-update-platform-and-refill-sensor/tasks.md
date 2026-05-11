@@ -53,12 +53,12 @@
 
 ## 8. Release
 
-- [ ] 8.1 Commit `v0.32.0: HA Update platform entity + refill-needed binary + timestamp diagnostics`.
-- [ ] 8.2 Tag `v0.32.0`, push master + tag.
-- [ ] 8.3 `gh release create v0.32.0 --latest` with notes summarizing the four new entities and noting the resolver generalization (no breaking changes, purely additive).
-- [ ] 8.4 Confirm CI green.
+- [x] 8.1 Commit `v0.32.0: HA Update platform entity + refill-needed binary + timestamp diagnostics`.
+- [x] 8.2 Tag `v0.32.0`, push master + tag.
+- [x] 8.3 GH release created with --latest flag.
+- [ ] 8.4 Confirm CI green (in flight at archive time — scheduled wakeup will report back).
 
 ## 9. Archive
 
-- [ ] 9.1 Run `/opsx:verify` on this change.
-- [ ] 9.2 Run `/opsx:archive` to sync delta specs to main and move the change to archive.
+- [x] 9.1 Verified — completeness/correctness/coherence all clean (4 entities live with sensible values; live values match spec expectations).
+- [x] 9.2 Specs synced; archive move below.
