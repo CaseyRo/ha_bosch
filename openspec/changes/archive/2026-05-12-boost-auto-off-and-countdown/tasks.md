@@ -51,13 +51,13 @@
 
 ## 7. Release
 
-- [ ] 7.1 Commit `v0.33.0: boost auto-off timer + synthetic remaining-time countdown`.
-- [ ] 7.2 Tag `v0.33.0`, push master + tag.
-- [ ] 7.3 `gh release create v0.33.0 --latest` with notes explaining the workaround story + the auto-off + the synthetic countdown.
-- [ ] 7.4 Confirm CI green.
+- [x] 7.1 Commit `v0.33.0: boost auto-off timer + synthetic remaining-time countdown`.
+- [x] 7.2 Tag `v0.33.0`, push master + tag.
+- [x] 7.3 `gh release create v0.33.0 --latest` with notes explaining the workaround story + the auto-off + the synthetic countdown.
+- [x] 7.4 Confirm CI green.
 
 ## 8. Archive
 
-- [ ] 8.1 Sync `pointtapi-boost-behavior` to `openspec/specs/`.
-- [ ] 8.2 Move change folder to `openspec/changes/archive/YYYY-MM-DD-boost-auto-off-and-countdown/`.
-- [ ] 8.3 Push the archive commit.
+- [x] 8.1 Sync `pointtapi-boost-behavior` to `openspec/specs/`.
+- [x] 8.2 Move change folder to `openspec/changes/archive/YYYY-MM-DD-boost-auto-off-and-countdown/`.
+- [x] 8.3 Push the archive commit.
