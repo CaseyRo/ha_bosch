@@ -156,6 +156,11 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             always_update=False,
         )
         self._client = client
+        # Tracks an in-flight HA-triggered boost session. The boost switch sets
+        # this on turn-on and clears it on turn-off; the boost_remaining_time
+        # sensor reads it to derive a synthetic countdown.
+        # Typed as Any here to avoid a circular import with pointtapi_entities.
+        self.boost_session: Any = None
 
     @property
     def client(self) -> PoinTTAPIClient:

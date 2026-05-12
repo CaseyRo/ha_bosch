@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -39,6 +39,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -556,6 +557,7 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             translation_key="boost_remaining_time",
             device_class=SensorDeviceClass.DURATION,
             native_unit_of_measurement=UnitOfTime.MINUTES,
+            value_fn=_boost_remaining_minutes,
         ),
         # ── Gas usage sensors — daily totals for Energy Dashboard ────────────
         BoschPoinTTAPISensorEntityDescription(
@@ -756,6 +758,11 @@ class BoschPoinTTAPISensorEntity(
         """Read value from coordinator.data for this path."""
         data = self.coordinator.data or {}
         desc = self.entity_description
+        # Inject runtime state for value_fns that need cross-entity context
+        # (currently: BoostSession for the boost_remaining_time sensor).
+        session = getattr(self.coordinator, "boost_session", None)
+        if session is not None:
+            data = {**data, "__boost_session__": session}
         if isinstance(desc, BoschPoinTTAPISensorEntityDescription) and desc.value_fn is not None:
             self._native_value = desc.value_fn(data)
             if desc.last_reset_fn is not None:
@@ -943,6 +950,9 @@ class BoschPoinTTAPIBoostSwitchEntity(
         # Track boost state explicitly rather than deriving from zone state,
         # because the zone state lags behind PUT calls and causes flicker.
         self._boost_set_by_us: bool = False
+        # Cancel handle for the auto-off async_call_later (None when no timer
+        # is scheduled). Calling it cancels; calling it twice is a no-op.
+        self._auto_off_cancel: Callable[[], None] | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -959,15 +969,38 @@ class BoschPoinTTAPIBoostSwitchEntity(
         return self._is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn boost on: switch zone to manual + set boost temperature."""
+        """Turn boost on: switch zone to manual + set boost temperature, schedule auto-off."""
         try:
             data = self.coordinator.data or {}
             boost_temp = _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+            duration_h = float(
+                _val(data, "/heatingCircuits/hc1/boostDuration") or 2.0
+            )
             # Remember current mode so we can restore it
             self._pre_boost_mode = _val(data, "/zones/zn1/userMode") or "clock"
             await self.coordinator.client.put("/zones/zn1/userMode", "manual")
             await self.coordinator.client.put(
                 "/zones/zn1/manualTemperatureHeating", float(boost_temp)
+            )
+            # Record the session on the coordinator so the boost_remaining_time
+            # sensor can derive a synthetic countdown.
+            self.coordinator.boost_session = BoostSession(
+                started_at=dt_util.utcnow(),
+                duration_hours=duration_h,
+            )
+            # Schedule auto-off. Cancel any prior pending callback first
+            # (defensive — rapid toggle wouldn't leak otherwise, but safe).
+            if self._auto_off_cancel is not None:
+                self._auto_off_cancel()
+            self._auto_off_cancel = async_call_later(
+                self.hass,
+                duration_h * 3600.0,
+                self._auto_off_callback,
+            )
+            _LOGGER.info(
+                "POINTTAPI boost ON: zone=manual at %.1f°C, auto-off in %.1f h",
+                float(boost_temp),
+                duration_h,
             )
             self._boost_set_by_us = True
             self._is_on = True
@@ -980,8 +1013,24 @@ class BoschPoinTTAPIBoostSwitchEntity(
             self._boost_set_by_us = False
             await self.coordinator.async_request_refresh()
 
+    async def _auto_off_callback(self, _now) -> None:
+        """Auto-off timer fired — turn boost off after the configured duration."""
+        session = self.coordinator.boost_session
+        _LOGGER.info(
+            "POINTTAPI boost auto-off after %.1f h",
+            session.duration_hours if session else 0.0,
+        )
+        self._auto_off_cancel = None  # timer already fired
+        await self.async_turn_off()
+
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn boost off: restore zone to clock mode."""
+        """Turn boost off: cancel any pending auto-off, restore zone mode."""
+        # Cancel any pending auto-off — must happen before the userMode PUT
+        # so a racing timer can't fire after manual off.
+        if self._auto_off_cancel is not None:
+            self._auto_off_cancel()
+            self._auto_off_cancel = None
+        self.coordinator.boost_session = None
         try:
             restore_mode = self._pre_boost_mode or "clock"
             await self.coordinator.client.put("/zones/zn1/userMode", restore_mode)
@@ -1221,6 +1270,43 @@ def _resolve_on_off(raw: Any) -> bool | None:
         if v in ("off", "false"):
             return False
     return None
+
+
+# ── Boost session: in-memory tracking of HA-triggered boost (v0.33.0) ──────
+
+
+@dataclass
+class BoostSession:
+    """In-memory record of an HA-triggered boost session.
+
+    Set by BoschPoinTTAPIBoostSwitchEntity.async_turn_on on the coordinator,
+    cleared on async_turn_off. Read by the boost_remaining_time sensor's
+    value_fn to derive a synthetic countdown.
+    """
+
+    started_at: datetime
+    duration_hours: float
+
+    @property
+    def remaining_minutes(self) -> float:
+        end = self.started_at + timedelta(hours=self.duration_hours)
+        return max(0.0, (end - dt_util.utcnow()).total_seconds() / 60.0)
+
+
+def _boost_remaining_minutes(data: dict[str, Any]) -> float | None:
+    """Synthetic boost-remaining-time resolver.
+
+    When an HA-triggered boost session is active (BoschPoinTTAPISensorEntity
+    injects it under "__boost_session__"), report the local countdown.
+    Otherwise fall back to Bosch's /heatingCircuits/hc1/boostRemainingTime
+    (normally 0.0 under the cloud scope, but nonzero if the user triggered
+    boost from the EasyControl app and Bosch's endpoint reports it).
+    """
+    session = data.get("__boost_session__")
+    if isinstance(session, BoostSession):
+        return round(session.remaining_minutes, 1)
+    raw = _val(data, "/heatingCircuits/hc1/boostRemainingTime")
+    return raw if raw is not None else None
 
 
 def _parse_update_timestamp(raw: Any) -> datetime | None:
