@@ -179,10 +179,43 @@ def _resolve_device_info(
 
 @dataclass(frozen=True)
 class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
-    """Sensor description with optional value_fn and last_reset_fn."""
+    """Sensor description with optional value_fn, last_reset_fn and attributes_fn."""
 
     value_fn: Callable[[dict[str, Any]], Any] | None = None
     last_reset_fn: Callable[[], Any] | None = None
+    attributes_fn: Callable[[dict[str, Any]], dict[str, Any] | None] | None = None
+    # Optional availability override (e.g. path-absent -> unavailable).
+    # Opt-in only: sensors with synthetic keys (/energy/history_ch) must not
+    # be subjected to a generic path-in-data check.
+    available_fn: Callable[[dict[str, Any]], bool] | None = None
+
+
+def _notification_entries(data: dict[str, Any]) -> list[Any] | None:
+    """Extract the alert list from /notifications.
+
+    The live CT200 returns the list under "value" (type errorList, verified
+    2026-06-05); homecom_alt observed "values" on other device types — read
+    both defensively. Returns None when the path is absent (sensor unavailable).
+    """
+    obj = data.get("/notifications") if data else None
+    if not isinstance(obj, dict):
+        return None
+    entries = obj.get("values")
+    if entries is None:
+        entries = obj.get("value")
+    return entries if isinstance(entries, list) else []
+
+
+def _notifications_count(data: dict[str, Any]) -> int | None:
+    """State for the notifications sensor: active alert count."""
+    entries = _notification_entries(data)
+    return None if entries is None else len(entries)
+
+
+def _notifications_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Attributes for the notifications sensor: the raw alert entries."""
+    entries = _notification_entries(data)
+    return None if entries is None else {"notifications": entries}
 
 
 # ── Gas usage helper functions ────────────────────────────────────────────────
@@ -723,6 +756,21 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             entity_category=EntityCategory.DIAGNOSTIC,
             value_fn=lambda d: _parse_update_timestamp(_val(d, "/gateway/update/lastUpdate")),
         ),
+        # ── Notifications (v1.0.0) — POINTTAPI parity with XMPP NotificationSensor ──
+        BoschPoinTTAPISensorEntityDescription(
+            key="/notifications",
+            translation_key="notifications",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=_notifications_count,
+            attributes_fn=_notifications_attributes,
+            available_fn=lambda d: "/notifications" in (d or {}),
+        ),
+        # ── DHW thermal disinfect result (v1.0.0) ────────────────────────────
+        BoschPoinTTAPISensorEntityDescription(
+            key="/dhwCircuits/dhw1/thermalDisinfect/lastResult",
+            translation_key="thermal_disinfect_last_result",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
     )
 
 
@@ -769,7 +817,19 @@ class BoschPoinTTAPISensorEntity(
                 self._last_reset = desc.last_reset_fn()
         else:
             self._native_value = _val(data, self._path)
+        if isinstance(desc, BoschPoinTTAPISensorEntityDescription) and desc.attributes_fn is not None:
+            self._attr_extra_state_attributes = desc.attributes_fn(data) or {}
         self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        desc = self.entity_description
+        if (
+            isinstance(desc, BoschPoinTTAPISensorEntityDescription)
+            and desc.available_fn is not None
+        ):
+            return super().available and desc.available_fn(self.coordinator.data or {})
+        return super().available
 
     @property
     def native_value(self) -> Any:
@@ -863,6 +923,24 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_step=1.0,
         entity_category=EntityCategory.CONFIG,
     ),
+    # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
+    NumberEntityDescription(
+        key="/dhwCircuits/dhw1/extraDhwDuration",
+        name="Extra hot water duration",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        native_min_value=15.0,
+        native_max_value=2880.0,
+        native_step=15.0,
+    ),
+    NumberEntityDescription(
+        key="/dhwCircuits/dhw1/thermalDisinfect/time",
+        name="Thermal disinfect time",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        native_min_value=0.0,
+        native_max_value=1439.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
 )
 
 
@@ -898,6 +976,11 @@ class BoschPoinTTAPINumberEntity(
         raw = _val(data, self._path)
         self._native_value = float(raw) if raw is not None else None
         self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the path is absent from coordinator data."""
+        return super().available and self._path in (self.coordinator.data or {})
 
     @property
     def native_value(self) -> float | None:
@@ -954,6 +1037,161 @@ class BoschPoinTTAPIBoostSwitchEntity(
         # is scheduled). Calling it cancels; calling it twice is a no-op.
         self._auto_off_cancel: Callable[[], None] | None = None
 
+    # ── Native boost probe ladder (v1.0.0) ────────────────────────────────
+    #
+    # Probe of 2026-06-05 (boost-probe-notes.md): boostShortcut is a writeable
+    # boostShortcutStruct [{mode, temperature, duration, zones:[int]}] — the
+    # app's one-shot boost command — and the historical 403 on PUT boostMode
+    # is gone. The ladder tries native routes first and caches the verdict on
+    # the coordinator; the v0.33 manual-mode workaround stays as fallback.
+    # Endpoint knowledge: serbanb11/homecom_alt issue dumps + our live probes.
+
+    ROUTE_SHORTCUT = "boostShortcut"
+    ROUTE_DIRECT = "boostMode"
+    ROUTE_FALLBACK = "fallback"
+
+    def _boost_zone_ids(self, data: dict[str, Any]) -> list[int]:
+        """Integer zone ids for the boost structs (NOT "zn1" strings)."""
+        obj = data.get("/heatingCircuits/hc1/boostZones") or {}
+        val = obj.get("value")
+        if isinstance(val, list) and val and isinstance(val[0], dict):
+            zones = val[0].get("zones") or val[0].get("allowedZones")
+            if isinstance(zones, list) and zones:
+                return zones
+        return [1]
+
+    async def _confirm_native_active(self) -> bool:
+        """A native write counts only if the device reports boost active."""
+        await self.coordinator.async_refresh()
+        data = self.coordinator.data or {}
+        if _val(data, "/heatingCircuits/hc1/boostMode") == "on":
+            return True
+        rem = _val(data, "/heatingCircuits/hc1/boostRemainingTime")
+        return isinstance(rem, (int, float)) and rem > 0
+
+    async def _probe_native_boost(
+        self, boost_temp: float, duration_h: float, zones: list[int]
+    ) -> str:
+        """Run the probe ladder once; cache and return the working route.
+
+        Writes are restricted to /heatingCircuits/hc1/boost* paths. Each rung
+        is confirmed against the next refresh — a 204 alone is acceptance,
+        not activation.
+        """
+        rungs: list[dict[str, Any]] = []
+        # Rung 1: boostShortcut struct — the app's native one-shot command.
+        try:
+            await self.coordinator.client.put(
+                "/heatingCircuits/hc1/boostShortcut",
+                [{
+                    "mode": "on",
+                    "temperature": float(boost_temp),
+                    "duration": int(duration_h),
+                    "zones": zones,
+                }],
+            )
+            active = await self._confirm_native_active()
+            rungs.append({"rung": self.ROUTE_SHORTCUT, "put": "accepted", "active": active})
+            _LOGGER.debug("Boost probe rung boostShortcut: accepted, active=%s", active)
+            if active:
+                self.coordinator.boost_probe_result = {
+                    "route": self.ROUTE_SHORTCUT, "rungs": rungs,
+                }
+                return self.ROUTE_SHORTCUT
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            rungs.append({"rung": self.ROUTE_SHORTCUT, "error": str(err)})
+            _LOGGER.debug("Boost probe rung boostShortcut failed: %s", err)
+        # Rung 2: boostZones + boostMode direct PUTs.
+        try:
+            await self.coordinator.client.put(
+                "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+            )
+            await self.coordinator.client.put("/heatingCircuits/hc1/boostMode", "on")
+            active = await self._confirm_native_active()
+            rungs.append({"rung": self.ROUTE_DIRECT, "put": "accepted", "active": active})
+            _LOGGER.debug("Boost probe rung boostMode: accepted, active=%s", active)
+            if active:
+                self.coordinator.boost_probe_result = {
+                    "route": self.ROUTE_DIRECT, "rungs": rungs,
+                }
+                return self.ROUTE_DIRECT
+            # Accepted but inactive — best-effort revert, boost paths only.
+            await self.coordinator.client.put("/heatingCircuits/hc1/boostMode", "off")
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            rungs.append({"rung": self.ROUTE_DIRECT, "error": str(err)})
+            _LOGGER.debug("Boost probe rung boostMode failed: %s", err)
+        # NOTE: a bulk-write rung was considered (design D4) but no community
+        # project has observed the bulk WRITE wire format, and the direct
+        # route's ACL is confirmed open — guessing write formats against a
+        # live heating system is not worth it. Falls back to the workaround.
+        self.coordinator.boost_probe_result = {
+            "route": self.ROUTE_FALLBACK, "rungs": rungs,
+        }
+        _LOGGER.info("Native boost unavailable, using manual-mode workaround")
+        return self.ROUTE_FALLBACK
+
+    async def _native_boost_on(
+        self, route: str, boost_temp: float, duration_h: float, zones: list[int]
+    ) -> bool:
+        """Activate boost via the cached native route. True when confirmed."""
+        try:
+            if route == self.ROUTE_SHORTCUT:
+                await self.coordinator.client.put(
+                    "/heatingCircuits/hc1/boostShortcut",
+                    [{
+                        "mode": "on",
+                        "temperature": float(boost_temp),
+                        "duration": int(duration_h),
+                        "zones": zones,
+                    }],
+                )
+            else:
+                await self.coordinator.client.put(
+                    "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+                )
+                await self.coordinator.client.put(
+                    "/heatingCircuits/hc1/boostMode", "on"
+                )
+            return await self._confirm_native_active()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("Native boost ON via %s failed: %s", route, err)
+            return False
+
+    async def _native_boost_off(self, route: str) -> bool:
+        """Deactivate a native boost. Never touches /zones/zn1/userMode."""
+        try:
+            if route == self.ROUTE_SHORTCUT:
+                data = self.coordinator.data or {}
+                await self.coordinator.client.put(
+                    "/heatingCircuits/hc1/boostShortcut",
+                    [{
+                        "mode": "off",
+                        "temperature": float(
+                            _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+                        ),
+                        "duration": int(
+                            float(_val(data, "/heatingCircuits/hc1/boostDuration") or 2.0)
+                        ),
+                        "zones": self._boost_zone_ids(data),
+                    }],
+                )
+            else:
+                await self.coordinator.client.put(
+                    "/heatingCircuits/hc1/boostMode", "off"
+                )
+            return True
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("Native boost OFF via %s failed: %s", route, err)
+            return False
+
     @callback
     def _handle_coordinator_update(self) -> None:
         # Only update from coordinator data if we didn't explicitly set boost.
@@ -969,13 +1207,47 @@ class BoschPoinTTAPIBoostSwitchEntity(
         return self._is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn boost on: switch zone to manual + set boost temperature, schedule auto-off."""
+        """Turn boost on: native route first, manual-mode workaround as fallback."""
+        data = self.coordinator.data or {}
+        boost_temp = _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+        duration_h = float(
+            _val(data, "/heatingCircuits/hc1/boostDuration") or 2.0
+        )
+        zones = self._boost_zone_ids(data)
+
+        # Native-first: probe once, then reuse the cached route.
+        probe = self.coordinator.boost_probe_result
         try:
-            data = self.coordinator.data or {}
-            boost_temp = _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
-            duration_h = float(
-                _val(data, "/heatingCircuits/hc1/boostDuration") or 2.0
+            if probe is None:
+                route = await self._probe_native_boost(boost_temp, duration_h, zones)
+                native_ok = route != self.ROUTE_FALLBACK
+            elif probe.get("route") != self.ROUTE_FALLBACK:
+                route = probe["route"]
+                native_ok = await self._native_boost_on(
+                    route, boost_temp, duration_h, zones
+                )
+            else:
+                native_ok = False
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("Native boost attempt errored: %s", err)
+            native_ok = False
+        if native_ok:
+            # Server-side boost: no local timer, no synthetic session — the
+            # device owns duration/countdown and survives HA restarts.
+            self.coordinator.boost_session = None
+            self._boost_set_by_us = True
+            self._is_on = True
+            self.async_write_ha_state()
+            _LOGGER.info(
+                "POINTTAPI native boost ON at %.1f°C for %.0f h (zones %s)",
+                float(boost_temp), duration_h, zones,
             )
+            return
+
+        # Fallback: v0.33 manual-mode workaround (unchanged behavior).
+        try:
             # Remember current mode so we can restore it
             self._pre_boost_mode = _val(data, "/zones/zn1/userMode") or "clock"
             await self.coordinator.client.put("/zones/zn1/userMode", "manual")
@@ -1024,9 +1296,28 @@ class BoschPoinTTAPIBoostSwitchEntity(
         await self.async_turn_off()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn boost off: cancel any pending auto-off, restore zone mode."""
-        # Cancel any pending auto-off — must happen before the userMode PUT
-        # so a racing timer can't fire after manual off.
+        """Turn boost off: native deactivation, or cancel timer + restore zone mode."""
+        # Native-mode off: no local timer/session exists; deactivate via the
+        # probed route and never touch /zones/zn1/userMode.
+        probe = self.coordinator.boost_probe_result
+        if (
+            probe is not None
+            and probe.get("route") != self.ROUTE_FALLBACK
+            and self.coordinator.boost_session is None
+            and self._auto_off_cancel is None
+        ):
+            if await self._native_boost_off(probe["route"]):
+                self._boost_set_by_us = True
+                self._is_on = False
+                self.async_write_ha_state()
+                self.coordinator.async_add_listener(self._clear_boost_flag)
+                await self.coordinator.async_request_refresh()
+                return
+            # Native off failed — fall through to the workaround restore,
+            # which at minimum returns the zone to a sane mode.
+
+        # Fallback: cancel any pending auto-off — must happen before the
+        # userMode PUT so a racing timer can't fire after manual off.
         if self._auto_off_cancel is not None:
             self._auto_off_cancel()
             self._auto_off_cancel = None
@@ -1086,6 +1377,17 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
         device_id_suffix="dhw1",
         device_name_override="Water heater",
     ),
+    # ── v1.0.0 comfort controls (writeable: 1 confirmed, boost-probe-notes.md) ──
+    BoschPoinTTAPISwitchEntityDescription(
+        key="/system/awayMode/enabled",
+        name="Away mode",
+    ),
+    BoschPoinTTAPISwitchEntityDescription(
+        key="/dhwCircuits/dhw1/extraDhw",
+        name="Extra hot water",
+        on_value="on",
+        off_value="off",
+    ),
 )
 
 
@@ -1122,6 +1424,11 @@ class BoschPoinTTAPIGenericSwitchEntity(
         val = _val(data, self._path)
         self._is_on = val == self.entity_description.on_value
         self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the path is absent from coordinator data."""
+        return super().available and self._path in (self.coordinator.data or {})
 
     @property
     def is_on(self) -> bool:
@@ -1186,6 +1493,13 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
         options=("off", "automatic", "reduced"),
         entity_category=EntityCategory.CONFIG,
     ),
+    # ── v1.0.0: DHW thermal disinfect weekday (API values, verified live) ────
+    BoschPoinTTAPISelectEntityDescription(
+        key="/dhwCircuits/dhw1/thermalDisinfect/weekDay",
+        name="Thermal disinfect weekday",
+        options=("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
+        entity_category=EntityCategory.CONFIG,
+    ),
 )
 
 
@@ -1220,6 +1534,11 @@ class BoschPoinTTAPISelectEntity(
         data = self.coordinator.data or {}
         self._current_option = _val(data, self._path)
         self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the path is absent from coordinator data."""
+        return super().available and self._path in (self.coordinator.data or {})
 
     @property
     def current_option(self) -> str | None:
@@ -1296,11 +1615,11 @@ class BoostSession:
 def _boost_remaining_minutes(data: dict[str, Any]) -> float | None:
     """Synthetic boost-remaining-time resolver.
 
-    When an HA-triggered boost session is active (BoschPoinTTAPISensorEntity
+    When a fallback-mode boost session is active (BoschPoinTTAPISensorEntity
     injects it under "__boost_session__"), report the local countdown.
-    Otherwise fall back to Bosch's /heatingCircuits/hc1/boostRemainingTime
-    (normally 0.0 under the cloud scope, but nonzero if the user triggered
-    boost from the EasyControl app and Bosch's endpoint reports it).
+    Otherwise report Bosch's /heatingCircuits/hc1/boostRemainingTime — under
+    native boost (v1.0.0 probe ladder) this is the device's real server-side
+    countdown; with no boost active it's 0.0.
     """
     session = data.get("__boost_session__")
     if isinstance(session, BoostSession):

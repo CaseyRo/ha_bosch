@@ -1,0 +1,88 @@
+name: Bug report
+description: Something broke or behaves unexpectedly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Two artifacts make almost every bug fixable:
+        the **diagnostics file** and (for intermittent issues) a **debug log**.
+        How to capture both: see [Testing & reporting](../blob/master/README.md#testing--reporting).
+
+        ⚠️ **Never paste tokens or OAuth callback URLs.** The diagnostics download redacts credentials automatically — use it.
+  - type: input
+    id: integration-version
+    attributes:
+      label: Integration version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.5.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Connection type
+      options:
+        - Cloud (POINTTAPI)
+        - Local (XMPP)
+        - Both configured
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device & firmware
+      description: Model + firmware version (firmware is a sensor on the Gateway device)
+      placeholder: "CT200, firmware 1.7.0"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System layout
+      description: Zones, solar, hot water type — anything non-default
+      placeholder: "1 zone, no solar, instant hot water (combi)"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what actually happened. When did it start?
+      placeholder: |
+        1. Flipped switch.pointtapi_boost on
+        2. Expected boost to start
+        3. Switch bounced back to off after ~30s
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics file
+      description: |
+        Settings → Devices & Services → Bosch → ⋮ → Download diagnostics, then drag the .json here.
+        For boost issues, this includes the `boost_probe_result` we need.
+      placeholder: Drag & drop the diagnostics .json file here
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log (if relevant)
+      description: |
+        Settings → Devices & Services → Bosch → Enable debug logging → reproduce → disable (HA downloads the log).
+        Paste the relevant lines — look for `custom_components.bosch` entries around the time of the problem.
+      render: text
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Checklist
+      options:
+        - label: I removed/redacted any tokens or callback URLs from everything I pasted
+          required: true
+        - label: I checked existing issues for duplicates
+          required: true

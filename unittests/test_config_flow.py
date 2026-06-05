@@ -42,15 +42,15 @@ async def test_user_step_shows_easycontrol_protocol(mock_hass):
 
 
 @pytest.mark.asyncio
-async def test_pointtapi_protocol_shows_device_id(mock_hass):
-    """Choosing POINTTAPI shows device_id form."""
+async def test_pointtapi_protocol_goes_to_oauth(mock_hass):
+    """Choosing POINTTAPI goes straight to OAuth (OAuth-first flow)."""
     flow = _make_flow(mock_hass)
     flow._choose_type = "EASYCONTROL"
     result = await flow.async_step_easycontrol_protocol(
         {CONF_PROTOCOL: POINTTAPI}
     )
     assert result["type"] == "form"
-    assert result["step_id"] == "pointtapi_device_id"
+    assert result["step_id"] == "pointtapi_oauth_open"
 
 
 @pytest.mark.asyncio
@@ -65,16 +65,28 @@ async def test_xmpp_protocol_shows_xmpp_config(mock_hass):
     assert result["step_id"] == "xmpp_config"
 
 
+def _prime_tokens(flow):
+    """Give a flow OAuth tokens + entry-creation mocks (post-OAuth state)."""
+    flow._tokens = {
+        "access_token": "at_123",
+        "refresh_token": "rt_456",
+        "expires_at": "2099-12-31T23:59:59+00:00",
+    }
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = MagicMock()
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
+
+
 @pytest.mark.asyncio
 async def test_pointtapi_device_id_valid(mock_hass):
-    """Valid numeric device ID proceeds to oauth_open."""
+    """Valid numeric device ID (manual fallback) creates the entry."""
     flow = _make_flow(mock_hass)
     flow._choose_type = "EASYCONTROL"
+    _prime_tokens(flow)
     result = await flow.async_step_pointtapi_device_id(
         {CONF_DEVICE_ID: "123456789"}
     )
-    assert result["type"] == "form"
-    assert result["step_id"] == "pointtapi_oauth_open"
+    assert result["type"] == "create_entry"
     assert flow._host == "123456789"
 
 
@@ -83,11 +95,11 @@ async def test_pointtapi_device_id_with_dashes(mock_hass):
     """Device ID with dashes is stripped and accepted."""
     flow = _make_flow(mock_hass)
     flow._choose_type = "EASYCONTROL"
+    _prime_tokens(flow)
     result = await flow.async_step_pointtapi_device_id(
         {CONF_DEVICE_ID: "123-456-789"}
     )
-    assert result["type"] == "form"
-    assert result["step_id"] == "pointtapi_oauth_open"
+    assert result["type"] == "create_entry"
     assert flow._host == "123456789"
 
 
@@ -189,10 +201,9 @@ async def test_pointtapi_token_exchange_failure(mock_hass):
 
 @pytest.mark.asyncio
 async def test_pointtapi_happy_path_creates_entry(mock_hass):
-    """Full POINTTAPI flow creates entry with correct data."""
+    """Full POINTTAPI flow: OAuth → single-gateway auto-select → entry."""
     flow = _make_flow(mock_hass)
     flow._choose_type = "EASYCONTROL"
-    flow._host = "123456789"
     flow.context = {}
 
     fake_tokens = {
@@ -219,6 +230,11 @@ async def test_pointtapi_happy_path_creates_entry(mock_hass):
             "custom_components.bosch.config_flow.async_get_clientsession",
             return_value=AsyncMock(),
         ),
+        patch(
+            "custom_components.bosch.config_flow.async_list_gateways",
+            new_callable=AsyncMock,
+            return_value=[{"deviceId": "123456789", "deviceType": "rrc2"}],
+        ),
     ):
         result = await flow.async_step_pointtapi_oauth(
             {"oauth_callback_url": "com.bosch.tt.dashtt.pointt://app/login?code=auth_code_abc"}
@@ -234,6 +250,95 @@ async def test_pointtapi_happy_path_creates_entry(mock_hass):
     assert data[CONF_DEVICE_ID] == "123456789"
     assert data[UUID] == "123456789"
     assert data[ACCESS_KEY] == ""
+
+
+# ── Gateway discovery (auto-select / picker / fallback) ─────────────────────
+
+
+@pytest.mark.asyncio
+async def test_gateway_multi_shows_picker(mock_hass):
+    """Two gateways → selection form listing id + deviceType."""
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    _prime_tokens(flow)
+    with (
+        patch(
+            "custom_components.bosch.config_flow.async_get_clientsession",
+            return_value=AsyncMock(),
+        ),
+        patch(
+            "custom_components.bosch.config_flow.async_list_gateways",
+            new_callable=AsyncMock,
+            return_value=[
+                {"deviceId": "111", "deviceType": "rrc2"},
+                {"deviceId": "222", "deviceType": "k40"},
+            ],
+        ),
+    ):
+        result = await flow.async_step_pointtapi_gateway(None)
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "pointtapi_gateway"
+
+
+@pytest.mark.asyncio
+async def test_gateway_picker_selection_creates_entry(mock_hass):
+    """Submitting a picker choice creates the entry for that gateway."""
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    _prime_tokens(flow)
+
+    result = await flow.async_step_pointtapi_gateway({CONF_DEVICE_ID: "222"})
+
+    assert result["type"] == "create_entry"
+    assert flow._host == "222"
+    flow.async_set_unique_id.assert_awaited_once_with("222")
+
+
+@pytest.mark.asyncio
+async def test_gateway_listing_failure_falls_back_to_manual(mock_hass):
+    """Listing error → manual serial-entry form (v0.33 fallback)."""
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    _prime_tokens(flow)
+    with (
+        patch(
+            "custom_components.bosch.config_flow.async_get_clientsession",
+            return_value=AsyncMock(),
+        ),
+        patch(
+            "custom_components.bosch.config_flow.async_list_gateways",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ),
+    ):
+        result = await flow.async_step_pointtapi_gateway(None)
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "pointtapi_device_id"
+
+
+@pytest.mark.asyncio
+async def test_gateway_empty_listing_falls_back_to_manual(mock_hass):
+    """Zero gateways → manual serial-entry form."""
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    _prime_tokens(flow)
+    with (
+        patch(
+            "custom_components.bosch.config_flow.async_get_clientsession",
+            return_value=AsyncMock(),
+        ),
+        patch(
+            "custom_components.bosch.config_flow.async_list_gateways",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+    ):
+        result = await flow.async_step_pointtapi_gateway(None)
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "pointtapi_device_id"
 
 
 # ── XMPP gateway configuration ──────────────────────────────────────────────
@@ -430,6 +535,11 @@ async def test_duplicate_pointtapi_entry_aborts(mock_hass):
         patch(
             "custom_components.bosch.config_flow.async_get_clientsession",
             return_value=AsyncMock(),
+        ),
+        patch(
+            "custom_components.bosch.config_flow.async_list_gateways",
+            new_callable=AsyncMock,
+            return_value=[{"deviceId": "123456789", "deviceType": "rrc2"}],
         ),
     ):
         with pytest.raises(AbortFlow, match="already_configured"):

@@ -48,6 +48,12 @@
       },
       "last_update_applied": {
         "name": "Dernière mise à jour appliquée"
+      },
+      "notifications": {
+        "name": "Notifications"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Dernier résultat de désinfection thermique"
       }
     },
     "binary_sensor": {
@@ -96,6 +102,13 @@
         "title": "Protocole Bosch IVT. HTTP pour une connexion locale. XMPP via le cloud!",
         "data": {
           "Protocol": "Soit HTTP soit XMPP"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Sélectionnez votre passerelle",
+        "description": "Ces passerelles sont associées à votre compte Bosch. Choisissez celle à ajouter.",
+        "data": {
+          "device_id": "Passerelle"
         }
       }
     },

@@ -48,6 +48,12 @@
       },
       "last_update_applied": {
         "name": "Letztes Update angewendet"
+      },
+      "notifications": {
+        "name": "Benachrichtigungen"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Letzte thermische Desinfektion"
       }
     },
     "binary_sensor": {
@@ -96,6 +102,13 @@
         "title": "Bosch IVT Protokoll. HTTP ist lokal. XMPP ist cloud!",
         "data": {
           "Protocol": "Entweder http oder xmpp"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Gateway auswählen",
+        "description": "Diese Gateways sind mit Ihrem Bosch-Konto gekoppelt. Wählen Sie das hinzuzufügende Gerät.",
+        "data": {
+          "device_id": "Gateway"
         }
       }
     },

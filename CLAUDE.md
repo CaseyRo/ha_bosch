@@ -90,6 +90,6 @@ All platform signals, circuit names (`DHW`, `HC`, `SC`, `ZN`, `DV`), protocol id
 
 ## Version & Dependency Notes
 
-- Current integration version: `0.28.6` (in `manifest.json` — bump this on releases)
+- Current integration version: `1.0.0` (in `manifest.json` — bump this on releases)
 - `bosch-thermostat-client` is not used by and does not support POINTTAPI; the POINTTAPI path is entirely custom
 - `iot_class` is `cloud_polling` (covers both paths; XMPP is technically local but the manifest reflects the primary EasyControl cloud use case)

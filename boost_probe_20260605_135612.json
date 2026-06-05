@@ -1,0 +1,250 @@
+{
+  "timestamp": "2026-06-05T13:56:10.763164",
+  "probes": {
+    "/heatingCircuits/hc1/boostShortcut": {
+      "id": "/heatingCircuits/hc1/boostShortcut",
+      "type": "boostShortcutStruct",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "true",
+      "available": "true",
+      "value": [
+        {
+          "mode": "off",
+          "temperature": 21.0,
+          "duration": 1,
+          "zones": [
+            1
+          ],
+          "allowedZones": [
+            1
+          ]
+        }
+      ]
+    },
+    "/heatingCircuits/hc1/boostZones": {
+      "id": "/heatingCircuits/hc1/boostZones",
+      "type": "boostZoneStruct",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "true",
+      "available": "true",
+      "value": [
+        {
+          "zones": [
+            1
+          ],
+          "allowedZones": [
+            1
+          ]
+        }
+      ]
+    },
+    "/heatingCircuits/hc1/boostMode": {
+      "id": "/heatingCircuits/hc1/boostMode",
+      "type": "stringValue",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "true",
+      "available": "true",
+      "value": "off"
+    },
+    "/heatingCircuits/hc1/boostDuration": {
+      "id": "/heatingCircuits/hc1/boostDuration",
+      "type": "floatValue",
+      "writeable": 1,
+      "recordable": 0,
+      "value": 1.0,
+      "used": "true",
+      "available": "true",
+      "unitOfMeasure": "hour",
+      "minValue": 1.0,
+      "maxValue": 8.0,
+      "stepSize": 1.0
+    },
+    "/heatingCircuits/hc1/boostRemainingTime": {
+      "id": "/heatingCircuits/hc1/boostRemainingTime",
+      "type": "floatValue",
+      "writeable": 0,
+      "recordable": 0,
+      "value": 0.0,
+      "used": "false",
+      "available": "false",
+      "unitOfMeasure": "mins",
+      "minValue": 0.0,
+      "maxValue": 480.0,
+      "stepSize": 1.0
+    },
+    "/heatingCircuits/hc1/buildingHeatup": {
+      "id": "/heatingCircuits/hc1/buildingHeatup",
+      "type": "stringValue",
+      "writeable": 1,
+      "used": "false",
+      "recordable": 0,
+      "value": "normal"
+    },
+    "/heatingCircuits/hc1/seasonOptMode": {
+      "id": "/heatingCircuits/hc1/seasonOptMode",
+      "type": "stringValue",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "false",
+      "available": "false",
+      "value": "always_heating",
+      "allowedValues": [
+        "always_heating"
+      ]
+    },
+    "/heatingCircuits/hc1/setpointOptimization": {
+      "id": "/heatingCircuits/hc1/setpointOptimization",
+      "type": "stringValue",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "true",
+      "available": "true",
+      "value": "off"
+    },
+    "/heatingCircuits/hc1/minOutdoorTemp": {
+      "id": "/heatingCircuits/hc1/minOutdoorTemp",
+      "type": "floatValue",
+      "writeable": 0,
+      "recordable": 0,
+      "value": -10.0,
+      "used": "true",
+      "available": "true",
+      "unitOfMeasure": "C",
+      "minValue": -10.0,
+      "maxValue": -3.0,
+      "stepSize": 1.0
+    },
+    "/heatingCircuits/hc1/operatingSeason": {
+      "id": "/heatingCircuits/hc1/operatingSeason",
+      "type": "stringValue",
+      "writeable": 0,
+      "recordable": 0,
+      "used": "false",
+      "available": "false",
+      "value": "heating"
+    },
+    "/heatingCircuits/hc1/type": {
+      "id": "/heatingCircuits/hc1/type",
+      "type": "stringValue",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "true",
+      "available": "true",
+      "value": "convector"
+    },
+    "/heatingCircuits/hc1/typeRoomControl": {
+      "id": "/heatingCircuits/hc1/typeRoomControl",
+      "type": "stringValue",
+      "writeable": 1,
+      "used": "false",
+      "recordable": 0,
+      "value": "radiator"
+    },
+    "/heatingCircuits/hc1/heatCurveMax": {
+      "id": "/heatingCircuits/hc1/heatCurveMax",
+      "type": "floatValue",
+      "writeable": 1,
+      "recordable": 0,
+      "value": 45.0,
+      "unitOfMeasure": "C",
+      "minValue": 40.0,
+      "maxValue": 90.0,
+      "stepSize": 1.0
+    },
+    "/heatingCircuits/hc1/heatCurveMin": {
+      "id": "/heatingCircuits/hc1/heatCurveMin",
+      "type": "floatValue",
+      "writeable": 1,
+      "recordable": 0,
+      "value": 20.0,
+      "unitOfMeasure": "C",
+      "minValue": 20.0,
+      "maxValue": 90.0,
+      "stepSize": 1.0
+    },
+    "/system/awayMode/enabled": {
+      "id": "/system/awayMode/enabled",
+      "type": "stringValue",
+      "writeable": 1,
+      "used": "true",
+      "recordable": 0,
+      "value": "false"
+    },
+    "/notifications": {
+      "id": "/notifications",
+      "type": "errorList",
+      "writeable": 0,
+      "recordable": 0,
+      "used": "true",
+      "available": "true",
+      "value": []
+    },
+    "/dhwCircuits/dhw1/extraDhw": {
+      "id": "/dhwCircuits/dhw1/extraDhw",
+      "type": "stringValue",
+      "writeable": 1,
+      "recordable": 0,
+      "used": "false",
+      "available": "false",
+      "value": "off"
+    },
+    "/dhwCircuits/dhw1/extraDhwDuration": {
+      "id": "/dhwCircuits/dhw1/extraDhwDuration",
+      "type": "floatValue",
+      "writeable": 1,
+      "recordable": 0,
+      "value": 15.0,
+      "used": "false",
+      "available": "false",
+      "unitOfMeasure": "mins",
+      "minValue": 15.0,
+      "maxValue": 2880.0,
+      "stepSize": 15.0
+    },
+    "/dhwCircuits/dhw1/thermalDisinfect/time": {
+      "id": "/dhwCircuits/dhw1/thermalDisinfect/time",
+      "type": "floatValue",
+      "writeable": 1,
+      "recordable": 0,
+      "value": 60.0,
+      "unitOfMeasure": "mins",
+      "minValue": 0.0,
+      "maxValue": 1439.0,
+      "stepSize": 1.0
+    },
+    "/dhwCircuits/dhw1/thermalDisinfect/weekDay": {
+      "id": "/dhwCircuits/dhw1/thermalDisinfect/weekDay",
+      "type": "stringValue",
+      "writeable": 1,
+      "recordable": 0,
+      "value": "Mo"
+    },
+    "/dhwCircuits/dhw1/thermalDisinfect/lastResult": {
+      "id": "/dhwCircuits/dhw1/thermalDisinfect/lastResult",
+      "type": "stringValue",
+      "writeable": 0,
+      "recordable": 0,
+      "value": "done"
+    },
+    "/devices/list": {
+      "id": "/devices/list",
+      "type": "deviceArray",
+      "writeable": 0,
+      "recordable": 0,
+      "value": [
+        {
+          "name": "RWFzeUNvbnRyb2w=",
+          "zone": 1,
+          "protocol": "no_protocol",
+          "id": 1,
+          "battery": "unknown",
+          "signal": 0,
+          "type": "thermostat"
+        }
+      ]
+    }
+  }
+}

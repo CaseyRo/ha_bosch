@@ -48,6 +48,12 @@
       },
       "last_update_applied": {
         "name": "Ostatnia zastosowana aktualizacja"
+      },
+      "notifications": {
+        "name": "Powiadomienia"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Ostatni wynik dezynfekcji termicznej"
       }
     },
     "binary_sensor": {
@@ -96,6 +102,13 @@
         "title": "Protokół Bosch IVT. HTTP jest lokalny. XMPP to chmura!",
         "data": {
           "Protocol": "HTTP albo XMPP"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Wybierz bramkę",
+        "description": "Te bramki są powiązane z Twoim kontem Bosch. Wybierz tę, którą chcesz dodać.",
+        "data": {
+          "device_id": "Bramka"
         }
       }
     },

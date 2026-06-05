@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: ✅ It works! (v1.0.0 feedback thread)
+    url: https://github.com/CaseyRo/ha_bosch/issues/9
+    about: Working setups are valuable data — share your device model, firmware, and which features you tried.

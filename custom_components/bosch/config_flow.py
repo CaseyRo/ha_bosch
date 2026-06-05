@@ -24,6 +24,7 @@ from homeassistant.helpers.selector import (
 )
 
 from . import create_notification_firmware
+from .pointtapi_client import async_list_gateways
 from .pointtapi_oauth import (
     build_auth_url,
     exchange_code_for_tokens,
@@ -58,6 +59,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
         self._password = None
         self._protocol = None
         self._device_type = None
+        self._tokens = None
 
     async def async_step_user(self, user_input=None):
         """Handle flow initiated by user — go straight to EasyControl protocol choice."""
@@ -81,13 +83,9 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                     ),
                     errors=errors,
                 )
-            return self.async_show_form(
-                step_id="pointtapi_device_id",
-                data_schema=vol.Schema(
-                    {vol.Required(CONF_DEVICE_ID): str}
-                ),
-                errors=errors,
-            )
+            # OAuth-first: the authorize URL is device-independent, and the
+            # token lets us list the account's gateways for auto-discovery.
+            return await self.async_step_pointtapi_oauth_open()
         return self.async_show_form(
             step_id="easycontrol_protocol",
             data_schema=vol.Schema(
@@ -106,8 +104,53 @@ class BoschFlowHandler(config_entries.ConfigFlow):
             errors=errors,
         )
 
+    async def async_step_pointtapi_gateway(self, user_input=None):
+        """Select the gateway after OAuth: auto-select one, pick from many, or fall back to manual entry.
+
+        Account listing via GET /gateways/ (scope pointt.gateway.list, already
+        granted) — endpoint observed by serbanb11/homecom_alt, verified live
+        2026-06-05. The listing must never strand the flow: zero gateways or
+        any error falls through to the v0.33 manual serial-entry form.
+        """
+        if user_input is not None:
+            self._host = user_input[CONF_DEVICE_ID]
+            return await self._async_create_pointtapi_entry()
+        try:
+            session = async_get_clientsession(self.hass)
+            gateways = await async_list_gateways(session, self._tokens["access_token"])
+        except Exception as err:
+            _LOGGER.debug(
+                "POINTTAPI gateway listing failed, falling back to manual entry: %s", err
+            )
+            gateways = []
+        options = [
+            {
+                "value": str(g["deviceId"]),
+                "label": f"{g['deviceId']} ({g.get('deviceType', 'unknown')})",
+            }
+            for g in gateways
+            if isinstance(g, dict) and g.get("deviceId")
+        ]
+        if len(options) == 1:
+            self._host = options[0]["value"]
+            return await self._async_create_pointtapi_entry()
+        if options:
+            return self.async_show_form(
+                step_id="pointtapi_gateway",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_DEVICE_ID): SelectSelector(
+                            SelectSelectorConfig(
+                                options=options, mode=SelectSelectorMode.LIST
+                            )
+                        ),
+                    }
+                ),
+            )
+        return await self.async_step_pointtapi_device_id()
+
     async def async_step_pointtapi_device_id(self, user_input=None):
-        """Handle POINTTAPI device ID (serial without dashes)."""
+        """Manual POINTTAPI device ID entry (serial without dashes) — fallback when listing fails."""
         errors = {}
         if user_input is not None:
             raw = user_input[CONF_DEVICE_ID].strip()
@@ -116,11 +159,32 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 errors["base"] = "invalid_device_id"
             else:
                 self._host = device_id
-                return await self.async_step_pointtapi_oauth_open()
+                return await self._async_create_pointtapi_entry()
         return self.async_show_form(
             step_id="pointtapi_device_id",
             data_schema=vol.Schema({vol.Required(CONF_DEVICE_ID): str}),
             errors=errors,
+        )
+
+    async def _async_create_pointtapi_entry(self):
+        """Create the POINTTAPI config entry — data keys identical to v0.33."""
+        await self.async_set_unique_id(self._host)
+        self._abort_if_unique_id_configured()
+        tokens = self._tokens
+        data = {
+            CONF_ADDRESS: self._host,
+            CONF_DEVICE_ID: self._host,
+            UUID: self._host,
+            CONF_DEVICE_TYPE: self._choose_type,
+            CONF_PROTOCOL: POINTTAPI,
+            ACCESS_KEY: "",
+            ACCESS_TOKEN: tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+            "expires_at": tokens["expires_at"],
+        }
+        return self.async_create_entry(
+            title=f"EasyControl (POINTTAPI) {self._host}",
+            data=data,
         )
 
     async def async_step_reauth(self, entry_data):
@@ -179,23 +243,10 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                                     "expires_at": tokens["expires_at"],
                                 },
                             )
-                        await self.async_set_unique_id(self._host)
-                        self._abort_if_unique_id_configured()
-                        data = {
-                            CONF_ADDRESS: self._host,
-                            CONF_DEVICE_ID: self._host,
-                            UUID: self._host,
-                            CONF_DEVICE_TYPE: self._choose_type,
-                            CONF_PROTOCOL: POINTTAPI,
-                            ACCESS_KEY: "",
-                            ACCESS_TOKEN: tokens["access_token"],
-                            "refresh_token": tokens["refresh_token"],
-                            "expires_at": tokens["expires_at"],
-                        }
-                        return self.async_create_entry(
-                            title=f"EasyControl (POINTTAPI) {self._host}",
-                            data=data,
-                        )
+                        # OAuth-first flow: continue to gateway selection
+                        # (auto-select / picker / manual fallback).
+                        self._tokens = tokens
+                        return await self.async_step_pointtapi_gateway()
         return self.async_show_form(
             step_id="pointtapi_oauth",
             data_schema=vol.Schema(

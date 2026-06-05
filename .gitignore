@@ -94,3 +94,4 @@ home-assistant-bosch-custom-component-master.code-workspace
 auth_refresh.py
 sync-to-ha.sh
 .monitor/
+.claude/settings.local.json

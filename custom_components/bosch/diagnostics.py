@@ -37,6 +37,10 @@ async def async_get_config_entry_diagnostics(
         }
     else:
         diag["coordinator_data"] = None
+    if coordinator is not None:
+        # Native-boost probe verdict (v1.0.0): which route worked (or
+        # "fallback"), with per-rung outcomes — see boost-probe-notes.md.
+        diag["boost_probe_result"] = getattr(coordinator, "boost_probe_result", None)
     return diag
 
 

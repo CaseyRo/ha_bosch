@@ -1,8 +1,15 @@
-"""DataUpdateCoordinator for Bosch POINTTAPI: single poll, path-keyed payload."""
+"""DataUpdateCoordinator for Bosch POINTTAPI: single poll, path-keyed payload.
+
+Steady-state polling uses the bulk endpoint (one POST per 30 paths) with the
+v0.33 sequential reference walk kept as both discovery mechanism and fallback.
+Bulk endpoint behavior observed by serbanb11/homecom_alt and verified against
+a live RRC2 gateway on 2026-06-05 — see docs/pointtapi-api.md.
+"""
 from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -30,9 +37,22 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/energy/historyHourly",
     "/heatSources",
     "/solarCircuits/sc1",
+    # Alerts list (type errorList). Optional-path tolerance applies; the
+    # live CT200 serves it (verified 2026-06-05, see boost-probe-notes.md).
+    "/notifications",
+    # Away mode leaf — not reachable via the /system/sensors or
+    # /system/appliance reference walks (writeable: 1, verified 2026-06-05).
+    "/system/awayMode/enabled",
 ]
 REFERENCES_KEY = "references"
 ID_KEY = "id"
+
+HISTORY_HOURLY_PATH = "/energy/historyHourly"
+# Re-run the discovery reference walk at most this often so resources that
+# appear later (e.g. solar enabled by an installer) get picked up.
+REDISCOVERY_INTERVAL = 24 * 3600
+# Throttle the bulk-failure WARNING to once per hour; repeats log at DEBUG.
+BULK_WARN_INTERVAL = 3600
 
 
 async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
@@ -161,6 +181,14 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # sensor reads it to derive a synthetic countdown.
         # Typed as Any here to avoid a circular import with pointtapi_entities.
         self.boost_session: Any = None
+        # Native-boost probe verdict cache (set by the boost switch's probe
+        # ladder; surfaced in diagnostics). None = not yet probed.
+        self.boost_probe_result: dict[str, Any] | None = None
+        # Bulk polling state: path set discovered by the reference walk,
+        # monotonic timestamps for rediscovery and warning throttling.
+        self._bulk_paths: list[str] = []
+        self._last_discovery: float = 0.0
+        self._bulk_warned_at: float | None = None
 
     @property
     def client(self) -> PoinTTAPIClient:
@@ -171,7 +199,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Fetch path-keyed payload; raise ConfigEntryAuthFailed on 401/403, UpdateFailed on connection error."""
         try:
             async with asyncio.timeout(120):
-                return await _fetch_paths(self._client)
+                return await self._fetch()
         except ConfigEntryAuthFailed:
             raise
         except UpdateFailed:
@@ -181,3 +209,63 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except Exception as err:
             _LOGGER.warning("POINTTAPI coordinator update failed: %s", err)
             raise UpdateFailed(f"POINTTAPI update failed: {err}") from err
+
+    async def _fetch(self) -> dict[str, Any]:
+        """Discovery walk (first refresh / every 24h) or bulk steady state.
+
+        The data shape ({path: response}) is identical on both routes, so
+        entities never see the difference. Any wholesale bulk failure falls
+        back to the sequential walk for the cycle — v0.33 behavior.
+        """
+        now = time.monotonic()
+        if not self._bulk_paths or now - self._last_discovery >= REDISCOVERY_INTERVAL:
+            data = await _fetch_paths(self._client)
+            # The paginated historyHourly resource stays on sequential GETs
+            # (bulk resourcePaths carry no query strings).
+            self._bulk_paths = [p for p in data if p != HISTORY_HOURLY_PATH]
+            self._last_discovery = now
+            return data
+
+        try:
+            data = await self._client.bulk(self._bulk_paths)
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            self._log_bulk_failure(err)
+            return await _fetch_paths(self._client)
+        if not data:
+            # An all-paths-failed envelope would wipe entity state; treat as
+            # a wholesale failure instead.
+            self._log_bulk_failure("empty bulk result")
+            return await _fetch_paths(self._client)
+        _LOGGER.debug(
+            "POINTTAPI bulk steady state: %d/%d paths returned",
+            len(data), len(self._bulk_paths),
+        )
+
+        if HISTORY_HOURLY_PATH in POINTTAPI_COORDINATOR_ROOTS:
+            try:
+                merged = await _fetch_history_hourly_all(self._client)
+                if isinstance(merged, dict):
+                    data[HISTORY_HOURLY_PATH] = merged
+            except ConfigEntryAuthFailed:
+                _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", HISTORY_HOURLY_PATH)
+            except Exception as err:
+                _LOGGER.debug(
+                    "POINTTAPI optional path %s not available: %s",
+                    HISTORY_HOURLY_PATH, err,
+                )
+        return data
+
+    def _log_bulk_failure(self, err: Any) -> None:
+        """WARNING at most once per BULK_WARN_INTERVAL, DEBUG otherwise."""
+        now = time.monotonic()
+        if self._bulk_warned_at is None or now - self._bulk_warned_at >= BULK_WARN_INTERVAL:
+            self._bulk_warned_at = now
+            _LOGGER.warning(
+                "POINTTAPI bulk fetch failed (%s); falling back to sequential GETs", err
+            )
+        else:
+            _LOGGER.debug(
+                "POINTTAPI bulk fetch failed (%s); falling back to sequential GETs", err
+            )

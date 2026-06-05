@@ -48,6 +48,12 @@
       },
       "last_update_applied": {
         "name": "Posledná aplikovaná aktualizácia"
+      },
+      "notifications": {
+        "name": "Upozornenia"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Posledný výsledok termickej dezinfekcie"
       }
     },
     "binary_sensor": {
@@ -96,6 +102,13 @@
         "title": "Bosch IVT Protokol. HTTP je lokálne. XMPP je cloud!",
         "data": {
           "Protocol": "Buď http alebo xmpp"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Vyberte bránu",
+        "description": "Tieto brány sú spárované s vaším účtom Bosch. Vyberte tú, ktorú chcete pridať.",
+        "data": {
+          "device_id": "Brána"
         }
       }
     },
