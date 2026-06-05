@@ -250,3 +250,86 @@ class TestNativeBoostProbe:
         assert ent._boost_zone_ids(coord.data) == [1, 2]
         # Default when struct absent
         assert ent._boost_zone_ids({}) == [1]
+
+
+# ── CDI-1172: one-shot _clear_boost_flag listener deregistration ─────────────
+
+
+class TestClearBoostOneShotListener:
+    """HA's DataUpdateCoordinator has no async_remove_listener.
+
+    The old code called coordinator.async_remove_listener from
+    _clear_boost_flag → AttributeError on every coordinator cycle and the
+    listener never unregistered. The fix stores the unsub callable returned
+    by async_add_listener and calls it from the one-shot.
+    """
+
+    @pytest.mark.asyncio
+    async def test_native_off_registers_one_shot_and_unsubs(self):
+        coord = _mock_coordinator(
+            {**_BOOST_DATA, "/heatingCircuits/hc1/boostMode": {"value": "on"}},
+            probe_result={"route": "boostMode", "rungs": []},
+        )
+        del coord.async_remove_listener  # real coordinators don't have it
+        unsub = MagicMock()
+        coord.async_add_listener = MagicMock(return_value=unsub)
+        ent = _boost_switch(coord)
+        ent._is_on = True
+
+        await ent.async_turn_off()
+
+        coord.async_add_listener.assert_called_once_with(ent._clear_boost_flag)
+        assert ent._clear_boost_unsub is unsub
+        assert ent._boost_set_by_us is True
+
+        # First coordinator cycle: flag cleared, listener unsubs itself
+        ent._clear_boost_flag()
+        assert ent._boost_set_by_us is False
+        unsub.assert_called_once()
+        assert ent._clear_boost_unsub is None
+
+        # A spurious second cycle must not raise or double-unsub
+        ent._clear_boost_flag()
+        unsub.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_fallback_off_registers_one_shot_and_unsubs(self):
+        coord = _mock_coordinator(
+            dict(_BOOST_DATA),
+            probe_result={"route": "fallback", "rungs": []},
+        )
+        del coord.async_remove_listener
+        unsub = MagicMock()
+        coord.async_add_listener = MagicMock(return_value=unsub)
+        ent = _boost_switch(coord)
+        ent._is_on = True
+        ent._pre_boost_mode = "clock"
+
+        await ent.async_turn_off()
+
+        coord.async_add_listener.assert_called_once_with(ent._clear_boost_flag)
+        assert ent._clear_boost_unsub is unsub
+
+        ent._clear_boost_flag()
+        assert ent._boost_set_by_us is False
+        unsub.assert_called_once()
+        assert ent._clear_boost_unsub is None
+
+    @pytest.mark.asyncio
+    async def test_pending_one_shot_not_double_registered(self):
+        """A second off while a one-shot is pending must not leak a listener."""
+        coord = _mock_coordinator(
+            {**_BOOST_DATA, "/heatingCircuits/hc1/boostMode": {"value": "on"}},
+            probe_result={"route": "boostMode", "rungs": []},
+        )
+        del coord.async_remove_listener
+        unsub = MagicMock()
+        coord.async_add_listener = MagicMock(return_value=unsub)
+        ent = _boost_switch(coord)
+        ent._is_on = True
+
+        await ent.async_turn_off()
+        await ent.async_turn_off()  # no cycle ran in between
+
+        coord.async_add_listener.assert_called_once_with(ent._clear_boost_flag)
+        assert ent._clear_boost_unsub is unsub

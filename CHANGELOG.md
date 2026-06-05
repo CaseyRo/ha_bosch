@@ -4,6 +4,17 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-06-05 — Fix boost one-shot listener AttributeError
+
+### Fixed
+- **Boost off no longer raises `AttributeError` on every coordinator cycle**
+  (CDI-1172) — `_clear_boost_flag` called
+  `coordinator.async_remove_listener`, which does not exist on HA's
+  `DataUpdateCoordinator`, so the one-shot listener crashed each refresh and
+  never unregistered. The switch now stores the unsub callable returned by
+  `async_add_listener` and calls it from the one-shot (guarding against
+  double registration while a one-shot is pending).
+
 ## [1.0.0] — 2026-06-05 — POINTTAPI: bulk polling, gateway discovery, native boost
 
 A milestone release: the POINTTAPI path adopts capabilities mapped by the

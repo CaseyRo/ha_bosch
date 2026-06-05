@@ -1036,6 +1036,10 @@ class BoschPoinTTAPIBoostSwitchEntity(
         # Cancel handle for the auto-off async_call_later (None when no timer
         # is scheduled). Calling it cancels; calling it twice is a no-op.
         self._auto_off_cancel: Callable[[], None] | None = None
+        # Unsub callable for the one-shot _clear_boost_flag coordinator
+        # listener (None when no one-shot is pending). DataUpdateCoordinator
+        # has no async_remove_listener; deregistration goes through this.
+        self._clear_boost_unsub: Callable[[], None] | None = None
 
     # ── Native boost probe ladder (v1.0.0) ────────────────────────────────
     #
@@ -1310,7 +1314,10 @@ class BoschPoinTTAPIBoostSwitchEntity(
                 self._boost_set_by_us = True
                 self._is_on = False
                 self.async_write_ha_state()
-                self.coordinator.async_add_listener(self._clear_boost_flag)
+                if self._clear_boost_unsub is None:
+                    self._clear_boost_unsub = self.coordinator.async_add_listener(
+                        self._clear_boost_flag
+                    )
                 await self.coordinator.async_request_refresh()
                 return
             # Native off failed — fall through to the workaround restore,
@@ -1330,7 +1337,10 @@ class BoschPoinTTAPIBoostSwitchEntity(
             self._pre_boost_mode = None
             self.async_write_ha_state()
             # After one successful refresh with the restored state, stop overriding
-            self.coordinator.async_add_listener(self._clear_boost_flag)
+            if self._clear_boost_unsub is None:
+                self._clear_boost_unsub = self.coordinator.async_add_listener(
+                    self._clear_boost_flag
+                )
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
             raise
@@ -1343,8 +1353,9 @@ class BoschPoinTTAPIBoostSwitchEntity(
     def _clear_boost_flag(self) -> None:
         """Clear the boost override flag after one coordinator cycle."""
         self._boost_set_by_us = False
-        # Remove ourselves — one-shot listener
-        self.coordinator.async_remove_listener(self._clear_boost_flag)
+        if self._clear_boost_unsub is not None:
+            self._clear_boost_unsub()  # one-shot: unregister self
+            self._clear_boost_unsub = None
 
 
 # ── Generic switch entity (firmware update, notification light, etc.) ─────────
