@@ -1,31 +1,16 @@
 {
   "domain": "bosch",
   "name": "Bosch EasyControl CT200",
-  "integration_type": "hub",
-  "documentation": "https://github.com/CaseyRo/ha_bosch",
-  "issue_tracker": "https://github.com/CaseyRo/ha_bosch/issues",
-  "dependencies": [
-    "network",
-    "persistent_notification"
-  ],
-  "after_dependencies": [
-    "http",
-    "recorder"
-  ],
-  "codeowners": [
-    "@CaseyRo"
-  ],
-  "requirements": [
-    "bosch-thermostat-client==0.28.2"
-  ],
-  "version": "1.0.1",
-  "zeroconf": [
-    "_buderus._tcp.local."
-  ],
+  "after_dependencies": ["http", "recorder"],
+  "codeowners": ["@CaseyRo"],
   "config_flow": true,
+  "dependencies": ["network", "persistent_notification"],
+  "documentation": "https://github.com/CaseyRo/ha_bosch",
+  "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "loggers": [
-    "custom_components.bosch",
-    "bosch_thermostat_client"
-  ]
+  "issue_tracker": "https://github.com/CaseyRo/ha_bosch/issues",
+  "loggers": ["custom_components.bosch", "bosch_thermostat_client"],
+  "requirements": ["bosch-thermostat-client==0.28.2"],
+  "version": "1.0.1",
+  "zeroconf": ["_buderus._tcp.local."]
 }
