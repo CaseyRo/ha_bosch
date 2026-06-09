@@ -121,35 +121,36 @@ Token refresh is automatic. If your session expires, HA triggers a re-authentica
 - A Bosch EasyControl device (CT200, EasyControl 7)
 - A Bosch/SingleKey ID account (the one you use in the EasyControl app)
 
-### Fresh install
+### HACS — custom repository (recommended)
 
-In your HA config directory, clone the repo and symlink the integration:
+This integration is distributed as a **HACS custom repository** (it is not in the HACS default list):
 
-```bash
-cd config
-git clone https://github.com/CaseyRo/ha_bosch.git ha_bosch
-ln -s ../ha_bosch/custom_components/bosch custom_components/bosch
-```
+1. Make sure [HACS](https://hacs.xyz) is installed.
+2. In Home Assistant: **HACS** → top-right **⋮** → **Custom repositories**.
+3. **Repository:** `https://github.com/CaseyRo/ha_bosch` — **Type:** `Integration` — click **Add**.
+4. Search HACS for **Bosch thermostat ha-pro**, open it, and click **Download**.
+5. **Restart Home Assistant.**
+6. **Settings → Devices & Services → Add Integration →** search **Bosch**.
 
-Then restart Home Assistant and go to **Settings → Devices & Services → Add Integration** → search for **Bosch**.
+HACS then notifies you of updates like any other integration.
 
-**Via HACS:** add `https://github.com/CaseyRo/ha_bosch` as a custom repository (category: Integration), install it, then restart.
+### Manual install
+
+1. Download the latest release, or copy this repo.
+2. Copy `custom_components/bosch/` into your Home Assistant `config/custom_components/`.
+3. **Restart Home Assistant**, then add via **Settings → Devices & Services → Add Integration → Bosch**.
 
 ### Upgrading from the original integration
 
 This is a drop-in replacement for `bosch-thermostat/home-assistant-bosch-custom-component`. Your existing config entry and XMPP/HTTP setups are fully preserved — new entities only appear for POINTTAPI entries.
 
 1. Back up your existing `config/custom_components/bosch/` folder
-2. Delete it, then clone this repo and symlink (see above)
+2. Install this fork via HACS or manually (see above), replacing the existing `bosch` folder
 3. Restart Home Assistant — existing entities carry over, new ones appear automatically
 
 ### Keeping up to date
 
-```bash
-cd config/ha_bosch && git pull
-```
-
-Then restart HA.
+If you installed via HACS, you'll be notified of new releases automatically — open the integration in HACS and click **Download**, then restart HA. For manual installs, copy the latest `custom_components/bosch/` over your existing folder and restart HA.
 
 ### Removing the integration
 

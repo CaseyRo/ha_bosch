@@ -1,4 +1,5 @@
 {
   "name": "Bosch thermostat ha-pro (CT200 cloud/POINTTAPI extended)",
+  "render_readme": true,
   "homeassistant": "2024.1.0"
 }
