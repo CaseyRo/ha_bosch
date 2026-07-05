@@ -76,7 +76,6 @@ from homeassistant.helpers.event import (
 )
 from homeassistant.helpers.json import save_json
 from homeassistant.helpers.network import get_url
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 from homeassistant.util.json import load_json
 
@@ -158,11 +157,6 @@ _LOGGER = logging.getLogger(__name__)
 _LIBRARY_LOGGER = logging.getLogger("bosch_thermostat_client")
 
 HOUR = timedelta(hours=1)
-
-
-async def async_setup(hass: HomeAssistant, config: ConfigType):
-    """Initialize the Bosch platform."""
-    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
