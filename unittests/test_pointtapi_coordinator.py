@@ -322,3 +322,133 @@ class TestBulkSteadyState:
 
         for p in coord._bulk_paths:
             assert bulk_data[p] == walk_data[p]
+
+
+# ── historyHourly pagination (unofficial API cursor walk) ────────────────────
+
+
+from custom_components.bosch.pointtapi_coordinator import _fetch_history_hourly_all
+
+
+def _paging_client(pages):
+    """Client serving /energy/historyHourly pages keyed by their `next` cursor.
+
+    `pages` maps a cursor (None for the first, un-queried page) to the response
+    dict that page should return. A cursor mapped to an Exception instance is
+    raised instead, to exercise the mid-walk error path.
+    """
+    async def mock_get(path):
+        if "?next=" in path:
+            cursor = path.split("?next=", 1)[1]
+        else:
+            cursor = None
+        resp = pages[cursor]
+        if isinstance(resp, Exception):
+            raise resp
+        return resp
+
+    client = AsyncMock()
+    client.get = AsyncMock(side_effect=mock_get)
+    return client
+
+
+def _page(entries, nxt):
+    return {"id": HISTORY_HOURLY_PATH, "value": [{"entries": entries, "next": nxt}]}
+
+
+class TestHistoryHourlyPagination:
+    @pytest.mark.asyncio
+    async def test_walks_all_pages_and_flattens(self):
+        client = _paging_client({
+            None: _page([{"e": "a"}], "c1"),
+            "c1": _page([{"e": "b"}], "c2"),
+            "c2": _page([{"e": "c"}], None),
+        })
+        merged = await _fetch_history_hourly_all(client)
+        assert [e["e"] for e in merged["value"][0]["entries"]] == ["a", "b", "c"]
+        # Flattened result is re-shaped with a terminal cursor.
+        assert merged["value"][0]["next"] is None
+
+    @pytest.mark.asyncio
+    async def test_cursor_loop_terminates(self):
+        # Second page points back at its own cursor — must not loop forever.
+        client = _paging_client({
+            None: _page([{"e": "a"}], "c1"),
+            "c1": _page([{"e": "b"}], "c1"),
+        })
+        merged = await _fetch_history_hourly_all(client)
+        assert [e["e"] for e in merged["value"][0]["entries"]] == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_pagination_capped_at_20(self):
+        # Every page yields a fresh cursor forever; the cap must stop the walk.
+        class Endless(dict):
+            def __missing__(self, key):
+                nxt = f"c{int(key[1:]) + 1}" if key and key != "None" else "c1"
+                return _page([{"e": key}], nxt)
+        client = _paging_client(Endless({None: _page([{"e": "seed"}], "c1")}))
+        merged = await _fetch_history_hourly_all(client)
+        # 1 seed page + at most 20 followed pages; the loop is bounded, not infinite.
+        assert len(merged["value"][0]["entries"]) <= 21
+        assert client.get.await_count <= 21
+
+    @pytest.mark.asyncio
+    async def test_mid_walk_error_returns_partial(self):
+        client = _paging_client({
+            None: _page([{"e": "a"}], "c1"),
+            "c1": RuntimeError("page fetch blew up"),
+        })
+        merged = await _fetch_history_hourly_all(client)
+        # Keeps what it collected before the failure instead of crashing.
+        assert [e["e"] for e in merged["value"][0]["entries"]] == ["a"]
+
+    @pytest.mark.asyncio
+    async def test_first_fetch_non_dict_returns_none(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value="garbage")
+        assert await _fetch_history_hourly_all(client) is None
+
+    @pytest.mark.asyncio
+    async def test_single_page_no_next(self):
+        client = _paging_client({None: _page([{"e": "only"}], None)})
+        merged = await _fetch_history_hourly_all(client)
+        assert [e["e"] for e in merged["value"][0]["entries"]] == ["only"]
+
+
+# ── _async_update_data error mapping ─────────────────────────────────────────
+
+
+class TestAsyncUpdateDataMapping:
+    @pytest.mark.asyncio
+    async def test_success_returns_data(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._fetch = AsyncMock(return_value={"/gateway": {"ok": True}})
+        assert await coord._async_update_data() == {"/gateway": {"ok": True}}
+
+    @pytest.mark.asyncio
+    async def test_auth_failure_propagates(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._fetch = AsyncMock(side_effect=ConfigEntryAuthFailed("401"))
+        with pytest.raises(ConfigEntryAuthFailed):
+            await coord._async_update_data()
+
+    @pytest.mark.asyncio
+    async def test_update_failed_propagates(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._fetch = AsyncMock(side_effect=UpdateFailed("connection"))
+        with pytest.raises(UpdateFailed):
+            await coord._async_update_data()
+
+    @pytest.mark.asyncio
+    async def test_timeout_becomes_update_failed(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._fetch = AsyncMock(side_effect=TimeoutError())
+        with pytest.raises(UpdateFailed):
+            await coord._async_update_data()
+
+    @pytest.mark.asyncio
+    async def test_unexpected_error_becomes_update_failed(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._fetch = AsyncMock(side_effect=ValueError("surprise"))
+        with pytest.raises(UpdateFailed):
+            await coord._async_update_data()

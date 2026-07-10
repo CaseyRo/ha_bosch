@@ -356,7 +356,16 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         user_mode = _val(data, f"/zones/{self._zone_id}/userMode")
         manual_temp = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
         # OFF = manual mode with temp at or below minimum
-        if user_mode == "manual" and manual_temp is not None and float(manual_temp) <= self.min_temp:
+        try:
+            is_off = (
+                user_mode == "manual"
+                and manual_temp is not None
+                and float(manual_temp) <= self.min_temp
+            )
+        except (TypeError, ValueError):
+            # Malformed manual-temp value -> don't crash the callback.
+            is_off = False
+        if is_off:
             self._hvac_mode = HVACMode.OFF
         else:
             self._hvac_mode = HVACMode.HEAT
@@ -974,7 +983,11 @@ class BoschPoinTTAPINumberEntity(
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
         raw = _val(data, self._path)
-        self._native_value = float(raw) if raw is not None else None
+        try:
+            self._native_value = float(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            # Malformed API value for a numeric path -> unavailable, don't crash.
+            self._native_value = None
         self.async_write_ha_state()
 
     @property

@@ -31,14 +31,34 @@ def _fix_history_date(date_str: str) -> datetime | None:
     except (ValueError, TypeError):
         return None
     now = dt_util.now()
-    # Replace year with current year
-    fixed = parsed.replace(year=now.year)
-    # If the resulting date is in the future, it's from last year
-    if fixed.date() > now.date():
-        fixed = fixed.replace(year=now.year - 1)
+    # Replace year with current year. Guard the Feb-29 → non-leap-year case:
+    # datetime(2024, 2, 29).replace(year=2026) raises ValueError, which would
+    # otherwise escape (the try/except above only wraps strptime) and abort the
+    # whole backfill. Treat an unmappable date like any other bad date: skip it.
+    try:
+        fixed = parsed.replace(year=now.year)
+        # If the resulting date is in the future, it's from last year
+        if fixed.date() > now.date():
+            fixed = fixed.replace(year=now.year - 1)
+    except ValueError:
+        return None
     # Convert to local timezone at midnight
     local_tz = dt_util.DEFAULT_TIME_ZONE
     return fixed.replace(tzinfo=local_tz)
+
+
+def _to_float(value: Any) -> float:
+    """Coerce an API reading to float; junk/None/non-numeric becomes 0.0.
+
+    Readings arrive from a cloud JSON API, so a bad or unexpected type must
+    not crash the backfill mid-loop (which would abort every field). This keeps
+    the existing ``x or 0.0`` behaviour for None/missing/0 and additionally
+    survives non-numeric values.
+    """
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _build_statistics(
@@ -62,7 +82,7 @@ def _build_statistics(
         dt = _fix_history_date(entry.get("d", ""))
         if dt is None:
             continue
-        value = entry.get(field, 0.0) or 0.0
+        value = _to_float(entry.get(field))
         running_sum += value
         stats.append(
             StatisticData(
@@ -149,7 +169,7 @@ async def async_backfill_gas_history(
         dt = _fix_history_date(entry.get("d", ""))
         if dt is None:
             continue
-        value = (entry.get("gCh") or 0.0) + (entry.get("gHw") or 0.0)
+        value = _to_float(entry.get("gCh")) + _to_float(entry.get("gHw"))
         running_sum += value
         total_stats.append(StatisticData(start=dt, state=value, sum=running_sum))
 
