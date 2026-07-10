@@ -173,9 +173,9 @@
       },
       "pointtapi_oauth": {
         "title": "Complete sign-in",
-        "description": "Paste the callback URL below. It starts with `com.bosch.tt.dashtt.pointt://app/login?code=`.\n\n**Having trouble?** Some browsers don't show the URL clearly after login. Use the `run_playwright_ha.sh` helper script from the repository — it opens a browser, you log in once, and it prints the exact URL to paste here. See `POINTTAPI_OAUTH_TESTING.md` for instructions.",
+        "description": "Paste the **callback URL** or just the **code** below. After you sign in, your browser jumps to an address starting with `com.bosch.tt.dashtt.pointt://app/login?code=` and usually shows a cannot-open-page or blank screen — that is expected. Copy the whole address, or only the value after `code=`.\n\n**Having trouble?** Some browsers don't show the URL clearly after login. Use the `run_playwright_ha.sh` helper script from the repository — it opens a browser, you log in once, and it prints the exact URL to paste here. See `POINTTAPI_OAUTH_TESTING.md` for instructions.",
         "data": {
-          "oauth_callback_url": "Callback URL"
+          "oauth_callback_url": "Callback URL or code"
         }
       },
       "pointtapi_gateway": {

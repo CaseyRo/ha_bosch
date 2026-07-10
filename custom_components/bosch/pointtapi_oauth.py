@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
+import re
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from urllib.parse import unquote, urlencode
@@ -72,18 +73,32 @@ def build_auth_url() -> str:
 
 
 def extract_code_from_callback_url(url: str) -> str | None:
-    """Extract authorization code from OAuth callback URL."""
-    url = (url or "").strip()
-    if "code=" not in url:
+    """Extract the authorization code from whatever the user pasted.
+
+    Accepts any of the three things a user can realistically capture, since the
+    code only ever arrives in the un-followable `com.bosch...://` redirect:
+      - the full callback URL (`com.bosch.tt.dashtt.pointt://app/login?code=…`)
+      - a bare query fragment copied from DevTools (`code=…&state=…`)
+      - just the code value on its own
+    """
+    text = (url or "").strip()
+    if not text:
         return None
-    try:
-        parsed = urllib.parse.urlparse(url)
-        params = urllib.parse.parse_qs(parsed.query)
-        codes = params.get("code", [None])
-        return codes[0] if codes else None
-    except Exception:  # pylint: disable=broad-except
-        _LOGGER.debug("Failed to parse callback URL")
-        return None
+    if "code=" in text:
+        try:
+            # urlparse().query is empty for a bare `code=…` fragment (no scheme),
+            # so fall back to parsing the whole string as a query in that case.
+            query = urllib.parse.urlparse(text).query or text
+            codes = urllib.parse.parse_qs(query).get("code")
+            return codes[0] if codes else None
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.debug("Failed to parse callback URL")
+            return None
+    # No `code=` wrapper: treat a clean token (no URL/query delimiters) as the
+    # code itself. Anything with a scheme/path/query but no code= is invalid.
+    if not re.search(r"[\s?&/:]", text):
+        return text
+    return None
 
 
 async def exchange_code_for_tokens(session, code: str) -> dict[str, Any]:

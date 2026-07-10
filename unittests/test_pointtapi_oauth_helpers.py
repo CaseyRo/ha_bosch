@@ -47,6 +47,21 @@ class TestExtractCode:
         url = f"com.bosch.tt.dashtt.pointt://app/login?code={code}&state=s"
         assert extract_code_from_callback_url(url) == code
 
+    def test_bare_query_fragment(self):
+        # User copies just the query string out of DevTools (no scheme/host).
+        assert extract_code_from_callback_url("code=ABC-1&state=xyz") == "ABC-1"
+
+    def test_bare_code_only(self):
+        # User pastes only the code value (real SingleKey codes end in -1).
+        assert extract_code_from_callback_url("3E7A9F2B1C4D5E6F-1") == "3E7A9F2B1C4D5E6F-1"
+
+    def test_bare_code_whitespace_stripped(self):
+        assert extract_code_from_callback_url("  XYZ-1  ") == "XYZ-1"
+
+    def test_url_without_code_is_none(self):
+        # A URL-shaped string with no code= is invalid, not a bare code.
+        assert extract_code_from_callback_url("com.bosch.tt.dashtt.pointt://app/login") is None
+
 
 # ── is_token_expired ─────────────────────────────────────────────────────────
 
