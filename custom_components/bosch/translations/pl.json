@@ -104,6 +104,17 @@
           "Protocol": "HTTP albo XMPP"
         }
       },
+      "pointtapi_oauth_open": {
+        "title": "Zaloguj się swoim kontem Bosch",
+        "description": "Kliknij **[ten link]({auth_url})**, aby otworzyć stronę logowania Bosch w nowej karcie przeglądarki, i zaloguj się swoim kontem Bosch.\n\nPo zalogowaniu przeglądarka wyświetli błąd „Nie można otworzyć strony” — **to normalne**. Pozostaw tę kartę otwartą i kliknij poniżej **Wyślij**."
+      },
+      "pointtapi_oauth": {
+        "title": "Dokończ logowanie",
+        "description": "Wklej poniżej **adres URL wywołania zwrotnego** lub tylko **kod**. Po zalogowaniu przeglądarka przechodzi na adres zaczynający się od `com.bosch.tt.dashtt.pointt://app/login?code=` i zwykle pokazuje stronę błędu lub pustą stronę — to normalne. Skopiuj cały adres lub tylko wartość po `code=`.",
+        "data": {
+          "oauth_callback_url": "Adres URL wywołania zwrotnego lub kod"
+        }
+      },
       "pointtapi_gateway": {
         "title": "Wybierz bramkę",
         "description": "Te bramki są powiązane z Twoim kontem Bosch. Wybierz tę, którą chcesz dodać.",

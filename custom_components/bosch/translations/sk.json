@@ -104,6 +104,17 @@
           "Protocol": "Buď http alebo xmpp"
         }
       },
+      "pointtapi_oauth_open": {
+        "title": "Prihláste sa svojím účtom Bosch",
+        "description": "Kliknite na **[tento odkaz]({auth_url})**, aby ste otvorili prihlasovaciu stránku Bosch na novej karte prehliadača, a prihláste sa svojím účtom Bosch.\n\nPo prihlásení prehliadač zobrazí chybu „Stránku nemožno otvoriť“ — **to je v poriadku**. Nechajte kartu otvorenú a kliknite nižšie na **Odoslať**."
+      },
+      "pointtapi_oauth": {
+        "title": "Dokončiť prihlásenie",
+        "description": "Nižšie vložte **callback URL** alebo iba **kód**. Po prihlásení prehliadač prejde na adresu začínajúcu `com.bosch.tt.dashtt.pointt://app/login?code=` a zvyčajne zobrazí chybovú alebo prázdnu stránku — to je normálne. Skopírujte celú adresu alebo iba hodnotu za `code=`.",
+        "data": {
+          "oauth_callback_url": "Callback URL alebo kód"
+        }
+      },
       "pointtapi_gateway": {
         "title": "Vyberte bránu",
         "description": "Tieto brány sú spárované s vaším účtom Bosch. Vyberte tú, ktorú chcete pridať.",

@@ -104,6 +104,17 @@
           "Protocol": "Entweder http oder xmpp"
         }
       },
+      "pointtapi_oauth_open": {
+        "title": "Mit Ihrem Bosch-Konto anmelden",
+        "description": "Klicken Sie auf **[diesen Link]({auth_url})**, um die Bosch-Anmeldeseite in einem neuen Browser-Tab zu öffnen, und melden Sie sich mit Ihrem Bosch-Konto an.\n\nNach der Anmeldung zeigt Ihr Browser den Fehler „Seite kann nicht geöffnet werden“ — **das ist so gewollt**. Lassen Sie den Tab geöffnet und klicken Sie unten auf **Absenden**."
+      },
+      "pointtapi_oauth": {
+        "title": "Anmeldung abschließen",
+        "description": "Fügen Sie unten die **Callback-URL** oder nur den **Code** ein. Nach der Anmeldung springt Ihr Browser zu einer Adresse, die mit `com.bosch.tt.dashtt.pointt://app/login?code=` beginnt, und zeigt meist eine Fehler- oder leere Seite — das ist normal. Kopieren Sie die gesamte Adresse oder nur den Wert nach `code=`.",
+        "data": {
+          "oauth_callback_url": "Callback-URL oder Code"
+        }
+      },
       "pointtapi_gateway": {
         "title": "Gateway auswählen",
         "description": "Diese Gateways sind mit Ihrem Bosch-Konto gekoppelt. Wählen Sie das hinzuzufügende Gerät.",

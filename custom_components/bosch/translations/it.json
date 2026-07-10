@@ -104,6 +104,17 @@
           "Protocol": "HTTP oppure XMPP"
         }
       },
+      "pointtapi_oauth_open": {
+        "title": "Accedi con il tuo account Bosch",
+        "description": "Fai clic su **[questo link]({auth_url})** per aprire la pagina di accesso Bosch in una nuova scheda del browser, quindi accedi con il tuo account Bosch.\n\nDopo l'accesso, il browser mostrerà un errore « Impossibile aprire la pagina » — **è previsto**. Lascia la scheda aperta e fai clic su **Invia** qui sotto."
+      },
+      "pointtapi_oauth": {
+        "title": "Completa l'accesso",
+        "description": "Incolla qui sotto l'**URL di callback** o solo il **codice**. Dopo l'accesso, il browser passa a un indirizzo che inizia con `com.bosch.tt.dashtt.pointt://app/login?code=` e di solito mostra una pagina di errore o vuota — è normale. Copia l'intero indirizzo, oppure solo il valore dopo `code=`.",
+        "data": {
+          "oauth_callback_url": "URL di callback o codice"
+        }
+      },
       "pointtapi_gateway": {
         "title": "Seleziona il gateway",
         "description": "Questi gateway sono associati al tuo account Bosch. Scegli quello da aggiungere.",

@@ -104,6 +104,17 @@
           "Protocol": "Een van beide http of xmpp"
         }
       },
+      "pointtapi_oauth_open": {
+        "title": "Log in met uw Bosch-account",
+        "description": "Klik op **[deze link]({auth_url})** om de Bosch-inlogpagina in een nieuw browsertabblad te openen en log in met uw Bosch-account.\n\nNa het inloggen toont uw browser een foutmelding ‘Kan pagina niet openen’ — **dat is normaal**. Laat dat tabblad open en klik hieronder op **Verzenden**."
+      },
+      "pointtapi_oauth": {
+        "title": "Aanmelding voltooien",
+        "description": "Plak hieronder de **callback-URL** of alleen de **code**. Na het inloggen gaat uw browser naar een adres dat begint met `com.bosch.tt.dashtt.pointt://app/login?code=` en toont meestal een foutpagina of een lege pagina — dat is normaal. Kopieer het volledige adres, of alleen de waarde na `code=`.",
+        "data": {
+          "oauth_callback_url": "Callback-URL of code"
+        }
+      },
       "pointtapi_gateway": {
         "title": "Selecteer je gateway",
         "description": "Deze gateways zijn gekoppeld aan je Bosch-account. Kies welke je wilt toevoegen.",

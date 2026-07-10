@@ -104,6 +104,17 @@
           "Protocol": "Soit HTTP soit XMPP"
         }
       },
+      "pointtapi_oauth_open": {
+        "title": "Connectez-vous avec votre compte Bosch",
+        "description": "Cliquez sur **[ce lien]({auth_url})** pour ouvrir la page de connexion Bosch dans un nouvel onglet, puis connectez-vous avec votre compte Bosch.\n\nAprès la connexion, votre navigateur affichera une erreur « Impossible d'ouvrir la page » — **c'est normal**. Laissez cet onglet ouvert et cliquez sur **Envoyer** ci-dessous."
+      },
+      "pointtapi_oauth": {
+        "title": "Finaliser la connexion",
+        "description": "Collez ci-dessous l'**URL de rappel** ou simplement le **code**. Après la connexion, votre navigateur accède à une adresse commençant par `com.bosch.tt.dashtt.pointt://app/login?code=` et affiche généralement une page d'erreur ou vide — c'est normal. Copiez l'adresse entière, ou seulement la valeur après `code=`.",
+        "data": {
+          "oauth_callback_url": "URL de rappel ou code"
+        }
+      },
       "pointtapi_gateway": {
         "title": "Sélectionnez votre passerelle",
         "description": "Ces passerelles sont associées à votre compte Bosch. Choisissez celle à ajouter.",
