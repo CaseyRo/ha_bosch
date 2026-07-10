@@ -4,6 +4,37 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-07-10 — Easier OAuth onboarding + malformed-data hardening
+
+### Added
+- **Sign-in accepts any pasted callback** — the OAuth step now takes the full
+  `com.bosch.tt.dashtt.pointt://app/login?code=…` URL, a bare `code=…&state=…`
+  fragment, or just the code value on its own. Previously only a URL that both
+  contained `code=` and had a scheme parsed; a scheme-less fragment silently
+  failed. Removes the common "blank page after login, can't capture the code"
+  onboarding snag (upstream issue #554). Sign-in instructions clarified (EN).
+
+### Fixed
+- **No longer crashes on non-numeric cloud values** — the `Number` and `Climate`
+  coordinator-update callbacks coerced untrusted API values with a bare
+  `float()`, so a single malformed reading raised out of HA's dispatch and
+  aborted the whole update cycle. Both now guard and fall back to `unavailable` /
+  `HEAT`. Root-caused at the shared handlers (all 12 number descriptions + the
+  climate entity).
+- **Gas backfill survives odd rows** — `pointtapi_statistics` guarded two crash
+  paths: a Feb-29 history date remapped onto a non-leap current year raised
+  `ValueError` outside the date guard, and a non-numeric reading in the
+  running-sum loop raised `TypeError`. Bad rows are now skipped instead of
+  aborting the first-refresh backfill.
+
+### Tests
+- **+85 unit tests** hardening the POINTTAPI path against malformed/looping
+  cloud responses (188 → 269 total): OAuth callback parsing and token refresh
+  (`ensure_valid_token`), coordinator `historyHourly` cursor pagination + update
+  error-mapping, statistics-backfill robustness, and entity
+  absent-path→`unavailable` + optimistic-write guarantees. Coverage moved
+  oauth 75→97%, coordinator 68→84%, entities 59→73%, statistics 0→covered.
+
 ## [1.0.1] — 2026-06-05 — Fix boost one-shot listener AttributeError
 
 ### Fixed
