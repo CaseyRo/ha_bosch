@@ -55,6 +55,13 @@ The config flow walks you through:
 3. Sign in with your Bosch/SingleKey ID account (OAuth2 with PKCE)
 4. Your gateway is **discovered automatically** from your Bosch account — with one device it's selected for you; with several you pick from a list. Manual serial entry remains available as a fallback if the listing is unavailable.
 
+**Getting the login code (the "cannot open page" step).** After you sign in at step 3, your browser tries to redirect to `com.bosch.tt.dashtt.pointt://app/login?code=…` — the Bosch *app's* deep link, which a desktop browser can't open. You'll see a **"cannot open page" or blank screen, and that's expected**: the login worked, and the code you need is sitting in that address. Two ways to grab it:
+
+- **[SingleKey-Code-Catcher](https://github.com/Tozzi89/SingleKey-Code-Catcher)** — a Firefox extension that reads the code out of the redirect and gives you one-click copy. Easiest path.
+- **Browser DevTools** — open **F12 → Network** before you finish logging in, then find the `…/app/login?code=…` request and copy it. Firefox also shows the full address right on the error page.
+
+Paste the whole callback URL **or** just the `code` value into the final step — either is accepted.
+
 Token refresh is automatic. If your session expires, HA triggers a re-authentication flow — no need to delete and re-add the integration.
 
 ### Entities
