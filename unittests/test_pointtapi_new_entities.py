@@ -8,9 +8,11 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.bosch.pointtapi_entities import (
+    POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
     POINTTAPI_NUMBER_DESCRIPTIONS,
     POINTTAPI_SELECT_DESCRIPTIONS,
     POINTTAPI_SWITCH_DESCRIPTIONS,
+    BoschPoinTTAPIBinarySensorEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     BoschPoinTTAPINumberEntity,
     BoschPoinTTAPISelectEntity,
@@ -146,6 +148,13 @@ def _switch(coord, key):
     return ent
 
 
+def _binary_sensor(coord, key):
+    desc = next(d for d in POINTTAPI_BINARY_SENSOR_DESCRIPTIONS if d.key == key)
+    ent = BoschPoinTTAPIBinarySensorEntity(coord, "entry1", "uuid1", desc)
+    ent.async_write_ha_state = MagicMock()
+    return ent
+
+
 class TestEntityBehavior:
     def test_away_mode_true_maps_to_on(self):
         coord = _mock_coordinator(
@@ -162,6 +171,18 @@ class TestEntityBehavior:
         ent._handle_coordinator_update()
         assert ent.is_on is False
         assert ent.available is True
+
+    def test_dhw_binary_sensor_on_maps_to_true(self):
+        coord = _mock_coordinator({"/dhwCircuits/dhw1/state": {"value": "on"}})
+        ent = _binary_sensor(coord, "/dhwCircuits/dhw1/state")
+        ent._handle_coordinator_update()
+        assert ent.is_on is True
+
+    def test_dhw_binary_sensor_off_maps_to_false(self):
+        coord = _mock_coordinator({"/dhwCircuits/dhw1/state": {"value": "off"}})
+        ent = _binary_sensor(coord, "/dhwCircuits/dhw1/state")
+        ent._handle_coordinator_update()
+        assert ent.is_on is False
 
     def test_switch_unavailable_when_path_absent(self):
         coord = _mock_coordinator({})
