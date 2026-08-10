@@ -4,6 +4,8 @@ All use CoordinatorEntity; device_info and unique_id follow 2-tuple and entry_id
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -66,6 +68,17 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     """Get key (default 'value') from data[path] if present."""
     obj = data.get(path) if data else None
     return obj.get(key) if isinstance(obj, dict) else None
+
+
+def _decode_zone_name(value: Any) -> str | None:
+    """Decode Bosch zone names, which are returned as base64 UTF-8 strings."""
+    if not isinstance(value, str):
+        return None
+    try:
+        decoded = base64.b64decode(value, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        return value
+    return decoded
 
 
 def _path_available(data: dict[str, Any], path: str) -> bool:
@@ -378,7 +391,9 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
         # Name zn2+ devices after their room ("/zones/znX/name") when known;
         # zn1 keeps the bare "Heating Zone" name existing installs have.
-        zname = _val(coordinator.data or {}, f"/zones/{zone_id}/name")
+        zname = _decode_zone_name(
+            _val(coordinator.data or {}, f"/zones/{zone_id}/name")
+        )
         suffix = (
             f" {zname}"
             if zone_id != "zn1" and isinstance(zname, str) and zname.strip()

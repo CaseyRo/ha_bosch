@@ -7,7 +7,10 @@ import pytest
 
 from custom_components.bosch.climate import _pointtapi_zone_ids
 from custom_components.bosch.pointtapi_coordinator import _fetch_paths
-from custom_components.bosch.pointtapi_entities import BoschPoinTTAPIClimateEntity
+from custom_components.bosch.pointtapi_entities import (
+    BoschPoinTTAPIClimateEntity,
+    _decode_zone_name,
+)
 
 
 def _coord(data):
@@ -70,6 +73,14 @@ class TestZoneIds:
 
 
 class TestZoneDeviceNaming:
+    def test_decodes_base64_zone_name(self):
+        coord = _coord({"/zones/zn2/name": {"value": "Rmx1ci9aZW50cmFsZQ=="}})
+        ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn2")
+        assert ent.device_info["name"] == "Heating Zone Flur/Zentrale"
+
+    def test_keeps_plain_zone_name(self):
+        assert _decode_zone_name("Küche") == "Küche"
+
     def test_zn2_named_after_room(self):
         coord = _coord({"/zones/zn2/name": {"value": "Küche"}})
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn2")
