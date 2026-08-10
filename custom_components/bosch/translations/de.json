@@ -22,9 +22,6 @@
       "energy_efficiency": {
         "name": "Energieeffizienz"
       },
-      "update_state": {
-        "name": "Firmware-Update-Status"
-      },
       "boost_remaining_time": {
         "name": "Verbleibende Boost-Zeit"
       },

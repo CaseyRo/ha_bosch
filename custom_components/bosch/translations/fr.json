@@ -22,9 +22,6 @@
       "energy_efficiency": {
         "name": "Efficacité énergétique"
       },
-      "update_state": {
-        "name": "État de mise à jour du firmware"
-      },
       "boost_remaining_time": {
         "name": "Temps de boost restant"
       },

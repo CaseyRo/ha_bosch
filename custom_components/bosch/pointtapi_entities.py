@@ -821,11 +821,6 @@ def _pointtapi_sensor_descriptions(
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
-            key="/gateway/update/state",
-            translation_key="update_state",
-            entity_category=EntityCategory.DIAGNOSTIC,
-        ),
-        BoschPoinTTAPISensorEntityDescription(
             key="/heatingCircuits/hc1/boostRemainingTime",
             translation_key="boost_remaining_time",
             device_class=SensorDeviceClass.DURATION,

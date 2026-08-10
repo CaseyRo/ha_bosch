@@ -22,9 +22,6 @@
       "energy_efficiency": {
         "name": "Efektywność energetyczna"
       },
-      "update_state": {
-        "name": "Stan aktualizacji oprogramowania"
-      },
       "boost_remaining_time": {
         "name": "Pozostały czas boostu"
       },

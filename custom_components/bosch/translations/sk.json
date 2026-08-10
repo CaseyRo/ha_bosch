@@ -22,9 +22,6 @@
       "energy_efficiency": {
         "name": "Energetická účinnosť"
       },
-      "update_state": {
-        "name": "Stav aktualizácie firmvéru"
-      },
       "boost_remaining_time": {
         "name": "Zostávajúci čas boostu"
       },
