@@ -80,7 +80,7 @@
         "name": "Actual supply temperature"
       },
       "actual_modulation": {
-        "name": "Actual modulation"
+        "name": "Current modulation power"
       },
       "collector_temperature": {
         "name": "Collector temperature"
@@ -179,8 +179,8 @@
       "dhw_heating": {
         "name": "Status",
         "state": {
-          "false": "Off",
-          "true": "Heating"
+          "off": "Off",
+          "on": "Heating"
         }
       },
       "burner_flame": {
@@ -205,6 +205,9 @@
       },
       "extra_hot_water": {
         "name": "Extra hot water"
+      },
+      "thermal_disinfect": {
+        "name": "Thermal disinfect"
       }
     },
     "select": {

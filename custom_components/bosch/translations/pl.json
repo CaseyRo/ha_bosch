@@ -59,7 +59,7 @@
         "name": "Aktualna temperatura zasilania"
       },
       "actual_modulation": {
-        "name": "Aktualna modulacja"
+        "name": "Obecna moc modulacji"
       },
       "gas_heating_today": {
         "name": "Gaz ogrzewanie dziś"
@@ -152,8 +152,8 @@
       "dhw_heating": {
         "name": "Status",
         "state": {
-          "false": "Wyłączone",
-          "true": "Grzanie"
+          "off": "Wyłączone",
+          "on": "Grzanie"
         }
       },
       "burner_flame": {
@@ -178,6 +178,9 @@
       },
       "extra_hot_water": {
         "name": "Dodatkowa ciepła woda"
+      },
+      "thermal_disinfect": {
+        "name": "Dezynfekcja termiczna"
       }
     },
     "select": {

@@ -59,7 +59,7 @@
         "name": "Temperatura di mandata attuale"
       },
       "actual_modulation": {
-        "name": "Modulazione attuale"
+        "name": "Potenza di modulazione attuale"
       },
       "gas_heating_today": {
         "name": "Gas riscaldamento oggi"
@@ -152,8 +152,8 @@
       "dhw_heating": {
         "name": "Stato",
         "state": {
-          "false": "Spento",
-          "true": "In riscaldamento"
+          "off": "Spento",
+          "on": "In riscaldamento"
         }
       },
       "burner_flame": {
@@ -178,6 +178,9 @@
       },
       "extra_hot_water": {
         "name": "Acqua calda aggiuntiva"
+      },
+      "thermal_disinfect": {
+        "name": "Disinfezione termica"
       }
     },
     "select": {

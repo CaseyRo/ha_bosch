@@ -1,6 +1,8 @@
 """Tests for v1.0.0 entities: notifications sensor + comfort controls."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,6 +24,10 @@ from custom_components.bosch.pointtapi_entities import (
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
+STRINGS = json.loads((ROOT / "custom_components" / "bosch" / "strings.json").read_text(encoding="utf-8"))
 
 
 # ── Notifications helpers (spec: pointtapi-notifications) ───────────────────
@@ -78,6 +84,19 @@ class TestNotificationsHelpers:
 # ── Description tables (spec: pointtapi-comfort-controls) ───────────────────
 
 
+class TestTranslationCatalog:
+    def test_thermal_disinfect_switch_translation_exists(self):
+        switch = STRINGS["entity"]["switch"]
+        assert switch["thermal_disinfect"]["name"] == "Thermal disinfect"
+
+    def test_dhw_heating_binary_sensor_uses_on_off_state_keys(self):
+        state = STRINGS["entity"]["binary_sensor"]["dhw_heating"]["state"]
+        assert state["on"] == "Heating"
+        assert state["off"] == "Off"
+        assert "false" not in state
+        assert "true" not in state
+
+
 class TestComfortControlDescriptions:
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
@@ -88,7 +107,6 @@ class TestComfortControlDescriptions:
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/thermalDisinfect/state"]
         assert d.translation_key == "thermal_disinfect"
-        assert d.name is not None
 
     def test_away_mode_switch_described(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}

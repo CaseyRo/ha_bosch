@@ -59,7 +59,7 @@
         "name": "Température de départ réelle"
       },
       "actual_modulation": {
-        "name": "Modulation réelle"
+        "name": "Puissance de modulation actuelle"
       },
       "gas_heating_today": {
         "name": "Gaz chauffage aujourd'hui"
@@ -152,8 +152,8 @@
       "dhw_heating": {
         "name": "Statut",
         "state": {
-          "false": "Arrêt",
-          "true": "En chauffe"
+          "off": "Arrêt",
+          "on": "En chauffe"
         }
       },
       "burner_flame": {
@@ -178,6 +178,9 @@
       },
       "extra_hot_water": {
         "name": "Eau chaude supplémentaire"
+      },
+      "thermal_disinfect": {
+        "name": "Désinfection thermique"
       }
     },
     "select": {

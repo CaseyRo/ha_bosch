@@ -59,7 +59,7 @@
         "name": "Actuele aanvoertemperatuur"
       },
       "actual_modulation": {
-        "name": "Actuele modulatie"
+        "name": "Huidige modulatiedruk"
       },
       "gas_heating_today": {
         "name": "Gas verwarming vandaag"
@@ -152,8 +152,8 @@
       "dhw_heating": {
         "name": "Status",
         "state": {
-          "false": "Uit",
-          "true": "Verwarmt"
+          "off": "Uit",
+          "on": "Verwarmt"
         }
       },
       "burner_flame": {
@@ -178,6 +178,9 @@
       },
       "extra_hot_water": {
         "name": "Extra warm water"
+      },
+      "thermal_disinfect": {
+        "name": "Thermische desinfectie"
       }
     },
     "select": {

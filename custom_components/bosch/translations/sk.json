@@ -59,7 +59,7 @@
         "name": "Aktuálna teplota prívodu"
       },
       "actual_modulation": {
-        "name": "Aktuálna modulácia"
+        "name": "Aktuálna výkonová modulácia"
       },
       "gas_heating_today": {
         "name": "Plyn vykurovanie dnes"
@@ -152,8 +152,8 @@
       "dhw_heating": {
         "name": "Stav",
         "state": {
-          "false": "Vypnuté",
-          "true": "Vykurovanie"
+          "off": "Vypnuté",
+          "on": "Vykurovanie"
         }
       },
       "burner_flame": {
@@ -178,6 +178,9 @@
       },
       "extra_hot_water": {
         "name": "Dodatočný ohrev vody"
+      },
+      "thermal_disinfect": {
+        "name": "Termická dezinfekcia"
       }
     },
     "select": {

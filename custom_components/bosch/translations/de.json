@@ -59,7 +59,7 @@
         "name": "Aktuelle Vorlauftemperatur"
       },
       "actual_modulation": {
-        "name": "Aktuelle Modulation"
+        "name": "Aktuelle Modulationsleistung"
       },
       "gas_heating_today": {
         "name": "Gas Heizung heute"
@@ -152,8 +152,8 @@
       "dhw_heating": {
         "name": "Status",
         "state": {
-          "false": "Aus",
-          "true": "Heizt"
+          "off": "Aus",
+          "on": "Heizt"
         }
       },
       "burner_flame": {
@@ -178,6 +178,9 @@
       },
       "extra_hot_water": {
         "name": "Zusätzliches Warmwasser"
+      },
+      "thermal_disinfect": {
+        "name": "Thermische Desinfektion"
       }
     },
     "select": {
