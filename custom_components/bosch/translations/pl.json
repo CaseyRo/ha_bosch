@@ -1,6 +1,12 @@
 {
   "entity": {
     "sensor": {
+      "outdoor_temperature": {
+        "name": "Temperatura zewnętrzna"
+      },
+      "indoor_humidity": {
+        "name": "Wilgotność wewnętrzna"
+      },
       "system_pressure": {
         "name": "Ciśnienie w systemie"
       },
@@ -10,8 +16,17 @@
       "update_state": {
         "name": "Stan aktualizacji oprogramowania"
       },
+      "boost_remaining_time": {
+        "name": "Pozostały czas boostu"
+      },
       "firmware_version": {
         "name": "Wersja oprogramowania"
+      },
+      "supply_temp_setpoint": {
+        "name": "Ustawiona temperatura zasilania"
+      },
+      "boiler_power": {
+        "name": "Moc kotła"
       },
       "blocking_error": {
         "name": "Błąd blokujący",
@@ -96,6 +111,30 @@
       }
     },
     "number": {
+      "boost_temperature": {
+        "name": "Temperatura boostu"
+      },
+      "boost_duration": {
+        "name": "Czas trwania boostu"
+      },
+      "max_supply_temperature": {
+        "name": "Maksymalna temperatura zasilania"
+      },
+      "min_supply_temperature": {
+        "name": "Minimalna temperatura zasilania"
+      },
+      "night_setback_threshold": {
+        "name": "Próg obniżenia nocnego"
+      },
+      "summer_winter_threshold": {
+        "name": "Próg lato/zima"
+      },
+      "room_influence": {
+        "name": "Wpływ pomieszczenia"
+      },
+      "temperature_calibration_offset": {
+        "name": "Przesunięcie kalibracji temperatury"
+      },
       "extra_hot_water_duration": {
         "name": "Czas dodatkowego podgrzewania wody"
       },
@@ -118,6 +157,9 @@
       }
     },
     "switch": {
+      "boost": {
+        "name": "Boost"
+      },
       "auto_firmware_update": {
         "name": "Automatyczna aktualizacja oprogramowania"
       },
@@ -132,12 +174,35 @@
       }
     },
     "select": {
+      "zone_mode": {
+        "name": "Tryb strefy",
+        "state": {
+          "clock": "Zegar",
+          "manual": "Ręczny"
+        }
+      },
       "pir_sensitivity": {
         "name": "Czułość czujnika ruchu",
         "state": {
           "high": "Wysoka",
           "medium": "Średnia",
           "low": "Niska"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Tryb lato/zima",
+        "state": {
+          "off": "Wyłączone",
+          "automatic": "Automatyczny",
+          "manual": "Ręczny"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Tryb przełączania nocnego",
+        "state": {
+          "off": "Wyłączone",
+          "automatic": "Automatyczny",
+          "reduced": "Ograniczony"
         }
       },
       "thermal_disinfect_weekday": {

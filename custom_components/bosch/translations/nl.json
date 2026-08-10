@@ -1,6 +1,12 @@
 {
   "entity": {
     "sensor": {
+      "outdoor_temperature": {
+        "name": "Buitentemperatuur"
+      },
+      "indoor_humidity": {
+        "name": "Binnenluchtvochtigheid"
+      },
       "system_pressure": {
         "name": "Systeemdruk"
       },
@@ -10,8 +16,17 @@
       "update_state": {
         "name": "Status firmware-update"
       },
+      "boost_remaining_time": {
+        "name": "Resterende boosttijd"
+      },
       "firmware_version": {
         "name": "Firmwareversie"
+      },
+      "supply_temp_setpoint": {
+        "name": "Setpoint aanvoertemperatuur"
+      },
+      "boiler_power": {
+        "name": "Ketelvermogen"
       },
       "blocking_error": {
         "name": "Blokkerende fout",
@@ -96,6 +111,30 @@
       }
     },
     "number": {
+      "boost_temperature": {
+        "name": "Boosttemperatuur"
+      },
+      "boost_duration": {
+        "name": "Boostduur"
+      },
+      "max_supply_temperature": {
+        "name": "Maximale aanvoertemperatuur"
+      },
+      "min_supply_temperature": {
+        "name": "Minimale aanvoertemperatuur"
+      },
+      "night_setback_threshold": {
+        "name": "Drempel voor nachtverlaging"
+      },
+      "summer_winter_threshold": {
+        "name": "Zomer/winterdrempel"
+      },
+      "room_influence": {
+        "name": "Ruimteeninvloed"
+      },
+      "temperature_calibration_offset": {
+        "name": "Kalibratie-offset temperatuur"
+      },
       "extra_hot_water_duration": {
         "name": "Duur extra warm water"
       },
@@ -118,6 +157,9 @@
       }
     },
     "switch": {
+      "boost": {
+        "name": "Boost"
+      },
       "auto_firmware_update": {
         "name": "Automatische firmware-update"
       },
@@ -132,12 +174,35 @@
       }
     },
     "select": {
+      "zone_mode": {
+        "name": "Zonemodus",
+        "state": {
+          "clock": "Klok",
+          "manual": "Handmatig"
+        }
+      },
       "pir_sensitivity": {
         "name": "Gevoeligheid van de bewegingssensor",
         "state": {
           "high": "Hoog",
           "medium": "Gemiddeld",
           "low": "Laag"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Zomer/wintermodus",
+        "state": {
+          "off": "Uit",
+          "automatic": "Automatisch",
+          "manual": "Handmatig"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Nacht-schakelmodus",
+        "state": {
+          "off": "Uit",
+          "automatic": "Automatisch",
+          "reduced": "Gereduceerd"
         }
       },
       "thermal_disinfect_weekday": {

@@ -138,6 +138,30 @@
       }
     },
     "number": {
+      "boost_temperature": {
+        "name": "Boost temperature"
+      },
+      "boost_duration": {
+        "name": "Boost duration"
+      },
+      "max_supply_temperature": {
+        "name": "Max supply temperature"
+      },
+      "min_supply_temperature": {
+        "name": "Min supply temperature"
+      },
+      "night_setback_threshold": {
+        "name": "Night setback threshold"
+      },
+      "summer_winter_threshold": {
+        "name": "Summer/winter threshold"
+      },
+      "room_influence": {
+        "name": "Room influence"
+      },
+      "temperature_calibration_offset": {
+        "name": "Temperature calibration offset"
+      },
       "extra_hot_water_duration": {
         "name": "Extra hot water duration"
       },
@@ -160,6 +184,9 @@
       }
     },
     "switch": {
+      "boost": {
+        "name": "Boost"
+      },
       "auto_firmware_update": {
         "name": "Auto firmware update"
       },
@@ -174,12 +201,35 @@
       }
     },
     "select": {
+      "zone_mode": {
+        "name": "Zone mode",
+        "state": {
+          "clock": "Clock",
+          "manual": "Manual"
+        }
+      },
       "pir_sensitivity": {
         "name": "PIR sensitivity",
         "state": {
           "high": "High",
           "medium": "Medium",
           "low": "Low"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Summer/winter mode",
+        "state": {
+          "off": "Off",
+          "automatic": "Automatic",
+          "manual": "Manual"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Night switch mode",
+        "state": {
+          "off": "Off",
+          "automatic": "Automatic",
+          "reduced": "Reduced"
         }
       },
       "thermal_disinfect_weekday": {

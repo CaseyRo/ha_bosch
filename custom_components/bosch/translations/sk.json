@@ -1,6 +1,12 @@
 {
   "entity": {
     "sensor": {
+      "outdoor_temperature": {
+        "name": "Vonkajšia teplota"
+      },
+      "indoor_humidity": {
+        "name": "Vnútorná vlhkosť"
+      },
       "system_pressure": {
         "name": "Systémový tlak"
       },
@@ -10,8 +16,17 @@
       "update_state": {
         "name": "Stav aktualizácie firmvéru"
       },
+      "boost_remaining_time": {
+        "name": "Zostávajúci čas boostu"
+      },
       "firmware_version": {
         "name": "Verzia firmvéru"
+      },
+      "supply_temp_setpoint": {
+        "name": "Nastavená teplota prívodu"
+      },
+      "boiler_power": {
+        "name": "Výkon kotla"
       },
       "blocking_error": {
         "name": "Blokujúca chyba",
@@ -96,6 +111,30 @@
       }
     },
     "number": {
+      "boost_temperature": {
+        "name": "Teplota boostu"
+      },
+      "boost_duration": {
+        "name": "Trvanie boostu"
+      },
+      "max_supply_temperature": {
+        "name": "Maximálna teplota prívodu"
+      },
+      "min_supply_temperature": {
+        "name": "Minimálna teplota prívodu"
+      },
+      "night_setback_threshold": {
+        "name": "Prahová hodnota nočného zníženia"
+      },
+      "summer_winter_threshold": {
+        "name": "Prahová hodnota leto/zima"
+      },
+      "room_influence": {
+        "name": "Vplyv miestnosti"
+      },
+      "temperature_calibration_offset": {
+        "name": "Posun kalibrácie teploty"
+      },
       "extra_hot_water_duration": {
         "name": "Trvanie dodatočného ohrevu vody"
       },
@@ -118,6 +157,9 @@
       }
     },
     "switch": {
+      "boost": {
+        "name": "Boost"
+      },
       "auto_firmware_update": {
         "name": "Automatická aktualizácia firmvéru"
       },
@@ -132,12 +174,35 @@
       }
     },
     "select": {
+      "zone_mode": {
+        "name": "Režim zóny",
+        "state": {
+          "clock": "Hodiny",
+          "manual": "Manuálny"
+        }
+      },
       "pir_sensitivity": {
         "name": "Citlivosť detektora pohybu",
         "state": {
           "high": "Vysoká",
           "medium": "Stredná",
           "low": "Nízka"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Režim leto/zima",
+        "state": {
+          "off": "Vypnuté",
+          "automatic": "Automatický",
+          "manual": "Manuálny"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Nočný prepínací režim",
+        "state": {
+          "off": "Vypnuté",
+          "automatic": "Automatický",
+          "reduced": "Redukovaný"
         }
       },
       "thermal_disinfect_weekday": {

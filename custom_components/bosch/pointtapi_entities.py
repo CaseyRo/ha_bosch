@@ -929,7 +929,7 @@ class BoschPoinTTAPISensorEntity(
 POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     NumberEntityDescription(
         key="/heatingCircuits/hc1/boostTemperature",
-        name="Boost temperature",
+        translation_key="boost_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=5.0,
         native_max_value=30.0,
@@ -937,7 +937,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/boostDuration",
-        name="Boost duration",
+        translation_key="boost_duration",
         native_unit_of_measurement=UnitOfTime.HOURS,
         native_min_value=0.5,
         native_max_value=24.0,
@@ -946,7 +946,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     # ── Heating circuit configuration (2b) ───────────────────────────────────
     NumberEntityDescription(
         key="/heatingCircuits/hc1/maxSupply",
-        name="Max supply temperature",
+        translation_key="max_supply_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=25.0,
         native_max_value=90.0,
@@ -955,7 +955,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/minSupply",
-        name="Min supply temperature",
+        translation_key="min_supply_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=10.0,
         native_max_value=90.0,
@@ -964,7 +964,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/nightThreshold",
-        name="Night setback threshold",
+        translation_key="night_setback_threshold",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=5.0,
         native_max_value=30.0,
@@ -973,7 +973,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/suWiThreshold",
-        name="Summer/winter threshold",
+        translation_key="summer_winter_threshold",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=10.0,
         native_max_value=30.0,
@@ -982,7 +982,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/roomInfluence",
-        name="Room influence",
+        translation_key="room_influence",
         native_min_value=0.0,
         native_max_value=3.0,
         native_step=1.0,
@@ -990,7 +990,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/system/sensors/temperatures/offset",
-        name="Temperature calibration offset",
+        translation_key="temperature_calibration_offset",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=-5.0,
         native_max_value=5.0,
@@ -1105,7 +1105,8 @@ class BoschPoinTTAPIBoostSwitchEntity(
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Boost"
+    _attr_translation_key = "boost"
+    _attr_name = None
 
     def __init__(
         self,
@@ -1585,7 +1586,7 @@ def _select_state_key(value: str) -> str:
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
         key="/zones/zn1/userMode",
-        name="Zone mode",
+        translation_key="zone_mode",
         options=("clock", "manual"),
     ),
     BoschPoinTTAPISelectEntityDescription(
@@ -1596,13 +1597,13 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/heatingCircuits/hc1/suWiSwitchMode",
-        name="Summer/winter mode",
+        translation_key="summer_winter_mode",
         options=("off", "automatic", "manual"),
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/heatingCircuits/hc1/nightSwitchMode",
-        name="Night switch mode",
+        translation_key="night_switch_mode",
         options=("off", "automatic", "reduced"),
         entity_category=EntityCategory.CONFIG,
     ),

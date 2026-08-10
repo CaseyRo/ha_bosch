@@ -1,6 +1,12 @@
 {
   "entity": {
     "sensor": {
+      "outdoor_temperature": {
+        "name": "Température extérieure"
+      },
+      "indoor_humidity": {
+        "name": "Humidité intérieure"
+      },
       "system_pressure": {
         "name": "Pression du système"
       },
@@ -10,8 +16,17 @@
       "update_state": {
         "name": "État de mise à jour du firmware"
       },
+      "boost_remaining_time": {
+        "name": "Temps de boost restant"
+      },
       "firmware_version": {
         "name": "Version du firmware"
+      },
+      "supply_temp_setpoint": {
+        "name": "Consigne de température d’alimentation"
+      },
+      "boiler_power": {
+        "name": "Puissance de la chaudière"
       },
       "blocking_error": {
         "name": "Erreur bloquante",
@@ -96,6 +111,30 @@
       }
     },
     "number": {
+      "boost_temperature": {
+        "name": "Température de boost"
+      },
+      "boost_duration": {
+        "name": "Durée de boost"
+      },
+      "max_supply_temperature": {
+        "name": "Température maximale de départ"
+      },
+      "min_supply_temperature": {
+        "name": "Température minimale de départ"
+      },
+      "night_setback_threshold": {
+        "name": "Seuil de réduction nocturne"
+      },
+      "summer_winter_threshold": {
+        "name": "Seuil été/hiver"
+      },
+      "room_influence": {
+        "name": "Influence de la pièce"
+      },
+      "temperature_calibration_offset": {
+        "name": "Décalage de calibration de température"
+      },
       "extra_hot_water_duration": {
         "name": "Durée d'eau chaude supplémentaire"
       },
@@ -118,6 +157,9 @@
       }
     },
     "switch": {
+      "boost": {
+        "name": "Boost"
+      },
       "auto_firmware_update": {
         "name": "Mise à jour automatique du firmware"
       },
@@ -132,12 +174,35 @@
       }
     },
     "select": {
+      "zone_mode": {
+        "name": "Mode de zone",
+        "state": {
+          "clock": "Horloge",
+          "manual": "Manuel"
+        }
+      },
       "pir_sensitivity": {
         "name": "Sensibilité du détecteur de mouvement",
         "state": {
           "high": "Élevée",
           "medium": "Moyenne",
           "low": "Faible"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Mode été/hiver",
+        "state": {
+          "off": "Désactivé",
+          "automatic": "Automatique",
+          "manual": "Manuel"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Mode de commutation nocturne",
+        "state": {
+          "off": "Désactivé",
+          "automatic": "Automatique",
+          "reduced": "Réduit"
         }
       },
       "thermal_disinfect_weekday": {
