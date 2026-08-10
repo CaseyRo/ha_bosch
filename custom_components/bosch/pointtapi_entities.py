@@ -40,7 +40,6 @@ from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature,
 from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -80,19 +79,6 @@ def _decode_zone_name(value: Any) -> str | None:
     except (binascii.Error, UnicodeDecodeError, ValueError):
         return value
     return decoded
-
-
-def _sync_device_name(hass: Any, identifiers: set[tuple[str, str]], new_name: str | None) -> None:
-    """Rename an existing Home Assistant device entry when the zone name changes."""
-    if not hass or not identifiers or not new_name:
-        return
-    registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers=identifiers)
-    if device is None:
-        return
-    if device.name == new_name:
-        return
-    registry.async_update_device(device.id, new_name=new_name)
 
 
 def _path_available(data: dict[str, Any], path: str) -> bool:
@@ -437,23 +423,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._zone_id = zone_id
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
-        # Name devices after their room ("/zones/znX/name") when known.
-        suffix = f" {zname}" if isinstance(zname, str) and zname.strip() else None
         self._attr_device_info = _resolve_device_info(
             uuid, f"/zones/{zone_id}", data=coordinator.data or {}
         )
         self._current: float | None = None
         self._target: float | None = None
         self._hvac_mode = HVACMode.HEAT
-
-    async def async_added_to_hass(self) -> None:
-        """Sync the device name once the entity is attached to Home Assistant."""
-        await super().async_added_to_hass()
-        if self._attr_device_info is None:
-            return
-        identifiers = self._attr_device_info.get("identifiers", set()) if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "identifiers", set())
-        device_name = self._attr_device_info.get("name") if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "name", None)
-        _sync_device_name(self.hass, set(identifiers), device_name)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -482,16 +457,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             self._hvac_mode = HVACMode.OFF
         else:
             self._hvac_mode = HVACMode.HEAT
-        self._sync_device_name_from_state()
         self.async_write_ha_state()
-
-    def _sync_device_name_from_state(self) -> None:
-        """Rename the linked device if the room-based zone name is available."""
-        if self._attr_device_info is None:
-            return
-        identifiers = self._attr_device_info.get("identifiers", set()) if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "identifiers", set())
-        device_name = self._attr_device_info.get("name") if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "name", None)
-        _sync_device_name(self.hass, set(identifiers), device_name)
 
     @property
     def current_temperature(self) -> float | None:
