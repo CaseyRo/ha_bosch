@@ -14,6 +14,15 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
   and diagnostics translated in all 7 supported languages (en/de/fr/it/nl/pl/sk);
   diagnostic states are translated too (blocking error `false` → "No error" /
   "Pas d'erreur" / "Kein Fehler"). Contributed by @jfhautenauven (#13).
+- **Per-zone valve position sensors** — one diagnostic sensor per zone instead
+  of zn1 only, discovered from each zone's own reference list. Contributed by
+  @jfhautenauven (#14).
+- **Open-window detection per zone** — an enable switch and a window binary
+  sensor per zone, created only when the appliance advertises
+  `openWindowDetection` for that zone. Contributed by @jfhautenauven (#14).
+- **Select robustness** — unknown API values mark the select unavailable
+  instead of showing a ghost state; unsupported options are rejected on write.
+  Contributed by @jfhautenauven (#14).
 
 ### Fixed
 - **Zone device names are human-readable** — the PointT API base64-encodes room
