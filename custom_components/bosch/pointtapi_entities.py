@@ -49,6 +49,13 @@ _LOGGER = logging.getLogger(__name__)
 
 VALUE_KEY = "value"
 
+SOLAR_CIRCUIT_PATHS = (
+    "/solarCircuits/sc1/collectorTemperature",
+    "/solarCircuits/sc1/dhwTankBottomTemperature",
+    "/solarCircuits/sc1/pumpModulation",
+    "/solarCircuits/sc1/totalSolarGain",
+)
+
 # Water heater operation mode mapping: API value <-> user-friendly label
 # API accepts: "ownprogram" (auto/schedule), "Off", "high" (always on at high temp)
 _API_TO_OP = {"ownprogram": "Auto", "Off": "Off", "high": "On"}
@@ -77,6 +84,20 @@ def _path_available(data: dict[str, Any], path: str) -> bool:
     if not isinstance(obj, dict):
         return False
     return obj.get("available") != "false"
+
+
+def _solar_data_available(data: dict[str, Any]) -> bool:
+    """Return whether the first poll contains at least one usable solar value."""
+    for path in SOLAR_CIRCUIT_PATHS:
+        resource = data.get(path) if data else None
+        if (
+            isinstance(resource, dict)
+            and "value" in resource
+            and resource["value"] is not None
+            and resource.get("available") != "false"
+        ):
+            return True
+    return False
 
 
 # ── Device-info routing: single source of truth for all POINTTAPI entities ──
