@@ -1,6 +1,48 @@
 {
   "entity": {
     "sensor": {
+      "system_pressure": {
+        "name": "Systeemdruk"
+      },
+      "wifi_rssi": {
+        "name": "WiFi-signaalsterkte"
+      },
+      "update_state": {
+        "name": "Status firmware-update",
+        "state": {
+          "no update": "Geen update"
+        }
+      },
+      "firmware_version": {
+        "name": "Firmwareversie"
+      },
+      "blocking_error": {
+        "name": "Blokkerende fout",
+        "state": {
+          "false": "Geen fout",
+          "true": "Fout"
+        }
+      },
+      "locking_error": {
+        "name": "Vergrendelingsfout",
+        "state": {
+          "false": "Geen fout",
+          "true": "Fout"
+        }
+      },
+      "maintenance_request": {
+        "name": "Onderhoudsverzoek",
+        "state": {
+          "false": "Niet nodig",
+          "true": "Nodig"
+        }
+      },
+      "display_code": {
+        "name": "Weergavecode"
+      },
+      "cause_code": {
+        "name": "Oorzaakcode"
+      },
       "actual_supply_temperature": {
         "name": "Actuele aanvoertemperatuur"
       },
@@ -56,6 +98,17 @@
         "name": "Laatste thermische desinfectie"
       }
     },
+    "number": {
+      "extra_hot_water_duration": {
+        "name": "Duur extra warm water"
+      },
+      "thermal_disinfect_time": {
+        "name": "Duur thermische desinfectie"
+      },
+      "annual_gas_goal": {
+        "name": "Jaarlijks gasdoel"
+      }
+    },
     "binary_sensor": {
       "dhw_heating": {
         "name": "Verwarmt"
@@ -65,6 +118,42 @@
       },
       "refill_needed": {
         "name": "Bijvullen nodig"
+      }
+    },
+    "switch": {
+      "auto_firmware_update": {
+        "name": "Automatische firmware-update"
+      },
+      "notification_light": {
+        "name": "Meldingslampje"
+      },
+      "away_mode": {
+        "name": "Afwezigheidsmodus"
+      },
+      "extra_hot_water": {
+        "name": "Extra warm water"
+      }
+    },
+    "select": {
+      "pir_sensitivity": {
+        "name": "Gevoeligheid van de bewegingssensor",
+        "state": {
+          "high": "Hoog",
+          "medium": "Gemiddeld",
+          "low": "Laag"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Weekdag thermische desinfectie",
+        "state": {
+          "Mo": "Maandag",
+          "Tu": "Dinsdag",
+          "We": "Woensdag",
+          "Th": "Donderdag",
+          "Fr": "Vrijdag",
+          "Sa": "Zaterdag",
+          "Su": "Zondag"
+        }
       }
     },
     "update": {

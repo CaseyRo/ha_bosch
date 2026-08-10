@@ -1,6 +1,48 @@
 {
   "entity": {
     "sensor": {
+      "system_pressure": {
+        "name": "Systémový tlak"
+      },
+      "wifi_rssi": {
+        "name": "Sila signálu Wi-Fi"
+      },
+      "update_state": {
+        "name": "Stav aktualizácie firmvéru",
+        "state": {
+          "no update": "Žiadna aktualizácia"
+        }
+      },
+      "firmware_version": {
+        "name": "Verzia firmvéru"
+      },
+      "blocking_error": {
+        "name": "Blokujúca chyba",
+        "state": {
+          "false": "Žiadna chyba",
+          "true": "Chyba"
+        }
+      },
+      "locking_error": {
+        "name": "Chyba uzamknutia",
+        "state": {
+          "false": "Žiadna chyba",
+          "true": "Chyba"
+        }
+      },
+      "maintenance_request": {
+        "name": "Požiadavka na údržbu",
+        "state": {
+          "false": "Nie je potrebné",
+          "true": "Potrebné"
+        }
+      },
+      "display_code": {
+        "name": "Zobrazený kód"
+      },
+      "cause_code": {
+        "name": "Kód príčiny"
+      },
       "actual_supply_temperature": {
         "name": "Aktuálna teplota prívodu"
       },
@@ -56,6 +98,17 @@
         "name": "Posledný výsledok termickej dezinfekcie"
       }
     },
+    "number": {
+      "extra_hot_water_duration": {
+        "name": "Trvanie dodatočného ohrevu vody"
+      },
+      "thermal_disinfect_time": {
+        "name": "Trvanie termickej dezinfekcie"
+      },
+      "annual_gas_goal": {
+        "name": "Ročný cieľ spotreby plynu"
+      }
+    },
     "binary_sensor": {
       "dhw_heating": {
         "name": "Ohrev"
@@ -65,6 +118,42 @@
       },
       "refill_needed": {
         "name": "Potrebné doplnenie"
+      }
+    },
+    "switch": {
+      "auto_firmware_update": {
+        "name": "Automatická aktualizácia firmvéru"
+      },
+      "notification_light": {
+        "name": "Kontrolka upozornení"
+      },
+      "away_mode": {
+        "name": "Režim neprítomnosti"
+      },
+      "extra_hot_water": {
+        "name": "Dodatočný ohrev vody"
+      }
+    },
+    "select": {
+      "pir_sensitivity": {
+        "name": "Citlivosť detektora pohybu",
+        "state": {
+          "high": "Vysoká",
+          "medium": "Stredná",
+          "low": "Nízka"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Deň termickej dezinfekcie",
+        "state": {
+          "Mo": "Pondelok",
+          "Tu": "Utorok",
+          "We": "Streda",
+          "Th": "Štvrtok",
+          "Fr": "Piatok",
+          "Sa": "Sobota",
+          "Su": "Nedeľa"
+        }
       }
     },
     "update": {

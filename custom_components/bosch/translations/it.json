@@ -1,6 +1,48 @@
 {
   "entity": {
     "sensor": {
+      "system_pressure": {
+        "name": "Pressione di sistema"
+      },
+      "wifi_rssi": {
+        "name": "Potenza del segnale Wi-Fi"
+      },
+      "update_state": {
+        "name": "Stato aggiornamento firmware",
+        "state": {
+          "no update": "Nessun aggiornamento"
+        }
+      },
+      "firmware_version": {
+        "name": "Versione firmware"
+      },
+      "blocking_error": {
+        "name": "Errore bloccante",
+        "state": {
+          "false": "Nessun errore",
+          "true": "Errore"
+        }
+      },
+      "locking_error": {
+        "name": "Errore di blocco",
+        "state": {
+          "false": "Nessun errore",
+          "true": "Errore"
+        }
+      },
+      "maintenance_request": {
+        "name": "Richiesta di manutenzione",
+        "state": {
+          "false": "Non necessaria",
+          "true": "Necessaria"
+        }
+      },
+      "display_code": {
+        "name": "Codice visualizzato"
+      },
+      "cause_code": {
+        "name": "Codice causa"
+      },
       "actual_supply_temperature": {
         "name": "Temperatura di mandata attuale"
       },
@@ -56,6 +98,17 @@
         "name": "Ultimo risultato disinfezione termica"
       }
     },
+    "number": {
+      "extra_hot_water_duration": {
+        "name": "Durata acqua calda aggiuntiva"
+      },
+      "thermal_disinfect_time": {
+        "name": "Durata disinfezione termica"
+      },
+      "annual_gas_goal": {
+        "name": "Obiettivo annuale del gas"
+      }
+    },
     "binary_sensor": {
       "dhw_heating": {
         "name": "Riscaldamento"
@@ -65,6 +118,42 @@
       },
       "refill_needed": {
         "name": "Riempimento necessario"
+      }
+    },
+    "switch": {
+      "auto_firmware_update": {
+        "name": "Aggiornamento automatico del firmware"
+      },
+      "notification_light": {
+        "name": "Spia di notifica"
+      },
+      "away_mode": {
+        "name": "Modalità assenza"
+      },
+      "extra_hot_water": {
+        "name": "Acqua calda aggiuntiva"
+      }
+    },
+    "select": {
+      "pir_sensitivity": {
+        "name": "Sensibilità del rilevatore di movimento",
+        "state": {
+          "high": "Alta",
+          "medium": "Media",
+          "low": "Bassa"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Giorno della disinfezione termica",
+        "state": {
+          "Mo": "Lunedì",
+          "Tu": "Martedì",
+          "We": "Mercoledì",
+          "Th": "Giovedì",
+          "Fr": "Venerdì",
+          "Sa": "Sabato",
+          "Su": "Domenica"
+        }
       }
     },
     "update": {

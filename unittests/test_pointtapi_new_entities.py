@@ -61,6 +61,11 @@ class TestNotificationsHelpers:
 
 
 class TestComfortControlDescriptions:
+    def test_extra_dhw_switch_uses_translation_key(self):
+        descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
+        d = descs["/dhwCircuits/dhw1/extraDhw"]
+        assert d.translation_key == "extra_hot_water"
+
     def test_away_mode_switch_described(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/system/awayMode/enabled"]

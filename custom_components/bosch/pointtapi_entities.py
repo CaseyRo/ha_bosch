@@ -963,7 +963,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/energy/gas/annualGoal",
-        name="Annual gas goal",
+        translation_key="annual_gas_goal",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         native_min_value=0.0,
         native_max_value=1000000.0,
@@ -973,7 +973,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
     NumberEntityDescription(
         key="/dhwCircuits/dhw1/extraDhwDuration",
-        name="Extra hot water duration",
+        translation_key="extra_hot_water_duration",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         native_min_value=15.0,
         native_max_value=2880.0,
@@ -981,7 +981,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/time",
-        name="Thermal disinfect time",
+        translation_key="thermal_disinfect_time",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         native_min_value=0.0,
         native_max_value=1439.0,
@@ -1429,12 +1429,12 @@ class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
 POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
     BoschPoinTTAPISwitchEntityDescription(
         key="/gateway/update/enabled",
-        name="Auto firmware update",
+        translation_key="auto_firmware_update",
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/gateway/notificationLight/enabled",
-        name="Notification light",
+        translation_key="notification_light",
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISwitchEntityDescription(
@@ -1446,11 +1446,11 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
     # ── v1.0.0 comfort controls (writeable: 1 confirmed, boost-probe-notes.md) ──
     BoschPoinTTAPISwitchEntityDescription(
         key="/system/awayMode/enabled",
-        name="Away mode",
+        translation_key="away_mode",
     ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/dhwCircuits/dhw1/extraDhw",
-        name="Extra hot water",
+        translation_key="extra_hot_water",
         on_value="on",
         off_value="off",
     ),
@@ -1549,7 +1549,7 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/gateway/pirSensitivity",
-        name="PIR sensitivity",
+        translation_key="pir_sensitivity",
         options=("high", "medium", "low"),
         entity_category=EntityCategory.CONFIG,
     ),
@@ -1568,7 +1568,7 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
     # ── v1.0.0: DHW thermal disinfect weekday (API values, verified live) ────
     BoschPoinTTAPISelectEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/weekDay",
-        name="Thermal disinfect weekday",
+        translation_key="thermal_disinfect_weekday",
         options=("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
         entity_category=EntityCategory.CONFIG,
     ),
