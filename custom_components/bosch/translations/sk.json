@@ -8,10 +8,7 @@
         "name": "Sila signálu Wi-Fi"
       },
       "update_state": {
-        "name": "Stav aktualizácie firmvéru",
-        "state": {
-          "no update": "Žiadna aktualizácia"
-        }
+        "name": "Stav aktualizácie firmvéru"
       },
       "firmware_version": {
         "name": "Verzia firmvéru"
@@ -146,13 +143,13 @@
       "thermal_disinfect_weekday": {
         "name": "Deň termickej dezinfekcie",
         "state": {
-          "Mo": "Pondelok",
-          "Tu": "Utorok",
-          "We": "Streda",
-          "Th": "Štvrtok",
-          "Fr": "Piatok",
-          "Sa": "Sobota",
-          "Su": "Nedeľa"
+          "mo": "Pondelok",
+          "tu": "Utorok",
+          "we": "Streda",
+          "th": "Štvrtok",
+          "fr": "Piatok",
+          "sa": "Sobota",
+          "su": "Nedeľa"
         }
       }
     },

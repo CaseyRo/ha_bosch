@@ -8,10 +8,7 @@
         "name": "Puissance du signal Wi-Fi"
       },
       "update_state": {
-        "name": "État de mise à jour du firmware",
-        "state": {
-          "no update": "Aucune mise à jour"
-        }
+        "name": "État de mise à jour du firmware"
       },
       "firmware_version": {
         "name": "Version du firmware"
@@ -146,13 +143,13 @@
       "thermal_disinfect_weekday": {
         "name": "Jour de la désinfection thermique",
         "state": {
-          "Mo": "Lundi",
-          "Tu": "Mardi",
-          "We": "Mercredi",
-          "Th": "Jeudi",
-          "Fr": "Vendredi",
-          "Sa": "Samedi",
-          "Su": "Dimanche"
+          "mo": "Lundi",
+          "tu": "Mardi",
+          "we": "Mercredi",
+          "th": "Jeudi",
+          "fr": "Vendredi",
+          "sa": "Samedi",
+          "su": "Dimanche"
         }
       }
     },

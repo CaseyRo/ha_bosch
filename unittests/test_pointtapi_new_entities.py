@@ -207,5 +207,24 @@ class TestEntityBehavior:
         ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
         ent.async_write_ha_state = MagicMock()
         ent._handle_coordinator_update()
-        assert ent.current_option == "Mo"
+        assert ent.current_option == "mo"
         assert ent.available is True
+
+    @pytest.mark.asyncio
+    async def test_select_weekday_maps_display_value_to_api_value(self):
+        desc = next(
+            d for d in POINTTAPI_SELECT_DESCRIPTIONS
+            if d.key == "/dhwCircuits/dhw1/thermalDisinfect/weekDay"
+        )
+        coord = _mock_coordinator(
+            {"/dhwCircuits/dhw1/thermalDisinfect/weekDay": {"value": "Mo"}}
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        await ent.async_select_option("mo")
+
+        coord.client.put.assert_awaited_once_with(
+            "/dhwCircuits/dhw1/thermalDisinfect/weekDay", "Mo"
+        )
+        assert ent.current_option == "mo"

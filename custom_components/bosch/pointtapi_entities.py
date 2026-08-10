@@ -1541,6 +1541,11 @@ class BoschPoinTTAPISelectEntityDescription(SelectEntityDescription):
     options: tuple[str, ...] = ()
 
 
+def _select_state_key(value: str) -> str:
+    """Return the translation-safe Home Assistant representation of an option."""
+    return value.strip().lower().replace(" ", "_")
+
+
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
         key="/zones/zn1/userMode",
@@ -1597,14 +1602,17 @@ class BoschPoinTTAPISelectEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
-        self._attr_options = list(description.options)
+        self._attr_options = [_select_state_key(option) for option in description.options]
         self._attr_device_info = _resolve_device_info(uuid, description.key)
         self._current_option: str | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        self._current_option = _val(data, self._path)
+        raw_option = _val(data, self._path)
+        self._current_option = (
+            _select_state_key(raw_option) if isinstance(raw_option, str) else None
+        )
         self.async_write_ha_state()
 
     @property
@@ -1620,8 +1628,16 @@ class BoschPoinTTAPISelectEntity(
 
     async def async_select_option(self, option: str) -> None:
         try:
-            await self.coordinator.client.put(self._path, option)
-            self._current_option = option
+            api_option = next(
+                (
+                    raw_option
+                    for raw_option in self.entity_description.options
+                    if _select_state_key(raw_option) == option
+                ),
+                option,
+            )
+            await self.coordinator.client.put(self._path, api_option)
+            self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:

@@ -17,10 +17,7 @@
         "name": "WiFi signal strength"
       },
       "update_state": {
-        "name": "Firmware update state",
-        "state": {
-          "no update": "No update"
-        }
+        "name": "Firmware update state"
       },
       "boost_remaining_time": {
         "name": "Boost remaining time"
@@ -188,13 +185,13 @@
       "thermal_disinfect_weekday": {
         "name": "Thermal disinfect weekday",
         "state": {
-          "Mo": "Monday",
-          "Tu": "Tuesday",
-          "We": "Wednesday",
-          "Th": "Thursday",
-          "Fr": "Friday",
-          "Sa": "Saturday",
-          "Su": "Sunday"
+          "mo": "Monday",
+          "tu": "Tuesday",
+          "we": "Wednesday",
+          "th": "Thursday",
+          "fr": "Friday",
+          "sa": "Saturday",
+          "su": "Sunday"
         }
       }
     },

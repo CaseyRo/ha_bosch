@@ -8,10 +8,7 @@
         "name": "WLAN-Signalstärke"
       },
       "update_state": {
-        "name": "Firmware-Update-Status",
-        "state": {
-          "no update": "Kein Update"
-        }
+        "name": "Firmware-Update-Status"
       },
       "firmware_version": {
         "name": "Firmwareversion"
@@ -146,13 +143,13 @@
       "thermal_disinfect_weekday": {
         "name": "Wochentag der thermischen Desinfektion",
         "state": {
-          "Mo": "Montag",
-          "Tu": "Dienstag",
-          "We": "Mittwoch",
-          "Th": "Donnerstag",
-          "Fr": "Freitag",
-          "Sa": "Samstag",
-          "Su": "Sonntag"
+          "mo": "Montag",
+          "tu": "Dienstag",
+          "we": "Mittwoch",
+          "th": "Donnerstag",
+          "fr": "Freitag",
+          "sa": "Samstag",
+          "su": "Sonntag"
         }
       }
     },

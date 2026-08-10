@@ -8,10 +8,7 @@
         "name": "WiFi-signaalsterkte"
       },
       "update_state": {
-        "name": "Status firmware-update",
-        "state": {
-          "no update": "Geen update"
-        }
+        "name": "Status firmware-update"
       },
       "firmware_version": {
         "name": "Firmwareversie"
@@ -146,13 +143,13 @@
       "thermal_disinfect_weekday": {
         "name": "Weekdag thermische desinfectie",
         "state": {
-          "Mo": "Maandag",
-          "Tu": "Dinsdag",
-          "We": "Woensdag",
-          "Th": "Donderdag",
-          "Fr": "Vrijdag",
-          "Sa": "Zaterdag",
-          "Su": "Zondag"
+          "mo": "Maandag",
+          "tu": "Dinsdag",
+          "we": "Woensdag",
+          "th": "Donderdag",
+          "fr": "Vrijdag",
+          "sa": "Zaterdag",
+          "su": "Zondag"
         }
       }
     },
