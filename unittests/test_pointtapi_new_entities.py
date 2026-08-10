@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from homeassistant.exceptions import HomeAssistantError
+
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_NUMBER_DESCRIPTIONS,
     POINTTAPI_SELECT_DESCRIPTIONS,
@@ -141,7 +143,11 @@ class TestEntityBehavior:
 
     @pytest.mark.asyncio
     async def test_switch_put_failure_keeps_device_state(self):
-        """4xx on PUT: warn, refresh, and do NOT adopt the attempted value."""
+        """4xx on PUT: raise, refresh, and do NOT adopt the attempted value.
+
+        The raise is the point — a swallowed failure made HA report the service
+        call as successful while the entity silently bounced back.
+        """
         coord = _mock_coordinator(
             {"/system/awayMode/enabled": {"value": "false"}}
         )
@@ -149,7 +155,8 @@ class TestEntityBehavior:
         ent = _switch(coord, "/system/awayMode/enabled")
         ent._handle_coordinator_update()
 
-        await ent.async_turn_on()
+        with pytest.raises(HomeAssistantError, match="400"):
+            await ent.async_turn_on()
 
         assert ent.is_on is False  # still the device-reported state
         coord.async_request_refresh.assert_awaited()

@@ -23,15 +23,19 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from homeassistant.components.climate import HVACMode
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_NUMBER_DESCRIPTIONS,
     POINTTAPI_SELECT_DESCRIPTIONS,
+    POINTTAPI_SWITCH_DESCRIPTIONS,
     BoschPoinTTAPIClimateEntity,
+    BoschPoinTTAPIGenericSwitchEntity,
     BoschPoinTTAPINumberEntity,
     BoschPoinTTAPISelectEntity,
     BoschPoinTTAPISensorEntity,
     BoschPoinTTAPIWaterHeaterEntity,
+    _path_available,
     _pointtapi_sensor_descriptions,
 )
 
@@ -290,3 +294,84 @@ class TestWaterHeaterRobustness:
         )
         assert ent.current_operation == "On"  # optimistic, label form
         coord.async_request_refresh.assert_awaited_once()
+
+
+class TestDeviceReportedAvailability:
+    """A path can be present and writeable yet rejected by the appliance.
+
+    Real CT200 payload (probe 2026-06-05): /dhwCircuits/dhw1/extraDhw returns
+    writeable:1 but available:"false" — HA used to render an operable switch
+    the boiler would refuse. Presence alone is not operability.
+    """
+
+    KEY = "/dhwCircuits/dhw1/extraDhw"
+
+    def _switch(self, coord):
+        desc = next(d for d in POINTTAPI_SWITCH_DESCRIPTIONS if d.key == self.KEY)
+        ent = BoschPoinTTAPIGenericSwitchEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+        return ent
+
+    def test_helper_gates_on_available_flag_only(self):
+        assert _path_available({"/p": {"value": "off"}}, "/p") is True
+        assert _path_available({"/p": {"available": "true"}}, "/p") is True
+        assert _path_available({"/p": {"available": "false"}}, "/p") is False
+        # `used` is false on paths that still accept writes -> must not gate
+        assert _path_available({"/p": {"used": "false"}}, "/p") is True
+        # absent path / non-dict payload
+        assert _path_available({}, "/p") is False
+        assert _path_available({"/p": "scalar"}, "/p") is False
+
+    def test_switch_unavailable_when_appliance_says_so(self):
+        """The exact extraDhw payload that silently failed in the field."""
+        coord = _coord(
+            {self.KEY: {"writeable": 1, "used": "false", "available": "false", "value": "off"}}
+        )
+        assert self._switch(coord).available is False
+
+    def test_switch_available_when_appliance_permits(self):
+        coord = _coord(
+            {self.KEY: {"writeable": 1, "used": "true", "available": "true", "value": "off"}}
+        )
+        assert self._switch(coord).available is True
+
+
+class TestWriteFailuresSurface:
+    """A rejected PUT must reach the user, not vanish into a log warning.
+
+    Previously every write swallowed its exception, so HA reported the service
+    call as successful and the entity just bounced back on the next refresh.
+    """
+
+    @pytest.mark.asyncio
+    async def test_switch_turn_on_raises_on_put_failure(self):
+        key = "/dhwCircuits/dhw1/extraDhw"
+        coord = _coord({key: {"value": "off"}})
+        coord.client.put = AsyncMock(side_effect=RuntimeError("PUT failed: 400"))
+        desc = next(d for d in POINTTAPI_SWITCH_DESCRIPTIONS if d.key == key)
+        ent = BoschPoinTTAPIGenericSwitchEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        with pytest.raises(HomeAssistantError, match="400"):
+            await ent.async_turn_on()
+        coord.async_request_refresh.assert_awaited_once()  # state still re-synced
+
+    @pytest.mark.asyncio
+    async def test_water_heater_set_operation_mode_raises_on_put_failure(self):
+        coord = _coord({"/dhwCircuits/dhw1/operationMode": {"value": "Off"}})
+        coord.client.put = AsyncMock(side_effect=RuntimeError("PUT failed: 400"))
+        ent = _water_heater(coord)
+
+        with pytest.raises(HomeAssistantError, match="400"):
+            await ent.async_set_operation_mode("On")
+        coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_auth_failure_still_propagates_for_reauth(self):
+        """ConfigEntryAuthFailed must pass through untouched to trigger reauth."""
+        coord = _coord({"/dhwCircuits/dhw1/operationMode": {"value": "Off"}})
+        coord.client.put = AsyncMock(side_effect=ConfigEntryAuthFailed("401"))
+        ent = _water_heater(coord)
+
+        with pytest.raises(ConfigEntryAuthFailed):
+            await ent.async_set_operation_mode("On")

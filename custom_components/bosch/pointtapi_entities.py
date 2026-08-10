@@ -37,7 +37,7 @@ from homeassistant.components.water_heater import (
 from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
 from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -59,6 +59,24 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     """Get key (default 'value') from data[path] if present."""
     obj = data.get(path) if data else None
     return obj.get(key) if isinstance(obj, dict) else None
+
+
+def _path_available(data: dict[str, Any], path: str) -> bool:
+    """True unless the appliance reports this function as unavailable.
+
+    Bosch payloads carry string flags, e.g. /dhwCircuits/dhw1/extraDhw on the
+    CT200 returns {"writeable": 1, "used": "false", "available": "false"} —
+    writeable, but the appliance rejects the PUT. Path presence alone is not
+    enough to decide a control is operable.
+
+    ponytail: gates on `available` only. `used: "false"` also appears on paths
+    that do accept writes (e.g. hc1/buildingHeatup), so keying on it would
+    disable more entities than intended. Absent flag = no opinion = available.
+    """
+    obj = data.get(path) if data else None
+    if not isinstance(obj, dict):
+        return False
+    return obj.get("available") != "false"
 
 
 # ── Device-info routing: single source of truth for all POINTTAPI entities ──
@@ -411,8 +429,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI set temperature failed: %s", err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI set temperature failed: {err}"
+            ) from err
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set HVAC mode via POINTTAPI PUT (task 6.2).
@@ -432,8 +452,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             except ConfigEntryAuthFailed:
                 raise
             except Exception as err:
-                _LOGGER.warning("POINTTAPI set hvac_mode OFF failed: %s", err)
                 await self.coordinator.async_request_refresh()
+                raise HomeAssistantError(
+                    f"POINTTAPI set hvac_mode OFF failed: {err}"
+                ) from err
             return
         value = "weather"
         path = "/heatingCircuits/hc1/control"
@@ -445,8 +467,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI set hvac_mode failed: %s", err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI set hvac_mode failed: {err}"
+            ) from err
 
 
 class BoschPoinTTAPIWaterHeaterEntity(
@@ -530,8 +554,10 @@ class BoschPoinTTAPIWaterHeaterEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI water heater set temperature failed: %s", err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI water heater set temperature failed: {err}"
+            ) from err
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set operation mode via POINTTAPI PUT."""
@@ -548,8 +574,10 @@ class BoschPoinTTAPIWaterHeaterEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI water heater set operation_mode failed: %s", err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI water heater set operation_mode failed: {err}"
+            ) from err
 
 
 # Curated POINTTAPI sensors: path, name, device_class, entity_category
@@ -992,8 +1020,10 @@ class BoschPoinTTAPINumberEntity(
 
     @property
     def available(self) -> bool:
-        """Unavailable when the path is absent from coordinator data."""
-        return super().available and self._path in (self.coordinator.data or {})
+        """Unavailable when the path is absent, or the appliance reports it so."""
+        return super().available and _path_available(
+            self.coordinator.data or {}, self._path
+        )
 
     @property
     def native_value(self) -> float | None:
@@ -1009,8 +1039,10 @@ class BoschPoinTTAPINumberEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI set %s failed: %s", self._path, err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI set {self._path} failed: {err}"
+            ) from err
 
 
 # ── Switch entity (boost toggle) ─────────────────────────────────────────────
@@ -1298,9 +1330,9 @@ class BoschPoinTTAPIBoostSwitchEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI boost turn_on failed: %s", err)
             self._boost_set_by_us = False
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(f"POINTTAPI boost turn_on failed: {err}") from err
 
     async def _auto_off_callback(self, _now) -> None:
         """Auto-off timer fired — turn boost off after the configured duration."""
@@ -1358,9 +1390,9 @@ class BoschPoinTTAPIBoostSwitchEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI boost turn_off failed: %s", err)
             self._boost_set_by_us = False
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(f"POINTTAPI boost turn_off failed: {err}") from err
 
     @callback
     def _clear_boost_flag(self) -> None:
@@ -1451,8 +1483,10 @@ class BoschPoinTTAPIGenericSwitchEntity(
 
     @property
     def available(self) -> bool:
-        """Unavailable when the path is absent from coordinator data."""
-        return super().available and self._path in (self.coordinator.data or {})
+        """Unavailable when the path is absent, or the appliance reports it so."""
+        return super().available and _path_available(
+            self.coordinator.data or {}, self._path
+        )
 
     @property
     def is_on(self) -> bool:
@@ -1467,8 +1501,10 @@ class BoschPoinTTAPIGenericSwitchEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI switch %s turn_on failed: %s", self._path, err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI switch {self._path} turn_on failed: {err}"
+            ) from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         try:
@@ -1479,8 +1515,10 @@ class BoschPoinTTAPIGenericSwitchEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI switch %s turn_off failed: %s", self._path, err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI switch {self._path} turn_off failed: {err}"
+            ) from err
 
 
 # ── Select entity ─────────────────────────────────────────────────────────────
@@ -1561,8 +1599,10 @@ class BoschPoinTTAPISelectEntity(
 
     @property
     def available(self) -> bool:
-        """Unavailable when the path is absent from coordinator data."""
-        return super().available and self._path in (self.coordinator.data or {})
+        """Unavailable when the path is absent, or the appliance reports it so."""
+        return super().available and _path_available(
+            self.coordinator.data or {}, self._path
+        )
 
     @property
     def current_option(self) -> str | None:
@@ -1577,8 +1617,10 @@ class BoschPoinTTAPISelectEntity(
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            _LOGGER.warning("POINTTAPI select %s failed: %s", self._path, err)
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI select {self._path} failed: {err}"
+            ) from err
 
 
 # ── Binary-sensor surface for POINTTAPI ─────────────────────────────────────
