@@ -7,6 +7,9 @@
       "indoor_humidity": {
         "name": "Binnenluchtvochtigheid"
       },
+      "valve_position": {
+        "name": "Klepstand"
+      },
       "system_pressure": {
         "name": "Systeemdruk"
       },

@@ -7,6 +7,9 @@
       "indoor_humidity": {
         "name": "Innenraumluftfeuchtigkeit"
       },
+      "valve_position": {
+        "name": "Ventilstellung"
+      },
       "system_pressure": {
         "name": "Systemdruck"
       },

@@ -7,6 +7,9 @@
       "indoor_humidity": {
         "name": "Umidità interna"
       },
+      "valve_position": {
+        "name": "Posizione della valvola"
+      },
       "system_pressure": {
         "name": "Pressione di sistema"
       },

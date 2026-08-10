@@ -7,6 +7,9 @@
       "indoor_humidity": {
         "name": "Humidité intérieure"
       },
+      "valve_position": {
+        "name": "Position de la vanne"
+      },
       "system_pressure": {
         "name": "Pression du système"
       },

@@ -7,6 +7,9 @@
       "indoor_humidity": {
         "name": "Vnútorná vlhkosť"
       },
+      "valve_position": {
+        "name": "Poloha ventilu"
+      },
       "system_pressure": {
         "name": "Systémový tlak"
       },
