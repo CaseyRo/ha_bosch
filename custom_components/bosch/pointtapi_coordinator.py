@@ -31,7 +31,7 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/dhwCircuits/dhw1/operationMode",
     "/system/sensors",
     "/system/appliance",
-    "/zones/zn1",
+    "/zones",  # expanded to one walk root per discovered zone in _fetch_paths
     "/energy",
     "/energy/history",
     "/energy/historyHourly",
@@ -95,6 +95,33 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
     return first
 
 
+async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
+    """GET /zones and return one walk root per zone ("/zones/zn1", ...).
+
+    Multi-zone gateways (ETRVs paired to rooms) list every zone here; walking
+    each one as a root gives it the same fetch depth zn1 always had. Falls
+    back to ["/zones/zn1"] when the listing is missing or fails, preserving
+    single-zone behavior.
+    """
+    try:
+        resp = await client.get("/zones")
+        if isinstance(resp, dict):
+            roots = [
+                r[ID_KEY]
+                for r in (resp.get(REFERENCES_KEY) or [])
+                if isinstance(r, dict) and r.get(ID_KEY)
+            ]
+            if roots:
+                return roots
+    except ConfigEntryAuthFailed:
+        _LOGGER.debug("POINTTAPI 401/403 on /zones, assuming single zone")
+    except Exception as err:
+        _LOGGER.debug(
+            "POINTTAPI /zones listing unavailable (%s), assuming single zone", err
+        )
+    return ["/zones/zn1"]
+
+
 async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
@@ -103,7 +130,10 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     some sub-resources may be forbidden without the token being invalid.
     """
     data: dict[str, Any] = {}
-    for root in POINTTAPI_COORDINATOR_ROOTS:
+    roots: list[str] = []
+    for r in POINTTAPI_COORDINATOR_ROOTS:
+        roots.extend(await _zone_roots(client) if r == "/zones" else [r])
+    for root in roots:
         if root == "/energy/historyHourly":
             try:
                 merged = await _fetch_history_hourly_all(client)

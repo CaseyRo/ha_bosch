@@ -29,6 +29,20 @@ from .pointtapi_entities import BoschPoinTTAPIClimateEntity
 _LOGGER = logging.getLogger(__name__)
 
 
+def _pointtapi_zone_ids(data: dict) -> list[str]:
+    """Zone ids with a heating setpoint in coordinator data; ["zn1"] fallback.
+
+    Filtering on temperatureHeatingSetpoint skips unconfigured zone slots
+    (allowedZones can list more zones than actually exist).
+    """
+    ids = {
+        p.split("/")[2]
+        for p in data
+        if p.startswith("/zones/") and p.endswith("/temperatureHeatingSetpoint")
+    }
+    return sorted(ids, key=lambda z: (len(z), z)) or ["zn1"]
+
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch thermostat from a config entry."""
     data = config_entry.runtime_data
@@ -36,11 +50,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = data.coordinator
         if coordinator:
             uuid = config_entry.data.get(UUID)
-            async_add_entities([
+            async_add_entities(
                 BoschPoinTTAPIClimateEntity(
-                    coordinator, config_entry.entry_id, uuid, zone_id="zn1"
+                    coordinator, config_entry.entry_id, uuid, zone_id=zid
                 )
-            ])
+                for zid in _pointtapi_zone_ids(coordinator.data or {})
+            )
         else:
             async_add_entities([])
         return True

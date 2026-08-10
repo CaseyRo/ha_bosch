@@ -331,7 +331,7 @@ def _gas_total_hourly(data: dict[str, Any]) -> float | None:
 
 
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
-    """Climate entity for POINTTAPI zone (zn1): current/setpoint from coordinator.data."""
+    """Climate entity for one POINTTAPI zone: current/setpoint from coordinator.data."""
 
     _attr_has_entity_name = True
     _attr_name = None
@@ -355,7 +355,17 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._zone_id = zone_id
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
-        self._attr_device_info = _resolve_device_info(uuid, f"/zones/{zone_id}")
+        # Name zn2+ devices after their room ("/zones/znX/name") when known;
+        # zn1 keeps the bare "Heating Zone" name existing installs have.
+        zname = _val(coordinator.data or {}, f"/zones/{zone_id}/name")
+        suffix = (
+            f" {zname}"
+            if zone_id != "zn1" and isinstance(zname, str) and zname.strip()
+            else None
+        )
+        self._attr_device_info = _resolve_device_info(
+            uuid, f"/zones/{zone_id}", zone_display_suffix=suffix
+        )
         self._current: float | None = None
         self._target: float | None = None
         self._hvac_mode = HVACMode.HEAT
