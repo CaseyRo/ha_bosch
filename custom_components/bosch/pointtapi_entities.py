@@ -1536,7 +1536,7 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
     ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/state",
-        name="Thermal disinfect",
+        translation_key="thermal_disinfect",
         device_id_suffix="dhw1",
         device_name_override="Water heater",
     ),

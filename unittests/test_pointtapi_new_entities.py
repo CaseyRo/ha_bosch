@@ -82,6 +82,12 @@ class TestComfortControlDescriptions:
         d = descs["/dhwCircuits/dhw1/extraDhw"]
         assert d.translation_key == "extra_hot_water"
 
+    def test_thermal_disinfect_switch_uses_translation_key(self):
+        descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
+        d = descs["/dhwCircuits/dhw1/thermalDisinfect/state"]
+        assert d.translation_key == "thermal_disinfect"
+        assert d.name is not None
+
     def test_away_mode_switch_described(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/system/awayMode/enabled"]
