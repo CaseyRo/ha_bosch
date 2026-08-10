@@ -107,7 +107,10 @@
         "name": "Benachrichtigungen"
       },
       "thermal_disinfect_last_result": {
-        "name": "Letzte thermische Desinfektion"
+        "name": "Letzte thermische Desinfektion",
+        "state": {
+          "done": "Abgeschlossen"
+        }
       }
     },
     "number": {

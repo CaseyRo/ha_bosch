@@ -134,7 +134,10 @@
         "name": "Notifications"
       },
       "thermal_disinfect_last_result": {
-        "name": "Thermal disinfect last result"
+        "name": "Thermal disinfect last result",
+        "state": {
+          "done": "Done"
+        }
       }
     },
     "number": {

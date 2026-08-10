@@ -127,6 +127,12 @@ class TestComfortControlDescriptions:
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         assert "/dhwCircuits/dhw1/thermalDisinfect/lastResult" in descs
 
+    def test_thermal_disinfect_last_result_keeps_the_raw_api_value(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/dhwCircuits/dhw1/thermalDisinfect/lastResult"]
+        assert desc.translation_key == "thermal_disinfect_last_result"
+        assert desc.value_fn is None
+
 
 # ── Entity behavior (value mapping, availability, failure path) ─────────────
 

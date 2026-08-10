@@ -107,7 +107,10 @@
         "name": "Powiadomienia"
       },
       "thermal_disinfect_last_result": {
-        "name": "Ostatni wynik dezynfekcji termicznej"
+        "name": "Ostatni wynik dezynfekcji termicznej",
+        "state": {
+          "done": "Wykonano"
+        }
       }
     },
     "number": {

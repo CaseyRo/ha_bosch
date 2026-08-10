@@ -107,7 +107,10 @@
         "name": "Meldingen"
       },
       "thermal_disinfect_last_result": {
-        "name": "Laatste thermische desinfectie"
+        "name": "Laatste thermische desinfectie",
+        "state": {
+          "done": "Uitgevoerd"
+        }
       }
     },
     "number": {

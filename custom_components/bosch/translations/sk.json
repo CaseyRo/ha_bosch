@@ -107,7 +107,10 @@
         "name": "Upozornenia"
       },
       "thermal_disinfect_last_result": {
-        "name": "Posledný výsledok termickej dezinfekcie"
+        "name": "Posledný výsledok termickej dezinfekcie",
+        "state": {
+          "done": "Vykonané"
+        }
       }
     },
     "number": {
