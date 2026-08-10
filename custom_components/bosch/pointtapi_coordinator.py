@@ -43,6 +43,8 @@ POINTTAPI_COORDINATOR_ROOTS = [
     # Away mode leaf — not reachable via the /system/sensors or
     # /system/appliance reference walks (writeable: 1, verified 2026-06-05).
     "/system/awayMode/enabled",
+    "/programs",
+    "/devices",
 ]
 REFERENCES_KEY = "references"
 ID_KEY = "id"
