@@ -37,6 +37,7 @@ from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPIWaterHeaterEntity,
     _path_available,
     _pointtapi_sensor_descriptions,
+    _solar_data_available,
 )
 
 
@@ -85,6 +86,49 @@ def _water_heater(coord):
 
 
 OUTDOOR = "/system/sensors/temperatures/outdoor_t1"
+
+
+class TestSolarAvailability:
+    def test_unavailable_solar_resources_are_not_usable(self):
+        data = {
+            "/solarCircuits/sc1": {
+                "references": [
+                    {"id": "/solarCircuits/sc1/collectorTemperature"},
+                ],
+            },
+            "/solarCircuits/sc1/collectorTemperature": {
+                "value": 0.0,
+                "used": "false",
+                "available": "false",
+            },
+            "/solarCircuits/sc1/dhwTankBottomTemperature": {
+                "value": 0.0,
+                "used": "false",
+                "available": "false",
+            },
+            "/solarCircuits/sc1/pumpModulation": {
+                "value": 0.0,
+                "used": "false",
+                "available": "false",
+            },
+            "/solarCircuits/sc1/totalSolarGain": {
+                "value": 0.0,
+                "used": "false",
+                "available": "false",
+            },
+        }
+
+        assert _solar_data_available(data) is False
+
+    def test_zero_is_valid_when_solar_resource_is_available(self):
+        data = {
+            "/solarCircuits/sc1/collectorTemperature": {
+                "value": 0.0,
+                "available": "true",
+            }
+        }
+
+        assert _solar_data_available(data) is True
 
 
 # ── Sensor ──────────────────────────────────────────────────────────────────

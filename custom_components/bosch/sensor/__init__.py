@@ -14,6 +14,7 @@ from ..const import CIRCUITS, CONF_PROTOCOL, DOMAIN, POINTTAPI, SIGNAL_BOSCH, UU
 from ..pointtapi_entities import (
     BoschPoinTTAPISensorEntity,
     _pointtapi_sensor_descriptions,
+    _solar_data_available,
 )
 from ..pointtapi_statistics import async_backfill_gas_history
 from .bosch import BoschSensor
@@ -48,11 +49,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             # Conditional solar: skip the four solar-circuit descriptions if the
             # first coordinator refresh returned no usable /solarCircuits/sc1 data.
             # This stops non-solar households from seeing four ghost entities.
-            solar_data = (coordinator.data or {}).get("/solarCircuits/sc1") or {}
-            solar_has_refs = bool(solar_data.get("references"))
+            solar_available = _solar_data_available(coordinator.data or {})
             descriptions = [
                 desc for desc in _pointtapi_sensor_descriptions()
-                if solar_has_refs or not desc.key.startswith("/solarCircuits")
+                if solar_available or not desc.key.startswith("/solarCircuits")
             ]
             entities = [
                 BoschPoinTTAPISensorEntity(
