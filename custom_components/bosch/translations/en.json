@@ -183,6 +183,13 @@
           "on": "Heating"
         }
       },
+      "open_window_detected": {
+        "name": "Open window detected",
+        "state": {
+          "off": "Closed",
+          "on": "Open"
+        }
+      },
       "burner_flame": {
         "name": "Flame"
       },
@@ -205,6 +212,9 @@
       },
       "extra_hot_water": {
         "name": "Extra hot water"
+      },
+      "open_window_detection": {
+        "name": "Open window detection"
       },
       "thermal_disinfect": {
         "name": "Thermal disinfect"

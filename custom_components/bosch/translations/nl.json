@@ -156,6 +156,13 @@
           "on": "Verwarmt"
         }
       },
+      "open_window_detected": {
+        "name": "Open raam gedetecteerd",
+        "state": {
+          "off": "Gesloten",
+          "on": "Open"
+        }
+      },
       "burner_flame": {
         "name": "Vlam"
       },
@@ -178,6 +185,9 @@
       },
       "extra_hot_water": {
         "name": "Extra warm water"
+      },
+      "open_window_detection": {
+        "name": "Open-raamdetectie"
       },
       "thermal_disinfect": {
         "name": "Thermische desinfectie"

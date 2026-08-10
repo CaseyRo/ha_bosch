@@ -156,6 +156,13 @@
           "on": "Grzanie"
         }
       },
+      "open_window_detected": {
+        "name": "Wykryto otwarte okno",
+        "state": {
+          "off": "Zamknięte",
+          "on": "Otwarte"
+        }
+      },
       "burner_flame": {
         "name": "Płomień"
       },
@@ -178,6 +185,9 @@
       },
       "extra_hot_water": {
         "name": "Dodatkowa ciepła woda"
+      },
+      "open_window_detection": {
+        "name": "Wykrywanie otwartego okna"
       },
       "thermal_disinfect": {
         "name": "Dezynfekcja termiczna"

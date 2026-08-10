@@ -21,6 +21,8 @@ from custom_components.bosch.pointtapi_entities import (
     _notification_entries,
     _notifications_attributes,
     _notifications_count,
+    _pointtapi_open_window_binary_sensor_descriptions,
+    _pointtapi_open_window_switch_descriptions,
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
 )
@@ -39,11 +41,29 @@ class TestNotificationsHelpers:
         assert _notifications_count(data) == 0
         assert _notifications_attributes(data) == {"notifications": []}
 
-    def test_zone_valve_sensors_are_discovered_per_zone(self):
+    def test_zone_valve_sensors_are_discovered_from_zone_references(self):
         data = {
-            "/zones/zn1/actualValvePosition": {"value": 0.0},
-            "/zones/zn2/actualValvePosition": {"value": 42.0},
-            "/zones/zn10/actualValvePosition": {"value": 12.0},
+            "/zones/zn1": {
+                "references": [
+                    {"id": "/zones/zn1/actualValvePosition"},
+                    {"id": "/zones/zn1/status"},
+                ]
+            },
+            "/zones/zn2": {
+                "references": [
+                    {"id": "/zones/zn2/actualValvePosition"},
+                ]
+            },
+            "/zones/zn10": {
+                "references": [
+                    {"id": "/zones/zn10/actualValvePosition"},
+                ]
+            },
+            "/zones/zn3": {
+                "references": [
+                    {"id": "/zones/zn3/status"},
+                ]
+            },
         }
 
         descs = _pointtapi_zone_valve_sensor_descriptions(data)
@@ -53,6 +73,40 @@ class TestNotificationsHelpers:
             "/zones/zn10/actualValvePosition",
         ]
         assert descs[1].translation_key == "valve_position"
+
+    def test_open_window_entities_are_discovered_from_zone_references(self):
+        data = {
+            "/zones/zn2": {
+                "references": [
+                    {"id": "/zones/zn2/openWindowDetection"},
+                    {"id": "/zones/zn2/status"},
+                ]
+            },
+            "/zones/zn1": {
+                "references": [
+                    {"id": "/zones/zn1/openWindowDetection"},
+                ]
+            },
+            "/zones/zn10": {
+                "references": [
+                    {"id": "/zones/zn10/status"},
+                ]
+            },
+        }
+
+        switch_descs = _pointtapi_open_window_switch_descriptions(data)
+        binary_descs = _pointtapi_open_window_binary_sensor_descriptions(data)
+
+        assert [desc.key for desc in switch_descs] == [
+            "/zones/zn1/openWindowDetection/enabled",
+            "/zones/zn2/openWindowDetection/enabled",
+        ]
+        assert [desc.key for desc in binary_descs] == [
+            "/zones/zn1/openWindowDetection/status",
+            "/zones/zn2/openWindowDetection/status",
+        ]
+        assert switch_descs[0].translation_key == "open_window_detection"
+        assert binary_descs[0].translation_key == "open_window_detected"
 
     def test_values_key_also_accepted(self):
         """Cloud route on other device types uses 'values' (homecom_alt)."""

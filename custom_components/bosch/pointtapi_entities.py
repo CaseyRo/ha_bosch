@@ -154,6 +154,44 @@ def _zone_id_from_path(path: str) -> str:
     return "zn1"
 
 
+def _zone_ids_with_reference(data: dict[str, Any], reference: str) -> list[str]:
+    """Zone ids whose /zones/{id} references include the given leaf.
+
+    This uses the zone's own reference list as source-of-truth, so optional
+    resources are exposed only when the appliance advertises them.
+    """
+    if not data:
+        return []
+
+    zone_ids: set[str] = set()
+    for path, resource in data.items():
+        if not (
+            isinstance(path, str)
+            and path.startswith("/zones/zn")
+            and path.count("/") == 2
+        ):
+            continue
+        if not isinstance(resource, dict):
+            continue
+
+        zone_id = path.split("/")[2]
+        expected_ref = f"/zones/{zone_id}/{reference}"
+        refs = resource.get("references") or []
+        if any(
+            isinstance(ref, dict) and ref.get("id") == expected_ref
+            for ref in refs
+        ):
+            zone_ids.add(zone_id)
+
+    return sorted(
+        zone_ids,
+        key=lambda zone_id: (
+            int(zone_id[2:]) if zone_id[2:].isdigit() else 999999,
+            zone_id,
+        ),
+    )
+
+
 def pointtapi_zone_ids(data: dict[str, Any]) -> list[str]:
     """Zone ids with a heating setpoint in coordinator data; ["zn1"] fallback.
 
@@ -657,20 +695,7 @@ def _pointtapi_zone_valve_sensor_descriptions(
     if not data:
         return ()
 
-    zone_ids = {
-        path.split("/")[2]
-        for path in data
-        if isinstance(path, str)
-        and path.startswith("/zones/")
-        and path.endswith("/actualValvePosition")
-    }
-    ordered_zone_ids = sorted(
-        zone_ids,
-        key=lambda zone_id: (
-            int(zone_id[2:]) if zone_id[2:].isdigit() else 999999,
-            zone_id,
-        ),
-    )
+    ordered_zone_ids = _zone_ids_with_reference(data, "actualValvePosition")
     return tuple(
         BoschPoinTTAPISensorEntityDescription(
             key=f"/zones/{zone_id}/actualValvePosition",
@@ -679,6 +704,68 @@ def _pointtapi_zone_valve_sensor_descriptions(
             entity_category=EntityCategory.DIAGNOSTIC,
         )
         for zone_id in ordered_zone_ids
+    )
+
+
+def _pointtapi_open_window_switch_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
+    """Return per-zone open-window detection enable switches.
+
+    Switches are created only when the zone references include
+    /zones/{id}/openWindowDetection.
+    """
+    if not data:
+        return ()
+
+    zone_ids = _zone_ids_with_reference(data, "openWindowDetection")
+    return tuple(
+        BoschPoinTTAPISwitchEntityDescription(
+            key=f"/zones/{zone_id}/openWindowDetection/enabled",
+            translation_key="open_window_detection",
+            on_value="on",
+            off_value="off",
+            entity_category=EntityCategory.CONFIG,
+        )
+        for zone_id in zone_ids
+    )
+
+
+def _open_window_status(data: dict[str, Any], path: str) -> bool | None:
+    """Map open-window status values to a boolean.
+
+    Bosch zone status reports "open" or "closed".
+    """
+    raw = _val(data, path)
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value == "open":
+            return True
+        if value == "closed":
+            return False
+    return None
+
+
+def _pointtapi_open_window_binary_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPIBinarySensorEntityDescription", ...]:
+    """Return per-zone open-window detection status binary sensors.
+
+    Sensors are created only when the zone references include
+    /zones/{id}/openWindowDetection.
+    """
+    if not data:
+        return ()
+
+    zone_ids = _zone_ids_with_reference(data, "openWindowDetection")
+    return tuple(
+        BoschPoinTTAPIBinarySensorEntityDescription(
+            key=f"/zones/{zone_id}/openWindowDetection/status",
+            translation_key="open_window_detected",
+            device_class=BinarySensorDeviceClass.WINDOW,
+            value_fn=lambda d, p=f"/zones/{zone_id}/openWindowDetection/status": _open_window_status(d, p),
+        )
+        for zone_id in zone_ids
     )
 
 

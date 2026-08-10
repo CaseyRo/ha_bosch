@@ -156,6 +156,13 @@
           "on": "In riscaldamento"
         }
       },
+      "open_window_detected": {
+        "name": "Finestra aperta rilevata",
+        "state": {
+          "off": "Chiusa",
+          "on": "Aperta"
+        }
+      },
       "burner_flame": {
         "name": "Fiamma"
       },
@@ -178,6 +185,9 @@
       },
       "extra_hot_water": {
         "name": "Acqua calda aggiuntiva"
+      },
+      "open_window_detection": {
+        "name": "Rilevamento finestra aperta"
       },
       "thermal_disinfect": {
         "name": "Disinfezione termica"

@@ -156,6 +156,13 @@
           "on": "Vykurovanie"
         }
       },
+      "open_window_detected": {
+        "name": "Zistené otvorené okno",
+        "state": {
+          "off": "Zatvorené",
+          "on": "Otvorené"
+        }
+      },
       "burner_flame": {
         "name": "Plameň"
       },
@@ -178,6 +185,9 @@
       },
       "extra_hot_water": {
         "name": "Dodatočný ohrev vody"
+      },
+      "open_window_detection": {
+        "name": "Detekcia otvoreného okna"
       },
       "thermal_disinfect": {
         "name": "Termická dezinfekcia"
