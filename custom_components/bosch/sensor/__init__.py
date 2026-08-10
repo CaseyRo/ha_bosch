@@ -71,7 +71,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             if not solar_available:
                 _remove_solar_registry_entries(hass, uuid)
             descriptions = [
-                desc for desc in _pointtapi_sensor_descriptions()
+                desc
+                for desc in _pointtapi_sensor_descriptions(coordinator.data or {})
                 if solar_available or not desc.key.startswith("/solarCircuits")
             ]
             entities = [

@@ -18,6 +18,7 @@ from custom_components.bosch.pointtapi_entities import (
     _notifications_attributes,
     _notifications_count,
     _pointtapi_sensor_descriptions,
+    _pointtapi_zone_valve_sensor_descriptions,
 )
 
 
@@ -29,6 +30,21 @@ class TestNotificationsHelpers:
         data = {"/notifications": {"id": "/notifications", "value": []}}
         assert _notifications_count(data) == 0
         assert _notifications_attributes(data) == {"notifications": []}
+
+    def test_zone_valve_sensors_are_discovered_per_zone(self):
+        data = {
+            "/zones/zn1/actualValvePosition": {"value": 0.0},
+            "/zones/zn2/actualValvePosition": {"value": 42.0},
+            "/zones/zn10/actualValvePosition": {"value": 12.0},
+        }
+
+        descs = _pointtapi_zone_valve_sensor_descriptions(data)
+        assert [desc.key for desc in descs] == [
+            "/zones/zn1/actualValvePosition",
+            "/zones/zn2/actualValvePosition",
+            "/zones/zn10/actualValvePosition",
+        ]
+        assert descs[1].translation_key == "valve_position"
 
     def test_values_key_also_accepted(self):
         """Cloud route on other device types uses 'values' (homecom_alt)."""

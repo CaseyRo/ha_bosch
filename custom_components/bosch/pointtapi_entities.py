@@ -684,10 +684,44 @@ class BoschPoinTTAPIWaterHeaterEntity(
             ) from err
 
 
+def _pointtapi_zone_valve_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return valve-position sensor descriptions for every zone present in data."""
+    if not data:
+        return ()
+
+    zone_ids = {
+        path.split("/")[2]
+        for path in data
+        if isinstance(path, str)
+        and path.startswith("/zones/")
+        and path.endswith("/actualValvePosition")
+    }
+    ordered_zone_ids = sorted(
+        zone_ids,
+        key=lambda zone_id: (
+            int(zone_id[2:]) if zone_id[2:].isdigit() else 999999,
+            zone_id,
+        ),
+    )
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/actualValvePosition",
+            translation_key="valve_position",
+            native_unit_of_measurement="%",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        )
+        for zone_id in ordered_zone_ids
+    )
+
+
 # Curated POINTTAPI sensors: path, name, device_class, entity_category
-def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+def _pointtapi_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
     """Return all curated POINTTAPI sensor descriptions."""
-    return (
+    descriptions = [
         # ── Existing sensors ─────────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
             key="/system/sensors/temperatures/outdoor_t1",
@@ -700,12 +734,6 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             translation_key="indoor_humidity",
             device_class=SensorDeviceClass.HUMIDITY,
             native_unit_of_measurement="%",
-        ),
-        BoschPoinTTAPISensorEntityDescription(
-            key="/zones/zn1/actualValvePosition",
-            translation_key="valve_position",
-            native_unit_of_measurement="%",
-            entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/system/appliance/systemPressure",
@@ -912,7 +940,9 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             translation_key="thermal_disinfect_last_result",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
-    )
+    ]
+    descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
+    return tuple(descriptions)
 
 
 class BoschPoinTTAPISensorEntity(
