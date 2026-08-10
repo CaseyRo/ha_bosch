@@ -389,16 +389,11 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._zone_id = zone_id
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
-        # Name zn2+ devices after their room ("/zones/znX/name") when known;
-        # zn1 keeps the bare "Heating Zone" name existing installs have.
+        # Name devices after their room ("/zones/znX/name") when known.
         zname = _decode_zone_name(
             _val(coordinator.data or {}, f"/zones/{zone_id}/name")
         )
-        suffix = (
-            f" {zname}"
-            if zone_id != "zn1" and isinstance(zname, str) and zname.strip()
-            else None
-        )
+        suffix = f" {zname}" if isinstance(zname, str) and zname.strip() else None
         self._attr_device_info = _resolve_device_info(
             uuid, f"/zones/{zone_id}", zone_display_suffix=suffix
         )

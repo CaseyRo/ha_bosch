@@ -64,8 +64,8 @@ def test_multizone_zn2_routes_to_its_own_device() -> None:
     assert info["name"] == "Heating Zone zn2"
 
 
-def test_zn1_single_zone_drops_suffix_in_display_name() -> None:
-    """Single-zone installs get a clean 'Heating Zone' display name (no zn1 suffix)."""
+def test_zn1_uses_room_name_when_available() -> None:
+    """Zone 1 should use its decoded room name when Home Assistant has one."""
     info = _resolve_device_info(UUID, "/zones/zn1/temperatureActual")
     assert info["name"] == "Heating Zone"
 

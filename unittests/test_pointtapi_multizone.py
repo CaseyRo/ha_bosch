@@ -88,7 +88,7 @@ class TestZoneDeviceNaming:
         assert ent.device_info["name"] == "Heating Zone Küche"
         assert (("bosch", "uuid1_zn2") in ent.device_info["identifiers"])
 
-    def test_zn1_keeps_bare_name(self):
-        coord = _coord({"/zones/zn1/name": {"value": "Wohnzimmer"}})
+    def test_zn1_uses_decoded_room_name(self):
+        coord = _coord({"/zones/zn1/name": {"value": "U2Fsb24="}})
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
-        assert ent.device_info["name"] == "Heating Zone"
+        assert ent.device_info["name"] == "Heating Zone Salon"
