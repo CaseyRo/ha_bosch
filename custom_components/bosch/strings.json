@@ -41,13 +41,25 @@
         "name": "Gas total this hour"
       },
       "blocking_error": {
-        "name": "Blocking error"
+        "name": "Blocking error",
+        "state": {
+          "false": "No error",
+          "true": "Error"
+        }
       },
       "locking_error": {
-        "name": "Locking error"
+        "name": "Locking error",
+        "state": {
+          "false": "No error",
+          "true": "Error"
+        }
       },
       "maintenance_request": {
-        "name": "Maintenance request"
+        "name": "Maintenance request",
+        "state": {
+          "false": "Not required",
+          "true": "Required"
+        }
       },
       "display_code": {
         "name": "Display code"
@@ -125,6 +137,41 @@
         "name": "Thermal disinfect last result"
       }
     },
+    "number": {
+      "boost_temperature": {
+        "name": "Boost temperature"
+      },
+      "boost_duration": {
+        "name": "Boost duration"
+      },
+      "max_supply_temperature": {
+        "name": "Max supply temperature"
+      },
+      "min_supply_temperature": {
+        "name": "Min supply temperature"
+      },
+      "night_setback_threshold": {
+        "name": "Night setback threshold"
+      },
+      "summer_winter_threshold": {
+        "name": "Summer/winter threshold"
+      },
+      "room_influence": {
+        "name": "Room influence"
+      },
+      "temperature_calibration_offset": {
+        "name": "Temperature calibration offset"
+      },
+      "extra_hot_water_duration": {
+        "name": "Extra hot water duration"
+      },
+      "thermal_disinfect_time": {
+        "name": "Thermal disinfect time"
+      },
+      "annual_gas_goal": {
+        "name": "Annual gas goal"
+      }
+    },
     "binary_sensor": {
       "dhw_heating": {
         "name": "Heating"
@@ -134,6 +181,68 @@
       },
       "refill_needed": {
         "name": "Refill needed"
+      }
+    },
+    "switch": {
+      "boost": {
+        "name": "Boost"
+      },
+      "auto_firmware_update": {
+        "name": "Auto firmware update"
+      },
+      "notification_light": {
+        "name": "Notification light"
+      },
+      "away_mode": {
+        "name": "Away mode"
+      },
+      "extra_hot_water": {
+        "name": "Extra hot water"
+      }
+    },
+    "select": {
+      "zone_mode": {
+        "name": "Zone mode",
+        "state": {
+          "clock": "Clock",
+          "manual": "Manual"
+        }
+      },
+      "pir_sensitivity": {
+        "name": "PIR sensitivity",
+        "state": {
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Summer/winter mode",
+        "state": {
+          "off": "Off",
+          "automatic": "Automatic",
+          "manual": "Manual"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Night switch mode",
+        "state": {
+          "off": "Off",
+          "automatic": "Automatic",
+          "reduced": "Reduced"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Thermal disinfect weekday",
+        "state": {
+          "mo": "Monday",
+          "tu": "Tuesday",
+          "we": "Wednesday",
+          "th": "Thursday",
+          "fr": "Friday",
+          "sa": "Saturday",
+          "su": "Sunday"
+        }
       }
     },
     "update": {

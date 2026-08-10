@@ -1,6 +1,60 @@
 {
   "entity": {
     "sensor": {
+      "outdoor_temperature": {
+        "name": "Außentemperatur"
+      },
+      "indoor_humidity": {
+        "name": "Innenraumluftfeuchtigkeit"
+      },
+      "system_pressure": {
+        "name": "Systemdruck"
+      },
+      "wifi_rssi": {
+        "name": "WLAN-Signalstärke"
+      },
+      "update_state": {
+        "name": "Firmware-Update-Status"
+      },
+      "boost_remaining_time": {
+        "name": "Verbleibende Boost-Zeit"
+      },
+      "firmware_version": {
+        "name": "Firmwareversion"
+      },
+      "supply_temp_setpoint": {
+        "name": "Sollvorlauftemperatur"
+      },
+      "boiler_power": {
+        "name": "Kesselleistung"
+      },
+      "blocking_error": {
+        "name": "Blockierender Fehler",
+        "state": {
+          "false": "Kein Fehler",
+          "true": "Fehler"
+        }
+      },
+      "locking_error": {
+        "name": "Sperrfehler",
+        "state": {
+          "false": "Kein Fehler",
+          "true": "Fehler"
+        }
+      },
+      "maintenance_request": {
+        "name": "Wartungsanforderung",
+        "state": {
+          "false": "Nicht erforderlich",
+          "true": "Erforderlich"
+        }
+      },
+      "display_code": {
+        "name": "Anzeigecode"
+      },
+      "cause_code": {
+        "name": "Ursachencode"
+      },
       "actual_supply_temperature": {
         "name": "Aktuelle Vorlauftemperatur"
       },
@@ -56,6 +110,41 @@
         "name": "Letzte thermische Desinfektion"
       }
     },
+    "number": {
+      "boost_temperature": {
+        "name": "Boost-Temperatur"
+      },
+      "boost_duration": {
+        "name": "Boost-Dauer"
+      },
+      "max_supply_temperature": {
+        "name": "Maximale Vorlauftemperatur"
+      },
+      "min_supply_temperature": {
+        "name": "Minimale Vorlauftemperatur"
+      },
+      "night_setback_threshold": {
+        "name": "Schwellenwert für Nachtabsenkung"
+      },
+      "summer_winter_threshold": {
+        "name": "Sommer/Winter-Schwellwert"
+      },
+      "room_influence": {
+        "name": "Raumeinfluss"
+      },
+      "temperature_calibration_offset": {
+        "name": "Temperaturkalibrierungsversatz"
+      },
+      "extra_hot_water_duration": {
+        "name": "Dauer zusätzlicher Warmwasserbereitung"
+      },
+      "thermal_disinfect_time": {
+        "name": "Dauer der thermischen Desinfektion"
+      },
+      "annual_gas_goal": {
+        "name": "Jährliches Gasziel"
+      }
+    },
     "binary_sensor": {
       "dhw_heating": {
         "name": "Heizung"
@@ -65,6 +154,68 @@
       },
       "refill_needed": {
         "name": "Nachfüllen erforderlich"
+      }
+    },
+    "switch": {
+      "boost": {
+        "name": "Boost"
+      },
+      "auto_firmware_update": {
+        "name": "Automatische Firmware-Aktualisierung"
+      },
+      "notification_light": {
+        "name": "Benachrichtigungslicht"
+      },
+      "away_mode": {
+        "name": "Abwesenheitsmodus"
+      },
+      "extra_hot_water": {
+        "name": "Zusätzliches Warmwasser"
+      }
+    },
+    "select": {
+      "zone_mode": {
+        "name": "Zonenmodus",
+        "state": {
+          "clock": "Uhr",
+          "manual": "Manuell"
+        }
+      },
+      "pir_sensitivity": {
+        "name": "Empfindlichkeit des Bewegungsmelders",
+        "state": {
+          "high": "Hoch",
+          "medium": "Mittel",
+          "low": "Niedrig"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Sommer/Winter-Modus",
+        "state": {
+          "off": "Aus",
+          "automatic": "Automatisch",
+          "manual": "Manuell"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Nacht-Schaltmodus",
+        "state": {
+          "off": "Aus",
+          "automatic": "Automatisch",
+          "reduced": "Reduziert"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Wochentag der thermischen Desinfektion",
+        "state": {
+          "mo": "Montag",
+          "tu": "Dienstag",
+          "we": "Mittwoch",
+          "th": "Donnerstag",
+          "fr": "Freitag",
+          "sa": "Samstag",
+          "su": "Sonntag"
+        }
       }
     },
     "update": {

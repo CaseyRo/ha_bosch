@@ -8,6 +8,8 @@ from bosch_thermostat_client.const import (
     SENSORS,
 )
 from bosch_thermostat_client.const.easycontrol import ENERGY
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from ..const import CIRCUITS, CONF_PROTOCOL, DOMAIN, POINTTAPI, SIGNAL_BOSCH, UUID
@@ -39,6 +41,22 @@ SensorKinds = {
 }
 
 
+def _remove_solar_registry_entries(hass, uuid: str) -> None:
+    """Remove stale Solar entities and device when solar data is unavailable."""
+    device_registry = dr.async_get(hass)
+    solar_device = device_registry.async_get_device(
+        identifiers={(DOMAIN, f"{uuid}_solar")}
+    )
+    if solar_device is None:
+        return
+
+    entity_registry = er.async_get(hass)
+    for entity in list(entity_registry.entities.values()):
+        if entity.device_id == solar_device.id:
+            entity_registry.async_remove(entity.entity_id)
+    device_registry.async_remove_device(solar_device.id)
+
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Bosch Thermostat from a config entry."""
     rt_data = config_entry.runtime_data
@@ -50,6 +68,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             # first coordinator refresh returned no usable /solarCircuits/sc1 data.
             # This stops non-solar households from seeing four ghost entities.
             solar_available = _solar_data_available(coordinator.data or {})
+            if not solar_available:
+                _remove_solar_registry_entries(hass, uuid)
             descriptions = [
                 desc for desc in _pointtapi_sensor_descriptions()
                 if solar_available or not desc.key.startswith("/solarCircuits")

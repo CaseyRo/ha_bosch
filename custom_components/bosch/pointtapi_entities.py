@@ -929,7 +929,7 @@ class BoschPoinTTAPISensorEntity(
 POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     NumberEntityDescription(
         key="/heatingCircuits/hc1/boostTemperature",
-        name="Boost temperature",
+        translation_key="boost_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=5.0,
         native_max_value=30.0,
@@ -937,7 +937,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/boostDuration",
-        name="Boost duration",
+        translation_key="boost_duration",
         native_unit_of_measurement=UnitOfTime.HOURS,
         native_min_value=0.5,
         native_max_value=24.0,
@@ -946,7 +946,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     # ── Heating circuit configuration (2b) ───────────────────────────────────
     NumberEntityDescription(
         key="/heatingCircuits/hc1/maxSupply",
-        name="Max supply temperature",
+        translation_key="max_supply_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=25.0,
         native_max_value=90.0,
@@ -955,7 +955,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/minSupply",
-        name="Min supply temperature",
+        translation_key="min_supply_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=10.0,
         native_max_value=90.0,
@@ -964,7 +964,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/nightThreshold",
-        name="Night setback threshold",
+        translation_key="night_setback_threshold",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=5.0,
         native_max_value=30.0,
@@ -973,7 +973,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/suWiThreshold",
-        name="Summer/winter threshold",
+        translation_key="summer_winter_threshold",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=10.0,
         native_max_value=30.0,
@@ -982,7 +982,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/heatingCircuits/hc1/roomInfluence",
-        name="Room influence",
+        translation_key="room_influence",
         native_min_value=0.0,
         native_max_value=3.0,
         native_step=1.0,
@@ -990,7 +990,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/system/sensors/temperatures/offset",
-        name="Temperature calibration offset",
+        translation_key="temperature_calibration_offset",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=-5.0,
         native_max_value=5.0,
@@ -999,7 +999,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/energy/gas/annualGoal",
-        name="Annual gas goal",
+        translation_key="annual_gas_goal",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         native_min_value=0.0,
         native_max_value=1000000.0,
@@ -1009,7 +1009,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
     NumberEntityDescription(
         key="/dhwCircuits/dhw1/extraDhwDuration",
-        name="Extra hot water duration",
+        translation_key="extra_hot_water_duration",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         native_min_value=15.0,
         native_max_value=2880.0,
@@ -1017,7 +1017,7 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     ),
     NumberEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/time",
-        name="Thermal disinfect time",
+        translation_key="thermal_disinfect_time",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         native_min_value=0.0,
         native_max_value=1439.0,
@@ -1105,7 +1105,8 @@ class BoschPoinTTAPIBoostSwitchEntity(
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Boost"
+    _attr_translation_key = "boost"
+    _attr_name = None
 
     def __init__(
         self,
@@ -1465,12 +1466,12 @@ class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
 POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
     BoschPoinTTAPISwitchEntityDescription(
         key="/gateway/update/enabled",
-        name="Auto firmware update",
+        translation_key="auto_firmware_update",
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/gateway/notificationLight/enabled",
-        name="Notification light",
+        translation_key="notification_light",
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISwitchEntityDescription(
@@ -1482,11 +1483,11 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
     # ── v1.0.0 comfort controls (writeable: 1 confirmed, boost-probe-notes.md) ──
     BoschPoinTTAPISwitchEntityDescription(
         key="/system/awayMode/enabled",
-        name="Away mode",
+        translation_key="away_mode",
     ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/dhwCircuits/dhw1/extraDhw",
-        name="Extra hot water",
+        translation_key="extra_hot_water",
         on_value="on",
         off_value="off",
     ),
@@ -1577,34 +1578,39 @@ class BoschPoinTTAPISelectEntityDescription(SelectEntityDescription):
     options: tuple[str, ...] = ()
 
 
+def _select_state_key(value: str) -> str:
+    """Return the translation-safe Home Assistant representation of an option."""
+    return value.strip().lower().replace(" ", "_")
+
+
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
         key="/zones/zn1/userMode",
-        name="Zone mode",
+        translation_key="zone_mode",
         options=("clock", "manual"),
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/gateway/pirSensitivity",
-        name="PIR sensitivity",
+        translation_key="pir_sensitivity",
         options=("high", "medium", "low"),
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/heatingCircuits/hc1/suWiSwitchMode",
-        name="Summer/winter mode",
+        translation_key="summer_winter_mode",
         options=("off", "automatic", "manual"),
         entity_category=EntityCategory.CONFIG,
     ),
     BoschPoinTTAPISelectEntityDescription(
         key="/heatingCircuits/hc1/nightSwitchMode",
-        name="Night switch mode",
+        translation_key="night_switch_mode",
         options=("off", "automatic", "reduced"),
         entity_category=EntityCategory.CONFIG,
     ),
     # ── v1.0.0: DHW thermal disinfect weekday (API values, verified live) ────
     BoschPoinTTAPISelectEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/weekDay",
-        name="Thermal disinfect weekday",
+        translation_key="thermal_disinfect_weekday",
         options=("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
         entity_category=EntityCategory.CONFIG,
     ),
@@ -1633,14 +1639,17 @@ class BoschPoinTTAPISelectEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
-        self._attr_options = list(description.options)
+        self._attr_options = [_select_state_key(option) for option in description.options]
         self._attr_device_info = _resolve_device_info(uuid, description.key)
         self._current_option: str | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        self._current_option = _val(data, self._path)
+        raw_option = _val(data, self._path)
+        self._current_option = (
+            _select_state_key(raw_option) if isinstance(raw_option, str) else None
+        )
         self.async_write_ha_state()
 
     @property
@@ -1656,8 +1665,16 @@ class BoschPoinTTAPISelectEntity(
 
     async def async_select_option(self, option: str) -> None:
         try:
-            await self.coordinator.client.put(self._path, option)
-            self._current_option = option
+            api_option = next(
+                (
+                    raw_option
+                    for raw_option in self.entity_description.options
+                    if _select_state_key(raw_option) == option
+                ),
+                option,
+            )
+            await self.coordinator.client.put(self._path, api_option)
+            self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
