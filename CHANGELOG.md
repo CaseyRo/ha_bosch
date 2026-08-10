@@ -19,6 +19,11 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
 - **Zone device names are human-readable** — the PointT API base64-encodes room
   names; they are now decoded (`Rmx1ci9aZW50cmFsZQ==` → `Flur/Zentrale`).
   Contributed by @jfhautenauven (#12).
+- **Master zone is named after its room on multi-zone installs** — zn1 (the
+  zone the CT200 itself sits in) kept the bare legacy "Heating Zone" device
+  name while all other zones showed room names, which read as the room being
+  missing (#11). Single-zone installs keep "Heating Zone" unchanged. All
+  entities attached to a zone device now resolve the room name consistently.
 - **No ghost solar entities on non-solar installations** — the four solar
   sensors are only created when a solar resource reports a real, available
   value; stale solar registry entries from earlier versions are removed

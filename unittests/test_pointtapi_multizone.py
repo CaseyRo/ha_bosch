@@ -1,17 +1,15 @@
 """Multi-zone discovery: /zones listing -> one climate entity per zone (issue #11)."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from custom_components.bosch.climate import _pointtapi_zone_ids
 from custom_components.bosch.pointtapi_coordinator import _fetch_paths
-from custom_components.bosch.const import DOMAIN
 from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPIClimateEntity,
     _decode_zone_name,
-    _sync_device_name,
 )
 
 
@@ -75,17 +73,6 @@ class TestZoneIds:
 
 
 class TestZoneDeviceNaming:
-    def test_syncs_existing_device_name_in_registry(self):
-        registry = MagicMock()
-        device = MagicMock(id="dev1", name="Heating Zone")
-        registry.async_get_device.return_value = device
-        hass = MagicMock()
-
-        with patch("custom_components.bosch.pointtapi_entities.dr.async_get", return_value=registry):
-            _sync_device_name(hass, {(DOMAIN, "uuid1_zn1")}, "Heating Zone Salon")
-
-        registry.async_update_device.assert_called_once_with("dev1", new_name="Heating Zone Salon")
-
     def test_decodes_base64_zone_name(self):
         coord = _coord({"/zones/zn2/name": {"value": "Rmx1ci9aZW50cmFsZQ=="}})
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn2")
@@ -101,7 +88,43 @@ class TestZoneDeviceNaming:
         assert ent.device_info["name"] == "Heating Zone Küche"
         assert (("bosch", "uuid1_zn2") in ent.device_info["identifiers"])
 
-    def test_zn1_uses_decoded_room_name(self):
-        coord = _coord({"/zones/zn1/name": {"value": "U2Fsb24="}})
+    def test_zn1_keeps_bare_name_on_single_zone(self):
+        coord = _coord(
+            {
+                "/zones/zn1/name": {"value": "Wohnzimmer"},
+                "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+            }
+        )
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
-        assert ent.device_info["name"] == "Heating Zone Salon"
+        assert ent.device_info["name"] == "Heating Zone"
+
+    def test_zn1_named_after_room_on_multi_zone(self):
+        """Issue #11: on a multi-zone install the master zone (zn1, where the
+        CT200 sits) must carry its room name too — a bare "Heating Zone" among
+        nine room-named devices read as 'living room missing'."""
+        coord = _coord(
+            {
+                "/zones/zn1/name": {"value": "Wohnzimmer"},
+                "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+                "/zones/zn2/name": {"value": "Küche"},
+                "/zones/zn2/temperatureHeatingSetpoint": {"value": 19.0},
+            }
+        )
+        ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
+        assert ent.device_info["name"] == "Heating Zone Wohnzimmer"
+        assert (("bosch", "uuid1_zn1") in ent.device_info["identifiers"])
+
+    def test_zn1_attached_entities_agree_on_device_name(self):
+        """Every entity on the zn1 device must resolve the same name, or the
+        registry name flip-flops with registration order."""
+        from custom_components.bosch.pointtapi_entities import _resolve_device_info
+
+        data = {
+            "/zones/zn1/name": {"value": "Wohnzimmer"},
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+            "/zones/zn2/name": {"value": "Küche"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 19.0},
+        }
+        for path in ("/zones/zn1", "/zones/zn1/actualValvePosition", "/zones/zn1/userMode"):
+            info = _resolve_device_info("uuid1", path, data=data)
+            assert info["name"] == "Heating Zone Wohnzimmer", path
