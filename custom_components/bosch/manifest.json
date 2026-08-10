@@ -11,6 +11,6 @@
   "issue_tracker": "https://github.com/CaseyRo/ha_bosch/issues",
   "loggers": ["custom_components.bosch", "bosch_thermostat_client"],
   "requirements": ["bosch-thermostat-client==0.28.2"],
-  "version": "1.2.0-beta.4",
+  "version": "1.2.0-beta.5",
   "zeroconf": ["_buderus._tcp.local."]
 }
