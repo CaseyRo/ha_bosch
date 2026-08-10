@@ -927,13 +927,17 @@ def _pointtapi_sensor_descriptions(
             translation_key="actual_supply_temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/heatSources/actualModulation",
             translation_key="actual_modulation",
             native_unit_of_measurement="%",
-            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/returnTemperature",
+            translation_key="return_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
         # ── Solar circuit sensors ─────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(

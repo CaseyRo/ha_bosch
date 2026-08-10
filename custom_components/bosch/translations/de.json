@@ -62,7 +62,10 @@
         "name": "Ursachencode"
       },
       "actual_supply_temperature": {
-        "name": "Aktuelle Vorlauftemperatur"
+        "name": "Vorlauftemperatur"
+      },
+      "return_temperature": {
+        "name": "Rücklauftemperatur"
       },
       "actual_modulation": {
         "name": "Aktuelle Modulationsleistung"

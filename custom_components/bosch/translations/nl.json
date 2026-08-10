@@ -62,7 +62,10 @@
         "name": "Oorzaakcode"
       },
       "actual_supply_temperature": {
-        "name": "Actuele aanvoertemperatuur"
+        "name": "Aanvoertemperatuur"
+      },
+      "return_temperature": {
+        "name": "Retourtemperatuur"
       },
       "actual_modulation": {
         "name": "Huidige modulatiedruk"

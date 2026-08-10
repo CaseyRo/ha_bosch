@@ -181,6 +181,11 @@ class TestComfortControlDescriptions:
         d = descs["/gateway/wifi/versionFirmware"]
         assert d.translation_key == "wifi_firmware_version"
 
+    def test_return_temperature_sensor_is_described(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        d = descs["/heatSources/returnTemperature"]
+        assert d.translation_key == "return_temperature"
+
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/extraDhw"]

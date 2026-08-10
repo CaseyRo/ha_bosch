@@ -62,7 +62,10 @@
         "name": "Kód príčiny"
       },
       "actual_supply_temperature": {
-        "name": "Aktuálna teplota prívodu"
+        "name": "Teplota prívodu"
+      },
+      "return_temperature": {
+        "name": "Teplota spiatočky"
       },
       "actual_modulation": {
         "name": "Aktuálna výkonová modulácia"

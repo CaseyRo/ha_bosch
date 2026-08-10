@@ -62,7 +62,10 @@
         "name": "Code cause"
       },
       "actual_supply_temperature": {
-        "name": "Température de départ réelle"
+        "name": "Température de départ"
+      },
+      "return_temperature": {
+        "name": "Température de retour"
       },
       "actual_modulation": {
         "name": "Puissance de modulation actuelle"
@@ -101,7 +104,7 @@
         "name": "Température"
       },
       "boiler_ignition_starts": {
-        "name": "Démarrages d'allumage"
+        "name": "Nombre de démarrages"
       },
       "last_update_check": {
         "name": "Dernière vérification de mise à jour"

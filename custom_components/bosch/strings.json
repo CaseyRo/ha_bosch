@@ -80,7 +80,7 @@
         "name": "Boiler power"
       },
       "actual_supply_temperature": {
-        "name": "Actual supply temperature"
+        "name": "Supply temperature"
       },
       "actual_modulation": {
         "name": "Actual modulation"

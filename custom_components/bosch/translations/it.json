@@ -62,7 +62,10 @@
         "name": "Codice causa"
       },
       "actual_supply_temperature": {
-        "name": "Temperatura di mandata attuale"
+        "name": "Temperatura di mandata"
+      },
+      "return_temperature": {
+        "name": "Temperatura di ritorno"
       },
       "actual_modulation": {
         "name": "Potenza di modulazione attuale"

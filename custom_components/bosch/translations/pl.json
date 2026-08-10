@@ -62,7 +62,10 @@
         "name": "Kod przyczyny"
       },
       "actual_supply_temperature": {
-        "name": "Aktualna temperatura zasilania"
+        "name": "Temperatura zasilania"
+      },
+      "return_temperature": {
+        "name": "Temperatura powrotu"
       },
       "actual_modulation": {
         "name": "Obecna moc modulacji"
