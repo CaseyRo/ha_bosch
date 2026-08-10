@@ -1716,7 +1716,7 @@ class BoschPoinTTAPISelectEntity(
                 option,
             )
             await self.coordinator.client.put(self._path, api_option)
-            self._current_option = option
+            self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:

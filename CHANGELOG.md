@@ -4,6 +4,32 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 testers).
+
+### Added
+- **Multi-zone climate discovery (POINTTAPI)** — the coordinator walks the
+  `/zones` listing instead of hardcoding `/zones/zn1`; one climate entity per
+  discovered zone, each zone device named after its room (#11).
+- **Localized entity names and states** — POINTTAPI switches, numbers, selects
+  and diagnostics translated in all 7 supported languages (en/de/fr/it/nl/pl/sk);
+  diagnostic states are translated too (blocking error `false` → "No error" /
+  "Pas d'erreur" / "Kein Fehler"). Contributed by @jfhautenauven (#13).
+
+### Fixed
+- **Zone device names are human-readable** — the PointT API base64-encodes room
+  names; they are now decoded (`Rmx1ci9aZW50cmFsZQ==` → `Flur/Zentrale`).
+  Contributed by @jfhautenauven (#12).
+- **No ghost solar entities on non-solar installations** — the four solar
+  sensors are only created when a solar resource reports a real, available
+  value; stale solar registry entries from earlier versions are removed
+  automatically on reload. Contributed by @jfhautenauven (#12, #13).
+
+### Breaking
+- **Thermal disinfect weekday select states are lowercase** (`Mo` → `mo`, …) so
+  Home Assistant can translate them for display. Automations calling
+  `select.select_option` with the old capitalized values must switch to
+  lowercase; the value written to the Bosch API is unchanged (#13).
+
 ## [1.1.0] — 2026-07-10 — Easier OAuth onboarding + malformed-data hardening
 
 ### Added
