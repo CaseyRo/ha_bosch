@@ -1,6 +1,60 @@
 {
   "entity": {
     "sensor": {
+      "outdoor_temperature": {
+        "name": "Temperatura esterna"
+      },
+      "indoor_humidity": {
+        "name": "Umidità interna"
+      },
+      "system_pressure": {
+        "name": "Pressione di sistema"
+      },
+      "wifi_rssi": {
+        "name": "Potenza del segnale Wi-Fi"
+      },
+      "update_state": {
+        "name": "Stato aggiornamento firmware"
+      },
+      "boost_remaining_time": {
+        "name": "Tempo di boost rimanente"
+      },
+      "firmware_version": {
+        "name": "Versione firmware"
+      },
+      "supply_temp_setpoint": {
+        "name": "Setpoint temperatura di mandata"
+      },
+      "boiler_power": {
+        "name": "Potenza della caldaia"
+      },
+      "blocking_error": {
+        "name": "Errore bloccante",
+        "state": {
+          "false": "Nessun errore",
+          "true": "Errore"
+        }
+      },
+      "locking_error": {
+        "name": "Errore di blocco",
+        "state": {
+          "false": "Nessun errore",
+          "true": "Errore"
+        }
+      },
+      "maintenance_request": {
+        "name": "Richiesta di manutenzione",
+        "state": {
+          "false": "Non necessaria",
+          "true": "Necessaria"
+        }
+      },
+      "display_code": {
+        "name": "Codice visualizzato"
+      },
+      "cause_code": {
+        "name": "Codice causa"
+      },
       "actual_supply_temperature": {
         "name": "Temperatura di mandata attuale"
       },
@@ -56,6 +110,41 @@
         "name": "Ultimo risultato disinfezione termica"
       }
     },
+    "number": {
+      "boost_temperature": {
+        "name": "Temperatura di boost"
+      },
+      "boost_duration": {
+        "name": "Durata del boost"
+      },
+      "max_supply_temperature": {
+        "name": "Temperatura massima di mandata"
+      },
+      "min_supply_temperature": {
+        "name": "Temperatura minima di mandata"
+      },
+      "night_setback_threshold": {
+        "name": "Soglia di riduzione notturna"
+      },
+      "summer_winter_threshold": {
+        "name": "Soglia estate/inverno"
+      },
+      "room_influence": {
+        "name": "Influenza ambiente"
+      },
+      "temperature_calibration_offset": {
+        "name": "Offset di calibrazione temperatura"
+      },
+      "extra_hot_water_duration": {
+        "name": "Durata acqua calda aggiuntiva"
+      },
+      "thermal_disinfect_time": {
+        "name": "Durata disinfezione termica"
+      },
+      "annual_gas_goal": {
+        "name": "Obiettivo annuale del gas"
+      }
+    },
     "binary_sensor": {
       "dhw_heating": {
         "name": "Riscaldamento"
@@ -65,6 +154,68 @@
       },
       "refill_needed": {
         "name": "Riempimento necessario"
+      }
+    },
+    "switch": {
+      "boost": {
+        "name": "Boost"
+      },
+      "auto_firmware_update": {
+        "name": "Aggiornamento automatico del firmware"
+      },
+      "notification_light": {
+        "name": "Spia di notifica"
+      },
+      "away_mode": {
+        "name": "Modalità assenza"
+      },
+      "extra_hot_water": {
+        "name": "Acqua calda aggiuntiva"
+      }
+    },
+    "select": {
+      "zone_mode": {
+        "name": "Modalità zona",
+        "state": {
+          "clock": "Orologio",
+          "manual": "Manuale"
+        }
+      },
+      "pir_sensitivity": {
+        "name": "Sensibilità del rilevatore di movimento",
+        "state": {
+          "high": "Alta",
+          "medium": "Media",
+          "low": "Bassa"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Modalità estate/inverno",
+        "state": {
+          "off": "Spento",
+          "automatic": "Automatico",
+          "manual": "Manuale"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Modalità di commutazione notturna",
+        "state": {
+          "off": "Spento",
+          "automatic": "Automatico",
+          "reduced": "Ridotto"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Giorno della disinfezione termica",
+        "state": {
+          "mo": "Lunedì",
+          "tu": "Martedì",
+          "we": "Mercoledì",
+          "th": "Giovedì",
+          "fr": "Venerdì",
+          "sa": "Sabato",
+          "su": "Domenica"
+        }
       }
     },
     "update": {
