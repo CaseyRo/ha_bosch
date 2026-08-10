@@ -23,6 +23,7 @@ from .pointtapi_entities import (
     BoschPoinTTAPIBoostSwitchEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     POINTTAPI_SWITCH_DESCRIPTIONS,
+    _pointtapi_open_window_switch_descriptions,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,11 +41,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                     coordinator, config_entry.entry_id, uuid
                 )
             ]
+            descriptions = list(POINTTAPI_SWITCH_DESCRIPTIONS)
+            descriptions.extend(
+                _pointtapi_open_window_switch_descriptions(
+                    coordinator.data or {}
+                )
+            )
             entities.extend(
                 BoschPoinTTAPIGenericSwitchEntity(
                     coordinator, config_entry.entry_id, uuid, desc
                 )
-                for desc in POINTTAPI_SWITCH_DESCRIPTIONS
+                for desc in descriptions
             )
             async_add_entities(entities)
         else:

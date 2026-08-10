@@ -59,7 +59,7 @@
         "name": "Aktualna temperatura zasilania"
       },
       "actual_modulation": {
-        "name": "Aktualna modulacja"
+        "name": "Obecna moc modulacji"
       },
       "gas_heating_today": {
         "name": "Gaz ogrzewanie dziś"
@@ -107,7 +107,10 @@
         "name": "Powiadomienia"
       },
       "thermal_disinfect_last_result": {
-        "name": "Ostatni wynik dezynfekcji termicznej"
+        "name": "Ostatni wynik dezynfekcji termicznej",
+        "state": {
+          "done": "Wykonano"
+        }
       }
     },
     "number": {
@@ -130,7 +133,7 @@
         "name": "Próg lato/zima"
       },
       "room_influence": {
-        "name": "Wpływ pomieszczenia"
+        "name": "Wpływ temperatury otoczenia"
       },
       "temperature_calibration_offset": {
         "name": "Przesunięcie kalibracji temperatury"
@@ -147,7 +150,18 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Grzanie"
+        "name": "Status",
+        "state": {
+          "off": "Wyłączone",
+          "on": "Grzanie"
+        }
+      },
+      "open_window_detected": {
+        "name": "Wykryto otwarte okno",
+        "state": {
+          "off": "Zamknięte",
+          "on": "Otwarte"
+        }
       },
       "burner_flame": {
         "name": "Płomień"
@@ -171,13 +185,19 @@
       },
       "extra_hot_water": {
         "name": "Dodatkowa ciepła woda"
+      },
+      "open_window_detection": {
+        "name": "Wykrywanie otwartego okna"
+      },
+      "thermal_disinfect": {
+        "name": "Dezynfekcja termiczna"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Tryb strefy",
         "state": {
-          "clock": "Zegar",
+          "clock": "Program",
           "manual": "Ręczny"
         }
       },

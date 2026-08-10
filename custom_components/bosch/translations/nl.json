@@ -59,7 +59,7 @@
         "name": "Actuele aanvoertemperatuur"
       },
       "actual_modulation": {
-        "name": "Actuele modulatie"
+        "name": "Huidige modulatiedruk"
       },
       "gas_heating_today": {
         "name": "Gas verwarming vandaag"
@@ -107,7 +107,10 @@
         "name": "Meldingen"
       },
       "thermal_disinfect_last_result": {
-        "name": "Laatste thermische desinfectie"
+        "name": "Laatste thermische desinfectie",
+        "state": {
+          "done": "Uitgevoerd"
+        }
       }
     },
     "number": {
@@ -130,7 +133,7 @@
         "name": "Zomer/winterdrempel"
       },
       "room_influence": {
-        "name": "Ruimteeninvloed"
+        "name": "Invloed van de omgevingstemperatuur"
       },
       "temperature_calibration_offset": {
         "name": "Kalibratie-offset temperatuur"
@@ -147,7 +150,18 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Verwarmt"
+        "name": "Status",
+        "state": {
+          "off": "Uit",
+          "on": "Verwarmt"
+        }
+      },
+      "open_window_detected": {
+        "name": "Open raam gedetecteerd",
+        "state": {
+          "off": "Gesloten",
+          "on": "Open"
+        }
       },
       "burner_flame": {
         "name": "Vlam"
@@ -171,13 +185,19 @@
       },
       "extra_hot_water": {
         "name": "Extra warm water"
+      },
+      "open_window_detection": {
+        "name": "Open-raamdetectie"
+      },
+      "thermal_disinfect": {
+        "name": "Thermische desinfectie"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Zonemodus",
         "state": {
-          "clock": "Klok",
+          "clock": "Programma",
           "manual": "Handmatig"
         }
       },

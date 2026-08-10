@@ -59,7 +59,7 @@
         "name": "Aktuálna teplota prívodu"
       },
       "actual_modulation": {
-        "name": "Aktuálna modulácia"
+        "name": "Aktuálna výkonová modulácia"
       },
       "gas_heating_today": {
         "name": "Plyn vykurovanie dnes"
@@ -107,7 +107,10 @@
         "name": "Upozornenia"
       },
       "thermal_disinfect_last_result": {
-        "name": "Posledný výsledok termickej dezinfekcie"
+        "name": "Posledný výsledok termickej dezinfekcie",
+        "state": {
+          "done": "Vykonané"
+        }
       }
     },
     "number": {
@@ -130,7 +133,7 @@
         "name": "Prahová hodnota leto/zima"
       },
       "room_influence": {
-        "name": "Vplyv miestnosti"
+        "name": "Vplyv okolitej teploty"
       },
       "temperature_calibration_offset": {
         "name": "Posun kalibrácie teploty"
@@ -147,7 +150,18 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Ohrev"
+        "name": "Stav",
+        "state": {
+          "off": "Vypnuté",
+          "on": "Vykurovanie"
+        }
+      },
+      "open_window_detected": {
+        "name": "Zistené otvorené okno",
+        "state": {
+          "off": "Zatvorené",
+          "on": "Otvorené"
+        }
       },
       "burner_flame": {
         "name": "Plameň"
@@ -171,13 +185,19 @@
       },
       "extra_hot_water": {
         "name": "Dodatočný ohrev vody"
+      },
+      "open_window_detection": {
+        "name": "Detekcia otvoreného okna"
+      },
+      "thermal_disinfect": {
+        "name": "Termická dezinfekcia"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Režim zóny",
         "state": {
-          "clock": "Hodiny",
+          "clock": "Program",
           "manual": "Manuálny"
         }
       },

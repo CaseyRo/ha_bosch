@@ -59,7 +59,7 @@
         "name": "Aktuelle Vorlauftemperatur"
       },
       "actual_modulation": {
-        "name": "Aktuelle Modulation"
+        "name": "Aktuelle Modulationsleistung"
       },
       "gas_heating_today": {
         "name": "Gas Heizung heute"
@@ -107,7 +107,10 @@
         "name": "Benachrichtigungen"
       },
       "thermal_disinfect_last_result": {
-        "name": "Letzte thermische Desinfektion"
+        "name": "Letzte thermische Desinfektion",
+        "state": {
+          "done": "Abgeschlossen"
+        }
       }
     },
     "number": {
@@ -130,7 +133,7 @@
         "name": "Sommer/Winter-Schwellwert"
       },
       "room_influence": {
-        "name": "Raumeinfluss"
+        "name": "Einfluss der Umgebungstemperatur"
       },
       "temperature_calibration_offset": {
         "name": "Temperaturkalibrierungsversatz"
@@ -147,7 +150,18 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Heizung"
+        "name": "Status",
+        "state": {
+          "off": "Aus",
+          "on": "Heizt"
+        }
+      },
+      "open_window_detected": {
+        "name": "Offenes Fenster erkannt",
+        "state": {
+          "off": "Geschlossen",
+          "on": "Offen"
+        }
       },
       "burner_flame": {
         "name": "Flamme"
@@ -171,13 +185,19 @@
       },
       "extra_hot_water": {
         "name": "Zusätzliches Warmwasser"
+      },
+      "open_window_detection": {
+        "name": "Fenster-offen-Erkennung"
+      },
+      "thermal_disinfect": {
+        "name": "Thermische Desinfektion"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Zonenmodus",
         "state": {
-          "clock": "Uhr",
+          "clock": "Programm",
           "manual": "Manuell"
         }
       },

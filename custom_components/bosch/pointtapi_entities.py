@@ -154,6 +154,44 @@ def _zone_id_from_path(path: str) -> str:
     return "zn1"
 
 
+def _zone_ids_with_reference(data: dict[str, Any], reference: str) -> list[str]:
+    """Zone ids whose /zones/{id} references include the given leaf.
+
+    This uses the zone's own reference list as source-of-truth, so optional
+    resources are exposed only when the appliance advertises them.
+    """
+    if not data:
+        return []
+
+    zone_ids: set[str] = set()
+    for path, resource in data.items():
+        if not (
+            isinstance(path, str)
+            and path.startswith("/zones/zn")
+            and path.count("/") == 2
+        ):
+            continue
+        if not isinstance(resource, dict):
+            continue
+
+        zone_id = path.split("/")[2]
+        expected_ref = f"/zones/{zone_id}/{reference}"
+        refs = resource.get("references") or []
+        if any(
+            isinstance(ref, dict) and ref.get("id") == expected_ref
+            for ref in refs
+        ):
+            zone_ids.add(zone_id)
+
+    return sorted(
+        zone_ids,
+        key=lambda zone_id: (
+            int(zone_id[2:]) if zone_id[2:].isdigit() else 999999,
+            zone_id,
+        ),
+    )
+
+
 def pointtapi_zone_ids(data: dict[str, Any]) -> list[str]:
     """Zone ids with a heating setpoint in coordinator data; ["zn1"] fallback.
 
@@ -423,8 +461,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._zone_id = zone_id
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
-        # Zone devices are named after their room; zn1 keeps the bare
-        # "Heating Zone" name on single-zone installs (see _zone_room_suffix).
         self._attr_device_info = _resolve_device_info(
             uuid, f"/zones/{zone_id}", data=coordinator.data or {}
         )
@@ -652,10 +688,93 @@ class BoschPoinTTAPIWaterHeaterEntity(
             ) from err
 
 
+def _pointtapi_zone_valve_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return valve-position sensor descriptions for every zone present in data."""
+    if not data:
+        return ()
+
+    ordered_zone_ids = _zone_ids_with_reference(data, "actualValvePosition")
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/actualValvePosition",
+            translation_key="valve_position",
+            native_unit_of_measurement="%",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        )
+        for zone_id in ordered_zone_ids
+    )
+
+
+def _pointtapi_open_window_switch_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
+    """Return per-zone open-window detection enable switches.
+
+    Switches are created only when the zone references include
+    /zones/{id}/openWindowDetection.
+    """
+    if not data:
+        return ()
+
+    zone_ids = _zone_ids_with_reference(data, "openWindowDetection")
+    return tuple(
+        BoschPoinTTAPISwitchEntityDescription(
+            key=f"/zones/{zone_id}/openWindowDetection/enabled",
+            translation_key="open_window_detection",
+            on_value="on",
+            off_value="off",
+            entity_category=EntityCategory.CONFIG,
+        )
+        for zone_id in zone_ids
+    )
+
+
+def _open_window_status(data: dict[str, Any], path: str) -> bool | None:
+    """Map open-window status values to a boolean.
+
+    Bosch zone status reports "open" or "closed".
+    """
+    raw = _val(data, path)
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value == "open":
+            return True
+        if value == "closed":
+            return False
+    return None
+
+
+def _pointtapi_open_window_binary_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPIBinarySensorEntityDescription", ...]:
+    """Return per-zone open-window detection status binary sensors.
+
+    Sensors are created only when the zone references include
+    /zones/{id}/openWindowDetection.
+    """
+    if not data:
+        return ()
+
+    zone_ids = _zone_ids_with_reference(data, "openWindowDetection")
+    return tuple(
+        BoschPoinTTAPIBinarySensorEntityDescription(
+            key=f"/zones/{zone_id}/openWindowDetection/status",
+            translation_key="open_window_detected",
+            device_class=BinarySensorDeviceClass.WINDOW,
+            value_fn=lambda d, p=f"/zones/{zone_id}/openWindowDetection/status": _open_window_status(d, p),
+        )
+        for zone_id in zone_ids
+    )
+
+
 # Curated POINTTAPI sensors: path, name, device_class, entity_category
-def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+def _pointtapi_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
     """Return all curated POINTTAPI sensor descriptions."""
-    return (
+    descriptions = [
         # ── Existing sensors ─────────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
             key="/system/sensors/temperatures/outdoor_t1",
@@ -668,12 +787,6 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             translation_key="indoor_humidity",
             device_class=SensorDeviceClass.HUMIDITY,
             native_unit_of_measurement="%",
-        ),
-        BoschPoinTTAPISensorEntityDescription(
-            key="/zones/zn1/actualValvePosition",
-            translation_key="valve_position",
-            native_unit_of_measurement="%",
-            entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/system/appliance/systemPressure",
@@ -880,7 +993,9 @@ def _pointtapi_sensor_descriptions() -> tuple[BoschPoinTTAPISensorEntityDescript
             translation_key="thermal_disinfect_last_result",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
-    )
+    ]
+    descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
+    return tuple(descriptions)
 
 
 class BoschPoinTTAPISensorEntity(
@@ -1508,7 +1623,7 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
     ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/state",
-        name="Thermal disinfect",
+        translation_key="thermal_disinfect",
         device_id_suffix="dhw1",
         device_name_override="Water heater",
     ),
@@ -1615,6 +1730,14 @@ def _select_state_key(value: str) -> str:
     return value.strip().lower().replace(" ", "_")
 
 
+def _normalize_select_option(raw_option: Any, supported_options: set[str]) -> str | None:
+    """Map a Bosch API value to a supported select option key, or None if unknown."""
+    if not isinstance(raw_option, str):
+        return None
+    normalized = _select_state_key(raw_option)
+    return normalized if normalized in supported_options else None
+
+
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
         key="/zones/zn1/userMode",
@@ -1676,21 +1799,26 @@ class BoschPoinTTAPISelectEntity(
             uuid, description.key, data=coordinator.data or {}
         )
         self._current_option: str | None = None
+        self._supported_option_keys = {
+            _select_state_key(option) for option in description.options
+        }
 
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
         raw_option = _val(data, self._path)
-        self._current_option = (
-            _select_state_key(raw_option) if isinstance(raw_option, str) else None
+        self._current_option = _normalize_select_option(
+            raw_option, self._supported_option_keys
         )
         self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
-        """Unavailable when the path is absent, or the appliance reports it so."""
-        return super().available and _path_available(
-            self.coordinator.data or {}, self._path
+        """Unavailable when the path is absent, the appliance reports it so, or the value is unsupported."""
+        return (
+            super().available
+            and _path_available(self.coordinator.data or {}, self._path)
+            and self._current_option is not None
         )
 
     @property
@@ -1698,6 +1826,8 @@ class BoschPoinTTAPISelectEntity(
         return self._current_option
 
     async def async_select_option(self, option: str) -> None:
+        if option not in self._supported_option_keys:
+            raise HomeAssistantError(f"Unsupported select option: {option}")
         try:
             api_option = next(
                 (

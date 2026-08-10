@@ -80,7 +80,7 @@
         "name": "Actual supply temperature"
       },
       "actual_modulation": {
-        "name": "Actual modulation"
+        "name": "Current modulation power"
       },
       "collector_temperature": {
         "name": "Collector temperature"
@@ -134,7 +134,10 @@
         "name": "Notifications"
       },
       "thermal_disinfect_last_result": {
-        "name": "Thermal disinfect last result"
+        "name": "Thermal disinfect last result",
+        "state": {
+          "done": "Done"
+        }
       }
     },
     "number": {
@@ -157,7 +160,7 @@
         "name": "Summer/winter threshold"
       },
       "room_influence": {
-        "name": "Room influence"
+        "name": "Ambient temperature influence"
       },
       "temperature_calibration_offset": {
         "name": "Temperature calibration offset"
@@ -174,7 +177,18 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Heating"
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "on": "Heating"
+        }
+      },
+      "open_window_detected": {
+        "name": "Open window detected",
+        "state": {
+          "off": "Closed",
+          "on": "Open"
+        }
       },
       "burner_flame": {
         "name": "Flame"
@@ -198,6 +212,12 @@
       },
       "extra_hot_water": {
         "name": "Extra hot water"
+      },
+      "open_window_detection": {
+        "name": "Open window detection"
+      },
+      "thermal_disinfect": {
+        "name": "Thermal disinfect"
       }
     },
     "select": {

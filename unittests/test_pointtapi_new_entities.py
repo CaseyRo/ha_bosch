@@ -1,6 +1,8 @@
 """Tests for v1.0.0 entities: notifications sensor + comfort controls."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,17 +10,26 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.bosch.pointtapi_entities import (
+    POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
     POINTTAPI_NUMBER_DESCRIPTIONS,
     POINTTAPI_SELECT_DESCRIPTIONS,
     POINTTAPI_SWITCH_DESCRIPTIONS,
+    BoschPoinTTAPIBinarySensorEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     BoschPoinTTAPINumberEntity,
     BoschPoinTTAPISelectEntity,
     _notification_entries,
     _notifications_attributes,
     _notifications_count,
+    _pointtapi_open_window_binary_sensor_descriptions,
+    _pointtapi_open_window_switch_descriptions,
     _pointtapi_sensor_descriptions,
+    _pointtapi_zone_valve_sensor_descriptions,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
+STRINGS = json.loads((ROOT / "custom_components" / "bosch" / "strings.json").read_text(encoding="utf-8"))
 
 
 # ── Notifications helpers (spec: pointtapi-notifications) ───────────────────
@@ -29,6 +40,73 @@ class TestNotificationsHelpers:
         data = {"/notifications": {"id": "/notifications", "value": []}}
         assert _notifications_count(data) == 0
         assert _notifications_attributes(data) == {"notifications": []}
+
+    def test_zone_valve_sensors_are_discovered_from_zone_references(self):
+        data = {
+            "/zones/zn1": {
+                "references": [
+                    {"id": "/zones/zn1/actualValvePosition"},
+                    {"id": "/zones/zn1/status"},
+                ]
+            },
+            "/zones/zn2": {
+                "references": [
+                    {"id": "/zones/zn2/actualValvePosition"},
+                ]
+            },
+            "/zones/zn10": {
+                "references": [
+                    {"id": "/zones/zn10/actualValvePosition"},
+                ]
+            },
+            "/zones/zn3": {
+                "references": [
+                    {"id": "/zones/zn3/status"},
+                ]
+            },
+        }
+
+        descs = _pointtapi_zone_valve_sensor_descriptions(data)
+        assert [desc.key for desc in descs] == [
+            "/zones/zn1/actualValvePosition",
+            "/zones/zn2/actualValvePosition",
+            "/zones/zn10/actualValvePosition",
+        ]
+        assert descs[1].translation_key == "valve_position"
+
+    def test_open_window_entities_are_discovered_from_zone_references(self):
+        data = {
+            "/zones/zn2": {
+                "references": [
+                    {"id": "/zones/zn2/openWindowDetection"},
+                    {"id": "/zones/zn2/status"},
+                ]
+            },
+            "/zones/zn1": {
+                "references": [
+                    {"id": "/zones/zn1/openWindowDetection"},
+                ]
+            },
+            "/zones/zn10": {
+                "references": [
+                    {"id": "/zones/zn10/status"},
+                ]
+            },
+        }
+
+        switch_descs = _pointtapi_open_window_switch_descriptions(data)
+        binary_descs = _pointtapi_open_window_binary_sensor_descriptions(data)
+
+        assert [desc.key for desc in switch_descs] == [
+            "/zones/zn1/openWindowDetection/enabled",
+            "/zones/zn2/openWindowDetection/enabled",
+        ]
+        assert [desc.key for desc in binary_descs] == [
+            "/zones/zn1/openWindowDetection/status",
+            "/zones/zn2/openWindowDetection/status",
+        ]
+        assert switch_descs[0].translation_key == "open_window_detection"
+        assert binary_descs[0].translation_key == "open_window_detected"
 
     def test_values_key_also_accepted(self):
         """Cloud route on other device types uses 'values' (homecom_alt)."""
@@ -60,11 +138,29 @@ class TestNotificationsHelpers:
 # ── Description tables (spec: pointtapi-comfort-controls) ───────────────────
 
 
+class TestTranslationCatalog:
+    def test_thermal_disinfect_switch_translation_exists(self):
+        switch = STRINGS["entity"]["switch"]
+        assert switch["thermal_disinfect"]["name"] == "Thermal disinfect"
+
+    def test_dhw_heating_binary_sensor_uses_on_off_state_keys(self):
+        state = STRINGS["entity"]["binary_sensor"]["dhw_heating"]["state"]
+        assert state["on"] == "Heating"
+        assert state["off"] == "Off"
+        assert "false" not in state
+        assert "true" not in state
+
+
 class TestComfortControlDescriptions:
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/extraDhw"]
         assert d.translation_key == "extra_hot_water"
+
+    def test_thermal_disinfect_switch_uses_translation_key(self):
+        descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
+        d = descs["/dhwCircuits/dhw1/thermalDisinfect/state"]
+        assert d.translation_key == "thermal_disinfect"
 
     def test_away_mode_switch_described(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
@@ -103,6 +199,12 @@ class TestComfortControlDescriptions:
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         assert "/dhwCircuits/dhw1/thermalDisinfect/lastResult" in descs
 
+    def test_thermal_disinfect_last_result_keeps_the_raw_api_value(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/dhwCircuits/dhw1/thermalDisinfect/lastResult"]
+        assert desc.translation_key == "thermal_disinfect_last_result"
+        assert desc.value_fn is None
+
 
 # ── Entity behavior (value mapping, availability, failure path) ─────────────
 
@@ -124,6 +226,13 @@ def _switch(coord, key):
     return ent
 
 
+def _binary_sensor(coord, key):
+    desc = next(d for d in POINTTAPI_BINARY_SENSOR_DESCRIPTIONS if d.key == key)
+    ent = BoschPoinTTAPIBinarySensorEntity(coord, "entry1", "uuid1", desc)
+    ent.async_write_ha_state = MagicMock()
+    return ent
+
+
 class TestEntityBehavior:
     def test_away_mode_true_maps_to_on(self):
         coord = _mock_coordinator(
@@ -140,6 +249,18 @@ class TestEntityBehavior:
         ent._handle_coordinator_update()
         assert ent.is_on is False
         assert ent.available is True
+
+    def test_dhw_binary_sensor_on_maps_to_true(self):
+        coord = _mock_coordinator({"/dhwCircuits/dhw1/state": {"value": "on"}})
+        ent = _binary_sensor(coord, "/dhwCircuits/dhw1/state")
+        ent._handle_coordinator_update()
+        assert ent.is_on is True
+
+    def test_dhw_binary_sensor_off_maps_to_false(self):
+        coord = _mock_coordinator({"/dhwCircuits/dhw1/state": {"value": "off"}})
+        ent = _binary_sensor(coord, "/dhwCircuits/dhw1/state")
+        ent._handle_coordinator_update()
+        assert ent.is_on is False
 
     def test_switch_unavailable_when_path_absent(self):
         coord = _mock_coordinator({})
@@ -209,6 +330,20 @@ class TestEntityBehavior:
         ent._handle_coordinator_update()
         assert ent.current_option == "mo"
         assert ent.available is True
+
+    def test_select_unknown_value_makes_entity_unavailable(self):
+        desc = next(
+            d for d in POINTTAPI_SELECT_DESCRIPTIONS
+            if d.key == "/dhwCircuits/dhw1/thermalDisinfect/weekDay"
+        )
+        coord = _mock_coordinator(
+            {"/dhwCircuits/dhw1/thermalDisinfect/weekDay": {"value": "foo"}}
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+        ent._handle_coordinator_update()
+        assert ent.current_option is None
+        assert ent.available is False
 
     @pytest.mark.asyncio
     async def test_select_weekday_maps_display_value_to_api_value(self):
