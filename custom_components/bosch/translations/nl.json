@@ -130,7 +130,7 @@
         "name": "Zomer/winterdrempel"
       },
       "room_influence": {
-        "name": "Ruimteeninvloed"
+        "name": "Invloed van de omgevingstemperatuur"
       },
       "temperature_calibration_offset": {
         "name": "Kalibratie-offset temperatuur"
@@ -177,7 +177,7 @@
       "zone_mode": {
         "name": "Zonemodus",
         "state": {
-          "clock": "Klok",
+          "clock": "Programma",
           "manual": "Handmatig"
         }
       },

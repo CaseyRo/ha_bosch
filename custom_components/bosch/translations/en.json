@@ -157,7 +157,7 @@
         "name": "Summer/winter threshold"
       },
       "room_influence": {
-        "name": "Room influence"
+        "name": "Ambient temperature influence"
       },
       "temperature_calibration_offset": {
         "name": "Temperature calibration offset"

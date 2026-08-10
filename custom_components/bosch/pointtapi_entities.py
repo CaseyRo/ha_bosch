@@ -40,6 +40,7 @@ from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature,
 from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -79,6 +80,19 @@ def _decode_zone_name(value: Any) -> str | None:
     except (binascii.Error, UnicodeDecodeError, ValueError):
         return value
     return decoded
+
+
+def _sync_device_name(hass: Any, identifiers: set[tuple[str, str]], new_name: str | None) -> None:
+    """Rename an existing Home Assistant device entry when the zone name changes."""
+    if not hass or not identifiers or not new_name:
+        return
+    registry = dr.async_get(hass)
+    device = registry.async_get_device(identifiers=identifiers)
+    if device is None:
+        return
+    if device.name == new_name:
+        return
+    registry.async_update_device(device.id, new_name=new_name)
 
 
 def _path_available(data: dict[str, Any], path: str) -> bool:
@@ -401,6 +415,15 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._target: float | None = None
         self._hvac_mode = HVACMode.HEAT
 
+    async def async_added_to_hass(self) -> None:
+        """Sync the device name once the entity is attached to Home Assistant."""
+        await super().async_added_to_hass()
+        if self._attr_device_info is None:
+            return
+        identifiers = self._attr_device_info.get("identifiers", set()) if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "identifiers", set())
+        device_name = self._attr_device_info.get("name") if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "name", None)
+        _sync_device_name(self.hass, set(identifiers), device_name)
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Read from coordinator.data and set state.
@@ -428,7 +451,16 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             self._hvac_mode = HVACMode.OFF
         else:
             self._hvac_mode = HVACMode.HEAT
+        self._sync_device_name_from_state()
         self.async_write_ha_state()
+
+    def _sync_device_name_from_state(self) -> None:
+        """Rename the linked device if the room-based zone name is available."""
+        if self._attr_device_info is None:
+            return
+        identifiers = self._attr_device_info.get("identifiers", set()) if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "identifiers", set())
+        device_name = self._attr_device_info.get("name") if isinstance(self._attr_device_info, dict) else getattr(self._attr_device_info, "name", None)
+        _sync_device_name(self.hass, set(identifiers), device_name)
 
     @property
     def current_temperature(self) -> float | None:
@@ -1578,6 +1610,14 @@ def _select_state_key(value: str) -> str:
     return value.strip().lower().replace(" ", "_")
 
 
+def _normalize_select_option(raw_option: Any, supported_options: set[str]) -> str | None:
+    """Map a Bosch API value to a supported select option key, or None if unknown."""
+    if not isinstance(raw_option, str):
+        return None
+    normalized = _select_state_key(raw_option)
+    return normalized if normalized in supported_options else None
+
+
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
         key="/zones/zn1/userMode",
@@ -1637,21 +1677,26 @@ class BoschPoinTTAPISelectEntity(
         self._attr_options = [_select_state_key(option) for option in description.options]
         self._attr_device_info = _resolve_device_info(uuid, description.key)
         self._current_option: str | None = None
+        self._supported_option_keys = {
+            _select_state_key(option) for option in description.options
+        }
 
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
         raw_option = _val(data, self._path)
-        self._current_option = (
-            _select_state_key(raw_option) if isinstance(raw_option, str) else None
+        self._current_option = _normalize_select_option(
+            raw_option, self._supported_option_keys
         )
         self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
-        """Unavailable when the path is absent, or the appliance reports it so."""
-        return super().available and _path_available(
-            self.coordinator.data or {}, self._path
+        """Unavailable when the path is absent, the appliance reports it so, or the value is unsupported."""
+        return (
+            super().available
+            and _path_available(self.coordinator.data or {}, self._path)
+            and self._current_option is not None
         )
 
     @property
@@ -1659,6 +1704,8 @@ class BoschPoinTTAPISelectEntity(
         return self._current_option
 
     async def async_select_option(self, option: str) -> None:
+        if option not in self._supported_option_keys:
+            raise HomeAssistantError(f"Unsupported select option: {option}")
         try:
             api_option = next(
                 (
@@ -1669,7 +1716,7 @@ class BoschPoinTTAPISelectEntity(
                 option,
             )
             await self.coordinator.client.put(self._path, api_option)
-            self._current_option = _select_state_key(option)
+            self._current_option = option
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:

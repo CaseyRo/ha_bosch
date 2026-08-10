@@ -130,7 +130,7 @@
         "name": "Sommer/Winter-Schwellwert"
       },
       "room_influence": {
-        "name": "Raumeinfluss"
+        "name": "Einfluss der Umgebungstemperatur"
       },
       "temperature_calibration_offset": {
         "name": "Temperaturkalibrierungsversatz"
@@ -177,7 +177,7 @@
       "zone_mode": {
         "name": "Zonenmodus",
         "state": {
-          "clock": "Uhr",
+          "clock": "Programm",
           "manual": "Manuell"
         }
       },

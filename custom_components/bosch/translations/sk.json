@@ -130,7 +130,7 @@
         "name": "Prahová hodnota leto/zima"
       },
       "room_influence": {
-        "name": "Vplyv miestnosti"
+        "name": "Vplyv okolitej teploty"
       },
       "temperature_calibration_offset": {
         "name": "Posun kalibrácie teploty"
@@ -177,7 +177,7 @@
       "zone_mode": {
         "name": "Režim zóny",
         "state": {
-          "clock": "Hodiny",
+          "clock": "Program",
           "manual": "Manuálny"
         }
       },

@@ -130,7 +130,7 @@
         "name": "Soglia estate/inverno"
       },
       "room_influence": {
-        "name": "Influenza ambiente"
+        "name": "Influenza della temperatura ambientale"
       },
       "temperature_calibration_offset": {
         "name": "Offset di calibrazione temperatura"
@@ -177,7 +177,7 @@
       "zone_mode": {
         "name": "Modalità zona",
         "state": {
-          "clock": "Orologio",
+          "clock": "Programma",
           "manual": "Manuale"
         }
       },

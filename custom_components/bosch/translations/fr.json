@@ -130,7 +130,7 @@
         "name": "Seuil été/hiver"
       },
       "room_influence": {
-        "name": "Influence de la pièce"
+        "name": "Influence de la température ambiante"
       },
       "temperature_calibration_offset": {
         "name": "Décalage de calibration de température"
@@ -177,7 +177,7 @@
       "zone_mode": {
         "name": "Mode de zone",
         "state": {
-          "clock": "Horloge",
+          "clock": "Programme",
           "manual": "Manuel"
         }
       },

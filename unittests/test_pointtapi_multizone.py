@@ -1,15 +1,17 @@
 """Multi-zone discovery: /zones listing -> one climate entity per zone (issue #11)."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from custom_components.bosch.climate import _pointtapi_zone_ids
 from custom_components.bosch.pointtapi_coordinator import _fetch_paths
+from custom_components.bosch.const import DOMAIN
 from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPIClimateEntity,
     _decode_zone_name,
+    _sync_device_name,
 )
 
 
@@ -73,6 +75,17 @@ class TestZoneIds:
 
 
 class TestZoneDeviceNaming:
+    def test_syncs_existing_device_name_in_registry(self):
+        registry = MagicMock()
+        device = MagicMock(id="dev1", name="Heating Zone")
+        registry.async_get_device.return_value = device
+        hass = MagicMock()
+
+        with patch("custom_components.bosch.pointtapi_entities.dr.async_get", return_value=registry):
+            _sync_device_name(hass, {(DOMAIN, "uuid1_zn1")}, "Heating Zone Salon")
+
+        registry.async_update_device.assert_called_once_with("dev1", new_name="Heating Zone Salon")
+
     def test_decodes_base64_zone_name(self):
         coord = _coord({"/zones/zn2/name": {"value": "Rmx1ci9aZW50cmFsZQ=="}})
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn2")

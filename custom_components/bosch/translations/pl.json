@@ -130,7 +130,7 @@
         "name": "Próg lato/zima"
       },
       "room_influence": {
-        "name": "Wpływ pomieszczenia"
+        "name": "Wpływ temperatury otoczenia"
       },
       "temperature_calibration_offset": {
         "name": "Przesunięcie kalibracji temperatury"
@@ -177,7 +177,7 @@
       "zone_mode": {
         "name": "Tryb strefy",
         "state": {
-          "clock": "Zegar",
+          "clock": "Program",
           "manual": "Ręczny"
         }
       },

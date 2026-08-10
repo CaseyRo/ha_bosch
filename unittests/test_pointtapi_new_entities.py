@@ -210,6 +210,20 @@ class TestEntityBehavior:
         assert ent.current_option == "mo"
         assert ent.available is True
 
+    def test_select_unknown_value_makes_entity_unavailable(self):
+        desc = next(
+            d for d in POINTTAPI_SELECT_DESCRIPTIONS
+            if d.key == "/dhwCircuits/dhw1/thermalDisinfect/weekDay"
+        )
+        coord = _mock_coordinator(
+            {"/dhwCircuits/dhw1/thermalDisinfect/weekDay": {"value": "foo"}}
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+        ent._handle_coordinator_update()
+        assert ent.current_option is None
+        assert ent.available is False
+
     @pytest.mark.asyncio
     async def test_select_weekday_maps_display_value_to_api_value(self):
         desc = next(
