@@ -88,7 +88,43 @@ class TestZoneDeviceNaming:
         assert ent.device_info["name"] == "Heating Zone Küche"
         assert (("bosch", "uuid1_zn2") in ent.device_info["identifiers"])
 
-    def test_zn1_keeps_bare_name(self):
-        coord = _coord({"/zones/zn1/name": {"value": "Wohnzimmer"}})
+    def test_zn1_keeps_bare_name_on_single_zone(self):
+        coord = _coord(
+            {
+                "/zones/zn1/name": {"value": "Wohnzimmer"},
+                "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+            }
+        )
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
         assert ent.device_info["name"] == "Heating Zone"
+
+    def test_zn1_named_after_room_on_multi_zone(self):
+        """Issue #11: on a multi-zone install the master zone (zn1, where the
+        CT200 sits) must carry its room name too — a bare "Heating Zone" among
+        nine room-named devices read as 'living room missing'."""
+        coord = _coord(
+            {
+                "/zones/zn1/name": {"value": "Wohnzimmer"},
+                "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+                "/zones/zn2/name": {"value": "Küche"},
+                "/zones/zn2/temperatureHeatingSetpoint": {"value": 19.0},
+            }
+        )
+        ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
+        assert ent.device_info["name"] == "Heating Zone Wohnzimmer"
+        assert (("bosch", "uuid1_zn1") in ent.device_info["identifiers"])
+
+    def test_zn1_attached_entities_agree_on_device_name(self):
+        """Every entity on the zn1 device must resolve the same name, or the
+        registry name flip-flops with registration order."""
+        from custom_components.bosch.pointtapi_entities import _resolve_device_info
+
+        data = {
+            "/zones/zn1/name": {"value": "Wohnzimmer"},
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+            "/zones/zn2/name": {"value": "Küche"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 19.0},
+        }
+        for path in ("/zones/zn1", "/zones/zn1/actualValvePosition", "/zones/zn1/userMode"):
+            info = _resolve_device_info("uuid1", path, data=data)
+            assert info["name"] == "Heating Zone Wohnzimmer", path

@@ -154,16 +154,48 @@ def _zone_id_from_path(path: str) -> str:
     return "zn1"
 
 
+def pointtapi_zone_ids(data: dict[str, Any]) -> list[str]:
+    """Zone ids with a heating setpoint in coordinator data; ["zn1"] fallback.
+
+    Filtering on temperatureHeatingSetpoint skips unconfigured zone slots
+    (allowedZones can list more zones than actually exist).
+    """
+    ids = {
+        p.split("/")[2]
+        for p in data
+        if p.startswith("/zones/") and p.endswith("/temperatureHeatingSetpoint")
+    }
+    return sorted(ids, key=lambda z: (len(z), z)) or ["zn1"]
+
+
+def _zone_room_suffix(data: dict[str, Any], zid: str) -> str | None:
+    """Room-name display suffix for a zone device, or None when unknown.
+
+    zn1 gets its room name only on multi-zone setups — single-zone installs
+    keep the bare "Heating Zone" device name they have always had (issue #11:
+    on a 10-zone install the un-suffixed zn1 read as "living room missing").
+    """
+    zname = _decode_zone_name(_val(data, f"/zones/{zid}/name"))
+    if not (isinstance(zname, str) and zname.strip()):
+        return None
+    if zid == "zn1" and len(pointtapi_zone_ids(data)) < 2:
+        return None
+    return f" {zname}"
+
+
 def _resolve_device_info(
     uuid: str,
     path: str | None = None,
     *,
     kind: str | None = None,
     zone_display_suffix: str | None = None,
+    data: dict[str, Any] | None = None,
 ) -> DeviceInfo:
     """Return the DeviceInfo for this entity based on its path and/or kind.
 
-    See module-level routing table comment above.
+    See module-level routing table comment above. Pass the coordinator data
+    as `data` so zone devices can be named after their room — every entity
+    attached to a zone device must do so, or the registry name flip-flops.
     """
     p = path or ""
 
@@ -212,9 +244,11 @@ def _resolve_device_info(
         or p.startswith("/system/sensors")
     ):
         zid = _zone_id_from_path(p)
-        suffix = zone_display_suffix if zone_display_suffix is not None else (
-            "" if zid == "zn1" else f" {zid}"
-        )
+        suffix = zone_display_suffix
+        if suffix is None and data:
+            suffix = _zone_room_suffix(data, zid)
+        if suffix is None:
+            suffix = "" if zid == "zn1" else f" {zid}"
         # NB: identifier is `{uuid}_{zid}` (no `_zone_` prefix) to match the
         # existing climate-entity device id, so we don't orphan it.
         return DeviceInfo(
@@ -389,18 +423,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._zone_id = zone_id
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
-        # Name zn2+ devices after their room ("/zones/znX/name") when known;
-        # zn1 keeps the bare "Heating Zone" name existing installs have.
-        zname = _decode_zone_name(
-            _val(coordinator.data or {}, f"/zones/{zone_id}/name")
-        )
-        suffix = (
-            f" {zname}"
-            if zone_id != "zn1" and isinstance(zname, str) and zname.strip()
-            else None
-        )
+        # Zone devices are named after their room; zn1 keeps the bare
+        # "Heating Zone" name on single-zone installs (see _zone_room_suffix).
         self._attr_device_info = _resolve_device_info(
-            uuid, f"/zones/{zone_id}", zone_display_suffix=suffix
+            uuid, f"/zones/{zone_id}", data=coordinator.data or {}
         )
         self._current: float | None = None
         self._target: float | None = None
@@ -878,7 +904,9 @@ class BoschPoinTTAPISensorEntity(
         path = description.key
         slug = path.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_sensor_{slug}"
-        self._attr_device_info = _resolve_device_info(uuid, path)
+        self._attr_device_info = _resolve_device_info(
+            uuid, path, data=coordinator.data or {}
+        )
         self._path = path
         self._native_value: Any = None
         self._last_reset: Any = None
@@ -1050,7 +1078,9 @@ class BoschPoinTTAPINumberEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_number_{slug}"
-        self._attr_device_info = _resolve_device_info(uuid, description.key)
+        self._attr_device_info = _resolve_device_info(
+            uuid, description.key, data=coordinator.data or {}
+        )
         self._native_value: float | None = None
 
     @callback
@@ -1119,7 +1149,9 @@ class BoschPoinTTAPIBoostSwitchEntity(
         self._uuid = uuid
         self._attr_unique_id = f"{entry_id}_pointtapi_boost"
         # Boost operates on the zone, so live with the Heating Zone device
-        self._attr_device_info = _resolve_device_info(uuid, "/zones/zn1")
+        self._attr_device_info = _resolve_device_info(
+            uuid, "/zones/zn1", data=coordinator.data or {}
+        )
         self._is_on: bool = False
         self._pre_boost_mode: str | None = None
         # Track boost state explicitly rather than deriving from zone state,
@@ -1640,7 +1672,9 @@ class BoschPoinTTAPISelectEntity(
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
         self._attr_options = [_select_state_key(option) for option in description.options]
-        self._attr_device_info = _resolve_device_info(uuid, description.key)
+        self._attr_device_info = _resolve_device_info(
+            uuid, description.key, data=coordinator.data or {}
+        )
         self._current_option: str | None = None
 
     @callback

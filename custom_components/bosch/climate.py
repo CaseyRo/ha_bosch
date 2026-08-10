@@ -24,23 +24,12 @@ from .const import (
     UNITS_CONVERTER,
     UUID,
 )
-from .pointtapi_entities import BoschPoinTTAPIClimateEntity
+from .pointtapi_entities import (
+    BoschPoinTTAPIClimateEntity,
+    pointtapi_zone_ids as _pointtapi_zone_ids,
+)
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _pointtapi_zone_ids(data: dict) -> list[str]:
-    """Zone ids with a heating setpoint in coordinator data; ["zn1"] fallback.
-
-    Filtering on temperatureHeatingSetpoint skips unconfigured zone slots
-    (allowedZones can list more zones than actually exist).
-    """
-    ids = {
-        p.split("/")[2]
-        for p in data
-        if p.startswith("/zones/") and p.endswith("/temperatureHeatingSetpoint")
-    }
-    return sorted(ids, key=lambda z: (len(z), z)) or ["zn1"]
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
