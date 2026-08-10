@@ -174,7 +174,11 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Heating"
+        "name": "Status",
+        "state": {
+          "false": "Off",
+          "true": "Heating"
+        }
       },
       "burner_flame": {
         "name": "Flame"

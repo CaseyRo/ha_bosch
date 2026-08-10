@@ -147,7 +147,11 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Chauffage"
+        "name": "Statut",
+        "state": {
+          "false": "Arrêt",
+          "true": "En chauffe"
+        }
       },
       "burner_flame": {
         "name": "Flamme"
