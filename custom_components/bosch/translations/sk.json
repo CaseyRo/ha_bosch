@@ -16,6 +16,12 @@
       "wifi_rssi": {
         "name": "Sila signálu Wi-Fi"
       },
+      "wifi_firmware_version": {
+        "name": "Verzia firmvéru Wi-Fi"
+      },
+      "energy_efficiency": {
+        "name": "Energetická účinnosť"
+      },
       "update_state": {
         "name": "Stav aktualizácie firmvéru"
       },

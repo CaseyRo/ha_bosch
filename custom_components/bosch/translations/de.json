@@ -16,6 +16,12 @@
       "wifi_rssi": {
         "name": "WLAN-Signalstärke"
       },
+      "wifi_firmware_version": {
+        "name": "WLAN-Firmwareversion"
+      },
+      "energy_efficiency": {
+        "name": "Energieeffizienz"
+      },
       "update_state": {
         "name": "Firmware-Update-Status"
       },
