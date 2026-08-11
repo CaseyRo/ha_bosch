@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from homeassistant.components.climate import HVACMode
+from homeassistant.components.climate.const import HVACAction
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
 from custom_components.bosch.pointtapi_entities import (
@@ -237,12 +238,14 @@ class TestClimateRobustness:
             "/zones/zn1/temperatureActual": {"value": 20.5},
             "/zones/zn1/temperatureHeatingSetpoint": {"value": 22.0},
             "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/status": {"value": "idle"},
         })
         ent = _climate(coord)
         ent._handle_coordinator_update()
         assert ent.current_temperature == 20.5
         assert ent.target_temperature == 22.0
         assert ent.hvac_mode == HVACMode.AUTO
+        assert ent.hvac_action == HVACAction.IDLE
         assert ent.preset_mode == "program"
 
     def test_absent_path_reports_none_not_stale(self):
@@ -278,6 +281,35 @@ class TestClimateRobustness:
         ent = _climate(coord)
         ent._handle_coordinator_update()
         assert ent.target_temperature == 19.5
+
+    def test_hvac_action_heat_request_maps_to_heating(self):
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/status": {"value": "heat request"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_action == HVACAction.HEATING
+
+    def test_hvac_action_unknown_status_maps_to_cooling(self):
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/status": {"value": "circulation"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_action == HVACAction.COOLING
+
+    def test_hvac_action_off_when_mode_is_off(self):
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "manual"},
+            "/zones/zn1/manualTemperatureHeating": {"value": 5.0},
+            "/zones/zn1/status": {"value": "heat request"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_mode == HVACMode.OFF
+        assert ent.hvac_action == HVACAction.OFF
 
     @pytest.mark.asyncio
     async def test_set_temperature_switches_manual_then_writes_and_refreshes(self):

@@ -18,6 +18,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
+from homeassistant.components.climate.const import HVACAction
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.components.sensor import (
@@ -470,6 +471,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._target: float | None = None
         self._preset_mode: str | None = None
         self._hvac_mode = HVACMode.HEAT
+        self._hvac_action: HVACAction | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -487,6 +489,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             self._target = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
         user_mode = _val(data, f"/zones/{self._zone_id}/userMode")
         manual_temp = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
+        zone_status = _val(data, f"/zones/{self._zone_id}/status")
         self._preset_mode = "program" if user_mode == "clock" else "manual"
         # OFF = manual mode with temp at or below minimum
         try:
@@ -500,10 +503,31 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             is_off = False
         if is_off:
             self._hvac_mode = HVACMode.OFF
+            self._hvac_action = HVACAction.OFF
         elif user_mode == "clock":
             self._hvac_mode = HVACMode.AUTO
+            if isinstance(zone_status, str):
+                norm_status = zone_status.strip().lower()
+                if norm_status == "idle":
+                    self._hvac_action = HVACAction.IDLE
+                elif norm_status == "heat request":
+                    self._hvac_action = HVACAction.HEATING
+                else:
+                    self._hvac_action = HVACAction.COOLING
+            else:
+                self._hvac_action = None
         else:
             self._hvac_mode = HVACMode.HEAT
+            if isinstance(zone_status, str):
+                norm_status = zone_status.strip().lower()
+                if norm_status == "idle":
+                    self._hvac_action = HVACAction.IDLE
+                elif norm_status == "heat request":
+                    self._hvac_action = HVACAction.HEATING
+                else:
+                    self._hvac_action = HVACAction.COOLING
+            else:
+                self._hvac_action = None
         self.async_write_ha_state()
 
     @property
@@ -517,6 +541,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     @property
     def hvac_mode(self) -> str:
         return self._hvac_mode
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        return self._hvac_action
 
     @property
     def preset_mode(self) -> str | None:
