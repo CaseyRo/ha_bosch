@@ -1665,7 +1665,9 @@ class BoschPoinTTAPIGenericSwitchEntity(
         self._attr_unique_id = f"{entry_id}_pointtapi_switch_{slug}"
         # Path-based routing via _resolve_device_info covers /gateway, /dhwCircuits, etc.
         # device_id_suffix is retained on the description for compatibility but no longer used.
-        self._attr_device_info = _resolve_device_info(uuid, description.key)
+        self._attr_device_info = _resolve_device_info(
+            uuid, description.key, data=coordinator.data or {}
+        )
         self._is_on: bool = False
 
     @callback
@@ -1958,7 +1960,9 @@ class BoschPoinTTAPIBinarySensorEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_binary_sensor_{slug}"
-        self._attr_device_info = _resolve_device_info(uuid, description.key)
+        self._attr_device_info = _resolve_device_info(
+            uuid, description.key, data=coordinator.data or {}
+        )
         self._is_on: bool | None = None
 
     @callback
@@ -2058,7 +2062,9 @@ class BoschPoinTTAPIUpdateEntity(
         self._uuid = uuid
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_update_{slug}"
-        self._attr_device_info = _resolve_device_info(uuid, description.key)
+        self._attr_device_info = _resolve_device_info(
+            uuid, description.key, data=coordinator.data or {}
+        )
 
     @property
     def installed_version(self) -> str | None:
