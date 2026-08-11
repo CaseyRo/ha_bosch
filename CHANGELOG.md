@@ -4,29 +4,10 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
-Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 testers).
+Collected for 1.3.0 (pre-released as 1.3.0-beta.1). Held out of 1.2.0 because
+none of it has been confirmed on real multi-zone hardware yet.
 
 ### Added
-- **Multi-zone climate discovery (POINTTAPI)** — the coordinator walks the
-  `/zones` listing instead of hardcoding `/zones/zn1`; one climate entity per
-  discovered zone, each zone device named after its room (#11).
-- **Localized entity names and states** — POINTTAPI switches, numbers, selects
-  and diagnostics translated in all 7 supported languages (en/de/fr/it/nl/pl/sk);
-  diagnostic states are translated too (blocking error `false` → "No error" /
-  "Pas d'erreur" / "Kein Fehler"). Contributed by @jfhautenauven (#13).
-- **Per-zone valve position sensors** — one diagnostic sensor per zone instead
-  of zn1 only, discovered from each zone's own reference list. Contributed by
-  @jfhautenauven (#14).
-- **Open-window detection per zone** — an enable switch and a window binary
-  sensor per zone, created only when the appliance advertises
-  `openWindowDetection` for that zone. Contributed by @jfhautenauven (#14).
-- **Select robustness** — unknown API values mark the select unavailable
-  instead of showing a ghost state; unsupported options are rejected on write.
-  Contributed by @jfhautenauven (#14).
-- **WiFi firmware version and energy-efficiency sensors** — the latter
-  (`/gateway/ui/eco`) only when the gateway advertises it. Supply temperature,
-  return temperature (new) and modulation are regular sensors now instead of
-  diagnostics. Contributed by @jfhautenauven (#15).
 - **Per-thermostat-valve telemetry** — each ETRV from `/devices/list` becomes
   its own device named after its room, with signal strength, battery, assigned
   zone and radio protocol as diagnostics, plus a problem binary sensor that
@@ -51,6 +32,46 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
   Entity ids are unchanged, so energy dashboard and statistics are unaffected;
   only the device grouping differs (#17).
 
+### Fixed
+- **Valve signal strength no longer trips Home Assistant's unit check** — the
+  sensor claimed the `signal_strength` device class while reporting a
+  percentage, which HA only allows for dB/dBm. A test now validates every
+  sensor's unit against its device class (#17).
+- **Zones no longer report "Cooling"** — an unrecognised zone status mapped to
+  the cooling HVAC action on heating-only appliances; unknown statuses are now
+  reported as unknown. The full status vocabulary is still unconfirmed —
+  `circulation` is known to occur and deserves a real mapping (#17).
+- **Accents restored in French, Polish and Slovak device and sensor names**
+  (#17).
+
+## [1.2.0] — 2026-08-11 — Multi-zone climate, localization, per-zone valve + open-window
+
+Pre-released as beta.1–beta.7 and confirmed on two multi-zone CT200 installs
+(#11) — @jfhautenauven (12 ETRVs) and @janfuu-cpu (5 ETRVs), who between them
+found every regression in this list.
+
+### Added
+- **Multi-zone climate discovery (POINTTAPI)** — the coordinator walks the
+  `/zones` listing instead of hardcoding `/zones/zn1`; one climate entity per
+  discovered zone, each zone device named after its room (#11).
+- **Localized entity names and states** — POINTTAPI switches, numbers, selects
+  and diagnostics translated in all 7 supported languages (en/de/fr/it/nl/pl/sk);
+  diagnostic states are translated too (blocking error `false` → "No error" /
+  "Pas d'erreur" / "Kein Fehler"). Contributed by @jfhautenauven (#13).
+- **Per-zone valve position sensors** — one diagnostic sensor per zone instead
+  of zn1 only, discovered from each zone's own reference list. Contributed by
+  @jfhautenauven (#14).
+- **Open-window detection per zone** — an enable switch and a window binary
+  sensor per zone, created only when the appliance advertises
+  `openWindowDetection` for that zone. Contributed by @jfhautenauven (#14).
+- **Select robustness** — unknown API values mark the select unavailable
+  instead of showing a ghost state; unsupported options are rejected on write.
+  Contributed by @jfhautenauven (#14).
+- **WiFi firmware version and energy-efficiency sensors** — the latter
+  (`/gateway/ui/eco`) only when the gateway advertises it. Supply temperature,
+  return temperature (new) and modulation are regular sensors now instead of
+  diagnostics. Contributed by @jfhautenauven (#15).
+
 ### Removed
 - **Firmware-update-state sensor** — redundant with the update entity.
   Existing installs keep an orphaned registry entry; delete it once by hand
@@ -69,14 +90,6 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
   sensors are only created when a solar resource reports a real, available
   value; stale solar registry entries from earlier versions are removed
   automatically on reload. Contributed by @jfhautenauven (#12, #13).
-- **Valve signal strength no longer trips Home Assistant's unit check** — the
-  sensor claimed the `signal_strength` device class while reporting a
-  percentage, which HA only allows for dB/dBm (#17).
-- **Zones no longer report "Cooling"** — an unrecognised zone status mapped to
-  the cooling HVAC action on heating-only appliances; unknown statuses are now
-  reported as unknown (#17).
-- **Accents restored in French, Polish and Slovak device and sensor names**
-  (#17).
 
 ### Breaking
 - **Thermal disinfect weekday select states are lowercase** (`Mo` → `mo`, …) so
