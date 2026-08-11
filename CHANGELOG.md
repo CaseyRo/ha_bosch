@@ -27,6 +27,29 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
   (`/gateway/ui/eco`) only when the gateway advertises it. Supply temperature,
   return temperature (new) and modulation are regular sensors now instead of
   diagnostics. Contributed by @jfhautenauven (#15).
+- **Per-thermostat-valve telemetry** — each ETRV from `/devices/list` becomes
+  its own device named after its room, with signal strength, battery, assigned
+  zone and radio protocol as diagnostics, plus a problem binary sensor that
+  trips on a non-zero warning code. Contributed by @jfhautenauven (#16, #17).
+- **Assigned program per zone** — a sensor resolving each zone's `clockProgram`
+  to the schedule's decoded name (`/programs/pgN/name`), falling back to the
+  program id when the name is absent. Contributed by @jfhautenauven (#17).
+- **Schedule vs. manual control on climate entities** — `AUTO` now follows the
+  zone's program and `HEAT` switches it to manual (both write
+  `/zones/{id}/userMode`), exposed as a preset too. Zones also report an HVAC
+  action (heating / idle). Contributed by @jfhautenauven (#17).
+- **Electricity day and month averages** — created only when the appliance
+  reports those resources. Contributed by @jfhautenauven (#17).
+- **Reference-driven `/programs` and `/devices` discovery** — both now expand
+  from their listing references like `/zones` already did, falling back to the
+  static root when a gateway doesn't advertise them. Contributed by
+  @jfhautenauven (#17).
+
+### Changed
+- **Energy entities moved to their own device** — gas/energy history and the
+  annual gas goal now live under "Energy performance" instead of "Boiler".
+  Entity ids are unchanged, so energy dashboard and statistics are unaffected;
+  only the device grouping differs (#17).
 
 ### Removed
 - **Firmware-update-state sensor** — redundant with the update entity.
@@ -46,6 +69,14 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
   sensors are only created when a solar resource reports a real, available
   value; stale solar registry entries from earlier versions are removed
   automatically on reload. Contributed by @jfhautenauven (#12, #13).
+- **Valve signal strength no longer trips Home Assistant's unit check** — the
+  sensor claimed the `signal_strength` device class while reporting a
+  percentage, which HA only allows for dB/dBm (#17).
+- **Zones no longer report "Cooling"** — an unrecognised zone status mapped to
+  the cooling HVAC action on heating-only appliances; unknown statuses are now
+  reported as unknown (#17).
+- **Accents restored in French, Polish and Slovak device and sensor names**
+  (#17).
 
 ### Breaking
 - **Thermal disinfect weekday select states are lowercase** (`Mo` → `mo`, …) so
