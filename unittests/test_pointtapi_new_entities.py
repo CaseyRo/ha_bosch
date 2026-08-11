@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
@@ -17,11 +18,13 @@ from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPIBinarySensorEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     BoschPoinTTAPINumberEntity,
+    BoschPoinTTAPISensorEntity,
     BoschPoinTTAPISelectEntity,
     _notification_entries,
     _notifications_attributes,
     _notifications_count,
     _pointtapi_open_window_binary_sensor_descriptions,
+    _pointtapi_thermostat_valve_warning_binary_sensor_descriptions,
     _pointtapi_open_window_switch_descriptions,
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
@@ -158,6 +161,28 @@ class TestNotificationsHelpers:
         descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
         assert "/gateway/ui/eco" not in descs
 
+    def test_electricity_average_sensors_are_added_when_available(self):
+        data = {
+            "/energy/electricity/dayAverage": {"value": 3.21, "available": "true"},
+            "/energy/electricity/monthAverage": {"value": 4.56},
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        assert "/energy/electricity/dayAverage" in descs
+        assert "/energy/electricity/monthAverage" in descs
+        assert descs["/energy/electricity/dayAverage"].translation_key == "electricity_day_average"
+        assert descs["/energy/electricity/monthAverage"].translation_key == "electricity_month_average"
+
+    def test_electricity_average_sensors_are_not_added_when_unavailable(self):
+        data = {
+            "/energy/electricity/dayAverage": {"value": 3.21, "available": "false"},
+            # monthAverage omitted entirely
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        assert "/energy/electricity/dayAverage" not in descs
+        assert "/energy/electricity/monthAverage" not in descs
+
 
 # ── Description tables (spec: pointtapi-comfort-controls) ───────────────────
 
@@ -239,17 +264,267 @@ class TestComfortControlDescriptions:
         assert desc.translation_key == "thermal_disinfect_last_result"
         assert desc.value_fn is None
 
+    def test_thermostat_valve_diagnostics_are_discovered_from_devices_list(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 1,
+                        "name": "TG9nYW1hdGljIFRDMTAw",
+                        "type": "thermostat",
+                        "signal": 0,
+                        "battery": "unknown",
+                        "zone": 1,
+                        "protocol": "no_protocol",
+                    },
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "signal": 71,
+                        "battery": "ok",
+                        "zone": 2,
+                        "protocol": "homematicip",
+                    },
+                    {
+                        "id": 3,
+                        "name": "Q3Vpc2luZS0x",
+                        "type": "thermostat_valve",
+                        "signal": 59,
+                        "battery": "ok",
+                        "zone": 3,
+                        "protocol": "homematicip",
+                    },
+                ]
+            }
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        assert "/devices/list/thermostat_valve/2/signal" in descs
+        assert "/devices/list/thermostat_valve/2/battery" in descs
+        assert "/devices/list/thermostat_valve/2/zone" in descs
+        assert "/devices/list/thermostat_valve/2/protocol" in descs
+        assert "/devices/list/thermostat_valve/3/signal" in descs
+        assert "/devices/list/thermostat_valve/1/signal" not in descs
+
+    def test_zone_assigned_program_sensors_are_discovered_from_zone_paths(self):
+        data = {
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn10/temperatureHeatingSetpoint": {"value": 20.0},
+        }
+
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+        assert "/zones/zn1/assignedProgramName" in descs
+        assert "/zones/zn2/assignedProgramName" in descs
+        assert "/zones/zn10/assignedProgramName" in descs
+        assert descs["/zones/zn2/assignedProgramName"].translation_key == "assigned_program"
+
+    def test_zone_assigned_program_sensor_resolves_base64_program_name(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/assignedProgramName"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "Salle de bains"
+        assert ent.extra_state_attributes["program_id"] == "pg3"
+        assert ent.extra_state_attributes["program_name_path"] == "/programs/pg3/name"
+
+    def test_zone_assigned_program_sensor_falls_back_when_program_name_missing(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/assignedProgramName"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "pg3"
+        assert ent.extra_state_attributes["program_id"] == "pg3"
+
+    def test_zone_assigned_program_sensor_returns_none_when_clock_program_missing(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/assignedProgramName"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value is None
+        assert ent.extra_state_attributes == {}
+
+    def test_thermostat_valve_sensor_uses_dedicated_device_and_decoded_name(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "signal": 71,
+                        "battery": "ok",
+                        "zone": 2,
+                        "protocol": "homematicip",
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/signal"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == 71
+        assert ent.entity_category == EntityCategory.DIAGNOSTIC
+        assert ent.native_unit_of_measurement == "%"
+        assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
+        assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
+
+    def test_thermostat_valve_sensor_device_name_is_localized(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "signal": 71,
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data, language="fr")
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/signal"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.device_info["name"] == "Vanne thermostatique Salle de bains-1"
+
+    def test_thermostat_valve_warning_binary_sensors_are_discovered(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "warning": 0,
+                    },
+                    {
+                        "id": 3,
+                        "name": "Q3Vpc2luZS0x",
+                        "type": "thermostat_valve",
+                        "warning": 1,
+                    },
+                    {
+                        "id": 1,
+                        "name": "TG9nYW1hdGljIFRDMTAw",
+                        "type": "thermostat",
+                        "warning": 1,
+                    },
+                ]
+            }
+        }
+        descs = _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(data)
+        keys = [d.key for d in descs]
+        assert keys == [
+            "/devices/list/thermostat_valve/2/warning",
+            "/devices/list/thermostat_valve/3/warning",
+        ]
+
+    def test_thermostat_valve_warning_binary_sensor_state_mapping(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "warning": 0,
+                    },
+                    {
+                        "id": 3,
+                        "name": "Q3Vpc2luZS0x",
+                        "type": "thermostat_valve",
+                        "warning": 2,
+                    },
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        descs = _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(data)
+
+        d2 = next(d for d in descs if d.key.endswith("/2/warning"))
+        e2 = BoschPoinTTAPIBinarySensorEntity(coord, "entry1", "uuid1", d2)
+        e2.async_write_ha_state = MagicMock()
+        e2._handle_coordinator_update()
+        assert e2.is_on is False
+        assert e2.device_info["name"] == "Thermostat valve Salle de bains-1"
+
+        d3 = next(d for d in descs if d.key.endswith("/3/warning"))
+        e3 = BoschPoinTTAPIBinarySensorEntity(coord, "entry1", "uuid1", d3)
+        e3.async_write_ha_state = MagicMock()
+        e3._handle_coordinator_update()
+        assert e3.is_on is True
+
 
 # ── Entity behavior (value mapping, availability, failure path) ─────────────
 
 
-def _mock_coordinator(data):
+def _mock_coordinator(data, language: str | None = None):
     coord = MagicMock()
     coord.data = data
     coord.last_update_success = True
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
     coord.async_request_refresh = AsyncMock()
+    if language is not None:
+        coord.hass = MagicMock()
+        coord.hass.config = MagicMock()
+        coord.hass.config.language = language
     return coord
 
 

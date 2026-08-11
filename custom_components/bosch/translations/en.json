@@ -130,11 +130,32 @@
       "return_temperature": {
         "name": "Return temperature"
       },
+      "assigned_program": {
+        "name": "Assigned program"
+      },
+      "electricity_day_average": {
+        "name": "Electricity day average"
+      },
+      "electricity_month_average": {
+        "name": "Electricity month average"
+      },
       "refill_needed": {
         "name": "Refill needed"
       },
       "notifications": {
         "name": "Notifications"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Thermostat valve signal strength"
+      },
+      "thermostat_valve_battery": {
+        "name": "Thermostat valve battery"
+      },
+      "thermostat_valve_zone": {
+        "name": "Thermostat valve zone"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Thermostat valve protocol"
       },
       "thermal_disinfect_last_result": {
         "name": "Thermal disinfect last result",
@@ -198,6 +219,9 @@
       },
       "refill_needed": {
         "name": "Refill needed"
+      },
+      "thermostat_valve_warning": {
+        "name": "Thermostat valve warning"
       }
     },
     "switch": {

@@ -67,6 +67,15 @@
       "return_temperature": {
         "name": "Teplota spiatočky"
       },
+      "assigned_program": {
+        "name": "Priradený program"
+      },
+      "electricity_day_average": {
+        "name": "Denny priemer elektriny"
+      },
+      "electricity_month_average": {
+        "name": "Mesacny priemer elektriny"
+      },
       "actual_modulation": {
         "name": "Aktuálna výkonová modulácia"
       },
@@ -114,6 +123,18 @@
       },
       "notifications": {
         "name": "Upozornenia"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Sila signálu termostatického ventilu"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batéria termostatického ventilu"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zóna termostatického ventilu"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokol termostatického ventilu"
       },
       "thermal_disinfect_last_result": {
         "name": "Posledný výsledok termickej dezinfekcie",
@@ -177,6 +198,9 @@
       },
       "refill_needed": {
         "name": "Potrebné doplnenie"
+      },
+      "thermostat_valve_warning": {
+        "name": "Upozornenie termostatického ventilu"
       }
     },
     "switch": {

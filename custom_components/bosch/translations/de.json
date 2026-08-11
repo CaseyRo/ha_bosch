@@ -67,6 +67,15 @@
       "return_temperature": {
         "name": "Rücklauftemperatur"
       },
+      "assigned_program": {
+        "name": "Zugewiesenes Programm"
+      },
+      "electricity_day_average": {
+        "name": "Tagesdurchschnitt Strom"
+      },
+      "electricity_month_average": {
+        "name": "Monatsdurchschnitt Strom"
+      },
       "actual_modulation": {
         "name": "Aktuelle Modulationsleistung"
       },
@@ -114,6 +123,18 @@
       },
       "notifications": {
         "name": "Benachrichtigungen"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Signalstärke Thermostatventil"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batteriestand Thermostatventil"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zone Thermostatventil"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokoll Thermostatventil"
       },
       "thermal_disinfect_last_result": {
         "name": "Letzte thermische Desinfektion",
@@ -177,6 +198,9 @@
       },
       "refill_needed": {
         "name": "Nachfüllen erforderlich"
+      },
+      "thermostat_valve_warning": {
+        "name": "Warnung Thermostatventil"
       }
     },
     "switch": {

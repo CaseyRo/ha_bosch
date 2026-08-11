@@ -67,6 +67,15 @@
       "return_temperature": {
         "name": "Temperatura di ritorno"
       },
+      "assigned_program": {
+        "name": "Programma assegnato"
+      },
+      "electricity_day_average": {
+        "name": "Media giornaliera elettricità"
+      },
+      "electricity_month_average": {
+        "name": "Media mensile elettricità"
+      },
       "actual_modulation": {
         "name": "Potenza di modulazione attuale"
       },
@@ -114,6 +123,18 @@
       },
       "notifications": {
         "name": "Notifiche"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Potenza segnale valvola termostatica"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batteria valvola termostatica"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zona valvola termostatica"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protocollo valvola termostatica"
       },
       "thermal_disinfect_last_result": {
         "name": "Ultimo risultato disinfezione termica",
@@ -177,6 +198,9 @@
       },
       "refill_needed": {
         "name": "Riempimento necessario"
+      },
+      "thermostat_valve_warning": {
+        "name": "Avviso valvola termostatica"
       }
     },
     "switch": {

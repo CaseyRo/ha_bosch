@@ -67,6 +67,15 @@
       "return_temperature": {
         "name": "Temperatura powrotu"
       },
+      "assigned_program": {
+        "name": "Przypisany program"
+      },
+      "electricity_day_average": {
+        "name": "Srednia dzienna energii elektrycznej"
+      },
+      "electricity_month_average": {
+        "name": "Srednia miesieczna energii elektrycznej"
+      },
       "actual_modulation": {
         "name": "Obecna moc modulacji"
       },
@@ -114,6 +123,18 @@
       },
       "notifications": {
         "name": "Powiadomienia"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Siła sygnału zaworu termostatycznego"
+      },
+      "thermostat_valve_battery": {
+        "name": "Bateria zaworu termostatycznego"
+      },
+      "thermostat_valve_zone": {
+        "name": "Strefa zaworu termostatycznego"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokół zaworu termostatycznego"
       },
       "thermal_disinfect_last_result": {
         "name": "Ostatni wynik dezynfekcji termicznej",
@@ -177,6 +198,9 @@
       },
       "refill_needed": {
         "name": "Wymagane uzupełnienie"
+      },
+      "thermostat_valve_warning": {
+        "name": "Ostrzeżenie zaworu termostatycznego"
       }
     },
     "switch": {

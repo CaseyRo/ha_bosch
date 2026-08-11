@@ -67,6 +67,15 @@
       "return_temperature": {
         "name": "Retourtemperatuur"
       },
+      "assigned_program": {
+        "name": "Toegewezen programma"
+      },
+      "electricity_day_average": {
+        "name": "Daggemiddelde elektriciteit"
+      },
+      "electricity_month_average": {
+        "name": "Maandgemiddelde elektriciteit"
+      },
       "actual_modulation": {
         "name": "Huidige modulatiedruk"
       },
@@ -114,6 +123,18 @@
       },
       "notifications": {
         "name": "Meldingen"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Signaalsterkte thermostaatkraan"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batterij thermostaatkraan"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zone thermostaatkraan"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protocol thermostaatkraan"
       },
       "thermal_disinfect_last_result": {
         "name": "Laatste thermische desinfectie",
@@ -177,6 +198,9 @@
       },
       "refill_needed": {
         "name": "Bijvullen nodig"
+      },
+      "thermostat_valve_warning": {
+        "name": "Waarschuwing thermostaatkraan"
       }
     },
     "switch": {

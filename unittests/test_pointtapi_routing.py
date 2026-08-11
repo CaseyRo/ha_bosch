@@ -30,9 +30,10 @@ UUID = "101506113"
         ("/heatSources/actualSupplyTemperature", f"{UUID}_boiler"),
         ("/system/appliance/blockingError", f"{UUID}_boiler"),
         ("/system/appliance/systemPressure", f"{UUID}_boiler"),
-        ("/energy/history_total", f"{UUID}_boiler"),
-        ("/energy/historyHourly_ch", f"{UUID}_boiler"),
-        ("/energy/gas/annualGoal", f"{UUID}_boiler"),
+        # Energy performance
+        ("/energy/history_total", f"{UUID}_energy"),
+        ("/energy/historyHourly_ch", f"{UUID}_energy"),
+        ("/energy/gas/annualGoal", f"{UUID}_energy"),
         # Heating Zone (zn1 → no suffix on name)
         ("/zones/zn1/temperatureActual", f"{UUID}_zn1"),
         ("/zones/zn1/actualValvePosition", f"{UUID}_zn1"),
@@ -75,3 +76,13 @@ def test_unknown_path_falls_through_to_gateway() -> None:
     info = _resolve_device_info(UUID, "/some/unrecognized/path")
     assert (DOMAIN, UUID) in info["identifiers"]
     assert info["name"] == "EasyControl Gateway"
+
+
+def test_device_names_are_localized_when_language_is_provided() -> None:
+    gateway = _resolve_device_info(UUID, "/gateway/versionFirmware", language="fr")
+    zone = _resolve_device_info(UUID, "/zones/zn1/temperatureActual", language="fr")
+    energy = _resolve_device_info(UUID, "/energy/history_total", language="fr")
+
+    assert gateway["name"] == "Passerelle EasyControl"
+    assert zone["name"] == "Zone de chauffage"
+    assert energy["name"] == "Performance energetique"
