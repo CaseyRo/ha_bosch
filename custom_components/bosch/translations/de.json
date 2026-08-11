@@ -7,14 +7,20 @@
       "indoor_humidity": {
         "name": "Innenraumluftfeuchtigkeit"
       },
+      "valve_position": {
+        "name": "Ventilstellung"
+      },
       "system_pressure": {
         "name": "Systemdruck"
       },
       "wifi_rssi": {
         "name": "WLAN-Signalstärke"
       },
-      "update_state": {
-        "name": "Firmware-Update-Status"
+      "wifi_firmware_version": {
+        "name": "WLAN-Firmwareversion"
+      },
+      "energy_efficiency": {
+        "name": "Energieeffizienz"
       },
       "boost_remaining_time": {
         "name": "Verbleibende Boost-Zeit"
@@ -56,7 +62,10 @@
         "name": "Ursachencode"
       },
       "actual_supply_temperature": {
-        "name": "Aktuelle Vorlauftemperatur"
+        "name": "Vorlauftemperatur"
+      },
+      "return_temperature": {
+        "name": "Rücklauftemperatur"
       },
       "actual_modulation": {
         "name": "Aktuelle Modulationsleistung"

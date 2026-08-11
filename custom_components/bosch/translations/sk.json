@@ -7,14 +7,20 @@
       "indoor_humidity": {
         "name": "Vnútorná vlhkosť"
       },
+      "valve_position": {
+        "name": "Poloha ventilu"
+      },
       "system_pressure": {
         "name": "Systémový tlak"
       },
       "wifi_rssi": {
         "name": "Sila signálu Wi-Fi"
       },
-      "update_state": {
-        "name": "Stav aktualizácie firmvéru"
+      "wifi_firmware_version": {
+        "name": "Verzia firmvéru Wi-Fi"
+      },
+      "energy_efficiency": {
+        "name": "Energetická účinnosť"
       },
       "boost_remaining_time": {
         "name": "Zostávajúci čas boostu"
@@ -56,7 +62,10 @@
         "name": "Kód príčiny"
       },
       "actual_supply_temperature": {
-        "name": "Aktuálna teplota prívodu"
+        "name": "Teplota prívodu"
+      },
+      "return_temperature": {
+        "name": "Teplota spiatočky"
       },
       "actual_modulation": {
         "name": "Aktuálna výkonová modulácia"

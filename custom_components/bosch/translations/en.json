@@ -16,8 +16,11 @@
       "wifi_rssi": {
         "name": "WiFi signal strength"
       },
-      "update_state": {
-        "name": "Firmware update state"
+      "wifi_firmware_version": {
+        "name": "WiFi firmware version"
+      },
+      "energy_efficiency": {
+        "name": "Energy efficiency"
       },
       "boost_remaining_time": {
         "name": "Boost remaining time"
@@ -77,7 +80,7 @@
         "name": "Boiler power"
       },
       "actual_supply_temperature": {
-        "name": "Actual supply temperature"
+        "name": "Supply temperature"
       },
       "actual_modulation": {
         "name": "Current modulation power"

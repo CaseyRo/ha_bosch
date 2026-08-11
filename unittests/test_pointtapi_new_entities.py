@@ -134,6 +134,30 @@ class TestNotificationsHelpers:
         assert desc.available_fn({}) is False
         assert desc.available_fn({"/notifications": {"value": []}}) is True
 
+    def test_energy_efficiency_sensor_is_added_when_gateway_ui_references_eco(self):
+        data = {
+            "/gateway/ui": {
+                "references": [
+                    {"id": "/gateway/ui/eco"},
+                ]
+            }
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+        desc = descs["/gateway/ui/eco"]
+        assert desc.translation_key == "energy_efficiency"
+        assert desc.native_unit_of_measurement == "%"
+
+    def test_energy_efficiency_sensor_is_not_added_without_reference(self):
+        data = {
+            "/gateway/ui": {
+                "references": [
+                    {"id": "/gateway/ui/icons"},
+                ]
+            }
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+        assert "/gateway/ui/eco" not in descs
+
 
 # ── Description tables (spec: pointtapi-comfort-controls) ───────────────────
 
@@ -152,6 +176,16 @@ class TestTranslationCatalog:
 
 
 class TestComfortControlDescriptions:
+    def test_wifi_firmware_sensor_is_described(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        d = descs["/gateway/wifi/versionFirmware"]
+        assert d.translation_key == "wifi_firmware_version"
+
+    def test_return_temperature_sensor_is_described(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        d = descs["/heatSources/returnTemperature"]
+        assert d.translation_key == "return_temperature"
+
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/extraDhw"]

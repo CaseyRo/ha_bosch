@@ -769,11 +769,24 @@ def _pointtapi_open_window_binary_sensor_descriptions(
     )
 
 
+def _gateway_ui_has_eco_reference(data: dict[str, Any]) -> bool:
+    """Return True when /gateway/ui references include /gateway/ui/eco."""
+    ui = data.get("/gateway/ui") if data else None
+    if not isinstance(ui, dict):
+        return False
+    refs = ui.get("references") or []
+    return any(
+        isinstance(ref, dict) and ref.get("id") == "/gateway/ui/eco"
+        for ref in refs
+    )
+
+
 # Curated POINTTAPI sensors: path, name, device_class, entity_category
 def _pointtapi_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
     """Return all curated POINTTAPI sensor descriptions."""
+    data = data or {}
     descriptions = [
         # ── Existing sensors ─────────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
@@ -803,8 +816,8 @@ def _pointtapi_sensor_descriptions(
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
-            key="/gateway/update/state",
-            translation_key="update_state",
+            key="/gateway/wifi/versionFirmware",
+            translation_key="wifi_firmware_version",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
@@ -914,13 +927,17 @@ def _pointtapi_sensor_descriptions(
             translation_key="actual_supply_temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            entity_category=EntityCategory.DIAGNOSTIC,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/heatSources/actualModulation",
             translation_key="actual_modulation",
             native_unit_of_measurement="%",
-            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/returnTemperature",
+            translation_key="return_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ),
         # ── Solar circuit sensors ─────────────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
@@ -994,6 +1011,17 @@ def _pointtapi_sensor_descriptions(
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
     ]
+
+    if _gateway_ui_has_eco_reference(data):
+        descriptions.append(
+            BoschPoinTTAPISensorEntityDescription(
+                key="/gateway/ui/eco",
+                translation_key="energy_efficiency",
+                native_unit_of_measurement="%",
+                state_class=SensorStateClass.MEASUREMENT,
+            )
+        )
+
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
     return tuple(descriptions)
 

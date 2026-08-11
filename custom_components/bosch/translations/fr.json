@@ -7,14 +7,20 @@
       "indoor_humidity": {
         "name": "Humidité intérieure"
       },
+      "valve_position": {
+        "name": "Position de la vanne"
+      },
       "system_pressure": {
         "name": "Pression du système"
       },
       "wifi_rssi": {
         "name": "Puissance du signal Wi-Fi"
       },
-      "update_state": {
-        "name": "État de mise à jour du firmware"
+      "wifi_firmware_version": {
+        "name": "Version du firmware Wi-Fi"
+      },
+      "energy_efficiency": {
+        "name": "Efficacité énergétique"
       },
       "boost_remaining_time": {
         "name": "Temps de boost restant"
@@ -56,7 +62,10 @@
         "name": "Code cause"
       },
       "actual_supply_temperature": {
-        "name": "Température de départ réelle"
+        "name": "Température de départ"
+      },
+      "return_temperature": {
+        "name": "Température de retour"
       },
       "actual_modulation": {
         "name": "Puissance de modulation actuelle"
@@ -95,7 +104,7 @@
         "name": "Température"
       },
       "boiler_ignition_starts": {
-        "name": "Démarrages d'allumage"
+        "name": "Nombre de démarrages"
       },
       "last_update_check": {
         "name": "Dernière vérification de mise à jour"
