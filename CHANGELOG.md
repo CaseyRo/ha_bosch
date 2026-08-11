@@ -2,9 +2,11 @@
 
 All notable changes to this Bosch Home Assistant custom component will be documented in this file.
 
-## [Unreleased]
+## [1.2.0] — 2026-08-11 — Multi-zone climate, localization, per-zone valve + open-window
 
-Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 testers).
+Pre-released as beta.1–beta.7 and confirmed on two multi-zone CT200 installs
+(#11) — @jfhautenauven (12 ETRVs) and @janfuu-cpu (5 ETRVs), who between them
+found every regression in this list.
 
 ### Added
 - **Multi-zone climate discovery (POINTTAPI)** — the coordinator walks the
