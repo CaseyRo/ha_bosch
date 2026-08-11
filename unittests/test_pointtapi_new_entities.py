@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
@@ -17,11 +18,13 @@ from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPIBinarySensorEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     BoschPoinTTAPINumberEntity,
+    BoschPoinTTAPISensorEntity,
     BoschPoinTTAPISelectEntity,
     _notification_entries,
     _notifications_attributes,
     _notifications_count,
     _pointtapi_open_window_binary_sensor_descriptions,
+    _pointtapi_thermostat_valve_warning_binary_sensor_descriptions,
     _pointtapi_open_window_switch_descriptions,
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
@@ -238,6 +241,149 @@ class TestComfortControlDescriptions:
         desc = descs["/dhwCircuits/dhw1/thermalDisinfect/lastResult"]
         assert desc.translation_key == "thermal_disinfect_last_result"
         assert desc.value_fn is None
+
+    def test_thermostat_valve_diagnostics_are_discovered_from_devices_list(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 1,
+                        "name": "TG9nYW1hdGljIFRDMTAw",
+                        "type": "thermostat",
+                        "signal": 0,
+                        "battery": "unknown",
+                        "zone": 1,
+                        "protocol": "no_protocol",
+                    },
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "signal": 71,
+                        "battery": "ok",
+                        "zone": 2,
+                        "protocol": "homematicip",
+                    },
+                    {
+                        "id": 3,
+                        "name": "Q3Vpc2luZS0x",
+                        "type": "thermostat_valve",
+                        "signal": 59,
+                        "battery": "ok",
+                        "zone": 3,
+                        "protocol": "homematicip",
+                    },
+                ]
+            }
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        assert "/devices/list/thermostat_valve/2/signal" in descs
+        assert "/devices/list/thermostat_valve/2/battery" in descs
+        assert "/devices/list/thermostat_valve/2/zone" in descs
+        assert "/devices/list/thermostat_valve/2/protocol" in descs
+        assert "/devices/list/thermostat_valve/3/signal" in descs
+        assert "/devices/list/thermostat_valve/1/signal" not in descs
+
+    def test_thermostat_valve_sensor_uses_dedicated_device_and_decoded_name(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "signal": 71,
+                        "battery": "ok",
+                        "zone": 2,
+                        "protocol": "homematicip",
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/signal"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == 71
+        assert ent.entity_category == EntityCategory.DIAGNOSTIC
+        assert ent.native_unit_of_measurement == "%"
+        assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
+        assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
+
+    def test_thermostat_valve_warning_binary_sensors_are_discovered(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "warning": 0,
+                    },
+                    {
+                        "id": 3,
+                        "name": "Q3Vpc2luZS0x",
+                        "type": "thermostat_valve",
+                        "warning": 1,
+                    },
+                    {
+                        "id": 1,
+                        "name": "TG9nYW1hdGljIFRDMTAw",
+                        "type": "thermostat",
+                        "warning": 1,
+                    },
+                ]
+            }
+        }
+        descs = _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(data)
+        keys = [d.key for d in descs]
+        assert keys == [
+            "/devices/list/thermostat_valve/2/warning",
+            "/devices/list/thermostat_valve/3/warning",
+        ]
+
+    def test_thermostat_valve_warning_binary_sensor_state_mapping(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "warning": 0,
+                    },
+                    {
+                        "id": 3,
+                        "name": "Q3Vpc2luZS0x",
+                        "type": "thermostat_valve",
+                        "warning": 2,
+                    },
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        descs = _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(data)
+
+        d2 = next(d for d in descs if d.key.endswith("/2/warning"))
+        e2 = BoschPoinTTAPIBinarySensorEntity(coord, "entry1", "uuid1", d2)
+        e2.async_write_ha_state = MagicMock()
+        e2._handle_coordinator_update()
+        assert e2.is_on is False
+        assert e2.device_info["name"] == "Thermostat valve Salle de bains-1"
+
+        d3 = next(d for d in descs if d.key.endswith("/3/warning"))
+        e3 = BoschPoinTTAPIBinarySensorEntity(coord, "entry1", "uuid1", d3)
+        e3.async_write_ha_state = MagicMock()
+        e3._handle_coordinator_update()
+        assert e3.is_on is True
 
 
 # ── Entity behavior (value mapping, availability, failure path) ─────────────

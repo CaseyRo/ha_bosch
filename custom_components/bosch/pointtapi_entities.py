@@ -313,6 +313,139 @@ class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
     # Opt-in only: sensors with synthetic keys (/energy/history_ch) must not
     # be subjected to a generic path-in-data check.
     available_fn: Callable[[dict[str, Any]], bool] | None = None
+    # Optional per-entity device mapping override (used for dynamic entities
+    # whose key is synthetic and not directly routable by path).
+    device_info_fn: Callable[[str, dict[str, Any]], DeviceInfo] | None = None
+
+
+DEVICES_LIST_PATH = "/devices/list"
+THERMOSTAT_VALVE_TYPE = "thermostat_valve"
+
+
+def _devices_list_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return parsed rows from /devices/list, or an empty list."""
+    obj = data.get(DEVICES_LIST_PATH) if data else None
+    values = obj.get("value") if isinstance(obj, dict) else None
+    if not isinstance(values, list):
+        return []
+    return [item for item in values if isinstance(item, dict)]
+
+
+def _thermostat_valve_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return thermostat_valve rows from /devices/list, sorted by numeric id."""
+    rows = [
+        row
+        for row in _devices_list_entries(data)
+        if row.get("type") == THERMOSTAT_VALVE_TYPE and row.get("id") is not None
+    ]
+
+    def _sort_key(row: dict[str, Any]) -> tuple[int, str]:
+        rid = row.get("id")
+        try:
+            return (int(rid), "")
+        except (TypeError, ValueError):
+            return (999999, str(rid))
+
+    return sorted(rows, key=_sort_key)
+
+
+def _thermostat_valve_name(row: dict[str, Any]) -> str:
+    """Return display label for a thermostat-valve row from /devices/list."""
+    raw_name = row.get("name")
+    decoded = _decode_zone_name(raw_name)
+    if isinstance(decoded, str) and decoded.strip():
+        return decoded
+    rid = row.get("id")
+    return f"#{rid}" if rid is not None else "Unknown"
+
+
+def _thermostat_valve_row_by_id(data: dict[str, Any], valve_id: int) -> dict[str, Any] | None:
+    """Find a /devices/list thermostat-valve row by its numeric id."""
+    for row in _thermostat_valve_rows(data):
+        try:
+            if int(row.get("id")) == valve_id:
+                return row
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> Any:
+    """Read one field from a thermostat-valve row in /devices/list."""
+    row = _thermostat_valve_row_by_id(data, valve_id)
+    if not row:
+        return None
+    return row.get(field)
+
+
+def _thermostat_valve_device_info(
+    uuid: str,
+    data: dict[str, Any],
+    valve_id: int,
+) -> DeviceInfo:
+    """Build one dedicated HA device for a thermostat valve."""
+    row = _thermostat_valve_row_by_id(data, valve_id) or {"id": valve_id}
+    name = _thermostat_valve_name(row)
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{uuid}_trv_{valve_id}")},
+        name=f"Thermostat valve {name}",
+        via_device=(DOMAIN, uuid),
+    )
+
+
+def _pointtapi_thermostat_valve_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return diagnostic sensors for each thermostat valve from /devices/list."""
+    data = data or {}
+    descriptions: list[BoschPoinTTAPISensorEntityDescription] = []
+
+    for row in _thermostat_valve_rows(data):
+        try:
+            valve_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+
+        descriptions.extend(
+            (
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"/devices/list/thermostat_valve/{valve_id}/signal",
+                    translation_key="thermostat_valve_signal_strength",
+                    device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                    native_unit_of_measurement="%",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "signal"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, vid=valve_id: _thermostat_valve_device_info(u, d, vid),
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"/devices/list/thermostat_valve/{valve_id}/battery",
+                    translation_key="thermostat_valve_battery",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "battery"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, vid=valve_id: _thermostat_valve_device_info(u, d, vid),
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"/devices/list/thermostat_valve/{valve_id}/zone",
+                    translation_key="thermostat_valve_zone",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "zone"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, vid=valve_id: _thermostat_valve_device_info(u, d, vid),
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"/devices/list/thermostat_valve/{valve_id}/protocol",
+                    translation_key="thermostat_valve_protocol",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "protocol"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, vid=valve_id: _thermostat_valve_device_info(u, d, vid),
+                ),
+            )
+        )
+
+    return tuple(descriptions)
 
 
 def _notification_entries(data: dict[str, Any]) -> list[Any] | None:
@@ -1092,6 +1225,7 @@ def _pointtapi_sensor_descriptions(
         )
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
     return tuple(descriptions)
 
 
@@ -1116,9 +1250,17 @@ class BoschPoinTTAPISensorEntity(
         path = description.key
         slug = path.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_sensor_{slug}"
-        self._attr_device_info = _resolve_device_info(
-            uuid, path, data=coordinator.data or {}
-        )
+        if (
+            isinstance(description, BoschPoinTTAPISensorEntityDescription)
+            and description.device_info_fn is not None
+        ):
+            self._attr_device_info = description.device_info_fn(
+                uuid, coordinator.data or {}
+            )
+        else:
+            self._attr_device_info = _resolve_device_info(
+                uuid, path, data=coordinator.data or {}
+            )
         self._path = path
         self._native_value: Any = None
         self._last_reset: Any = None
@@ -1961,6 +2103,51 @@ class BoschPoinTTAPIBinarySensorEntityDescription(BinarySensorEntityDescription)
     """
 
     value_fn: Callable[[dict[str, Any]], bool | None] | None = None
+    available_fn: Callable[[dict[str, Any]], bool] | None = None
+    device_info_fn: Callable[[str, dict[str, Any]], DeviceInfo] | None = None
+
+
+def _thermostat_valve_warning_state(data: dict[str, Any], valve_id: int) -> bool | None:
+    """Map /devices/list warning value to a binary problem state.
+
+    0 means no warning, any other value means attention required.
+    """
+    warning = _thermostat_valve_field(data, valve_id, "warning")
+    if warning is None:
+        return None
+    try:
+        return int(warning) != 0
+    except (TypeError, ValueError):
+        # Non-numeric warnings still indicate attention required.
+        return True
+
+
+def _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPIBinarySensorEntityDescription", ...]:
+    """Return one diagnostic warning binary sensor per thermostat valve."""
+    data = data or {}
+    descriptions: list[BoschPoinTTAPIBinarySensorEntityDescription] = []
+
+    for row in _thermostat_valve_rows(data):
+        try:
+            valve_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+
+        descriptions.append(
+            BoschPoinTTAPIBinarySensorEntityDescription(
+                key=f"/devices/list/thermostat_valve/{valve_id}/warning",
+                translation_key="thermostat_valve_warning",
+                device_class=BinarySensorDeviceClass.PROBLEM,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, vid=valve_id: _thermostat_valve_warning_state(d, vid),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, vid=valve_id: _thermostat_valve_device_info(u, d, vid),
+            )
+        )
+
+    return tuple(descriptions)
 
 
 def _resolve_on_off(raw: Any) -> bool | None:
@@ -2057,9 +2244,14 @@ class BoschPoinTTAPIBinarySensorEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_binary_sensor_{slug}"
-        self._attr_device_info = _resolve_device_info(
-            uuid, description.key, data=coordinator.data or {}
-        )
+        if description.device_info_fn is not None:
+            self._attr_device_info = description.device_info_fn(
+                uuid, coordinator.data or {}
+            )
+        else:
+            self._attr_device_info = _resolve_device_info(
+                uuid, description.key, data=coordinator.data or {}
+            )
         self._is_on: bool | None = None
 
     @callback
@@ -2075,6 +2267,13 @@ class BoschPoinTTAPIBinarySensorEntity(
     @property
     def is_on(self) -> bool | None:
         return self._is_on
+
+    @property
+    def available(self) -> bool:
+        desc = self.entity_description
+        if desc.available_fn is not None:
+            return super().available and desc.available_fn(self.coordinator.data or {})
+        return super().available
 
 
 POINTTAPI_BINARY_SENSOR_DESCRIPTIONS: tuple[BoschPoinTTAPIBinarySensorEntityDescription, ...] = (

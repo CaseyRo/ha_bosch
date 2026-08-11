@@ -115,6 +115,18 @@
       "notifications": {
         "name": "Meldingen"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Signaalsterkte thermostaatkraan"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batterij thermostaatkraan"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zone thermostaatkraan"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protocol thermostaatkraan"
+      },
       "thermal_disinfect_last_result": {
         "name": "Laatste thermische desinfectie",
         "state": {
@@ -177,6 +189,9 @@
       },
       "refill_needed": {
         "name": "Bijvullen nodig"
+      },
+      "thermostat_valve_warning": {
+        "name": "Waarschuwing thermostaatkraan"
       }
     },
     "switch": {

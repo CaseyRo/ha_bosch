@@ -115,6 +115,18 @@
       "notifications": {
         "name": "Benachrichtigungen"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Signalstärke Thermostatventil"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batteriestand Thermostatventil"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zone Thermostatventil"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokoll Thermostatventil"
+      },
       "thermal_disinfect_last_result": {
         "name": "Letzte thermische Desinfektion",
         "state": {
@@ -177,6 +189,9 @@
       },
       "refill_needed": {
         "name": "Nachfüllen erforderlich"
+      },
+      "thermostat_valve_warning": {
+        "name": "Warnung Thermostatventil"
       }
     },
     "switch": {

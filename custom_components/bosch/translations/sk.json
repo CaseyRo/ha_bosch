@@ -115,6 +115,18 @@
       "notifications": {
         "name": "Upozornenia"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Sila signálu termostatického ventilu"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batéria termostatického ventilu"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zóna termostatického ventilu"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokol termostatického ventilu"
+      },
       "thermal_disinfect_last_result": {
         "name": "Posledný výsledok termickej dezinfekcie",
         "state": {
@@ -177,6 +189,9 @@
       },
       "refill_needed": {
         "name": "Potrebné doplnenie"
+      },
+      "thermostat_valve_warning": {
+        "name": "Upozornenie termostatického ventilu"
       }
     },
     "switch": {

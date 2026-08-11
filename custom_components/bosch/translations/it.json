@@ -115,6 +115,18 @@
       "notifications": {
         "name": "Notifiche"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Potenza segnale valvola termostatica"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batteria valvola termostatica"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zona valvola termostatica"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protocollo valvola termostatica"
+      },
       "thermal_disinfect_last_result": {
         "name": "Ultimo risultato disinfezione termica",
         "state": {
@@ -177,6 +189,9 @@
       },
       "refill_needed": {
         "name": "Riempimento necessario"
+      },
+      "thermostat_valve_warning": {
+        "name": "Avviso valvola termostatica"
       }
     },
     "switch": {
