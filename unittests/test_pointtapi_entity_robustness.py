@@ -242,7 +242,8 @@ class TestClimateRobustness:
         ent._handle_coordinator_update()
         assert ent.current_temperature == 20.5
         assert ent.target_temperature == 22.0
-        assert ent.hvac_mode == HVACMode.HEAT
+        assert ent.hvac_mode == HVACMode.AUTO
+        assert ent.preset_mode == "program"
 
     def test_absent_path_reports_none_not_stale(self):
         coord = _coord({
@@ -266,6 +267,17 @@ class TestClimateRobustness:
         ent = _climate(coord)
         ent._handle_coordinator_update()  # float("bad") would raise
         assert ent.hvac_mode == HVACMode.HEAT
+        assert ent.preset_mode == "manual"
+
+    def test_target_falls_back_to_manual_temperature(self):
+        coord = _coord({
+            "/zones/zn1/temperatureActual": {"value": 20.5},
+            "/zones/zn1/userMode": {"value": "manual"},
+            "/zones/zn1/manualTemperatureHeating": {"value": 19.5},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.target_temperature == 19.5
 
     @pytest.mark.asyncio
     async def test_set_temperature_switches_manual_then_writes_and_refreshes(self):
@@ -284,6 +296,42 @@ class TestClimateRobustness:
             ("/zones/zn1/manualTemperatureHeating", 21.5),
         ]
         assert ent.target_temperature == 21.5  # optimistic
+        coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_set_hvac_mode_auto_sets_clock_mode(self):
+        coord = _coord({"/zones/zn1/userMode": {"value": "manual"}})
+        ent = _climate(coord)
+
+        await ent.async_set_hvac_mode(HVACMode.AUTO)
+
+        coord.client.put.assert_awaited_once_with("/zones/zn1/userMode", "clock")
+        assert ent.hvac_mode == HVACMode.AUTO
+        assert ent.preset_mode == "program"
+        coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_set_hvac_mode_heat_sets_manual_mode(self):
+        coord = _coord({"/zones/zn1/userMode": {"value": "clock"}})
+        ent = _climate(coord)
+
+        await ent.async_set_hvac_mode(HVACMode.HEAT)
+
+        coord.client.put.assert_awaited_once_with("/zones/zn1/userMode", "manual")
+        assert ent.hvac_mode == HVACMode.HEAT
+        assert ent.preset_mode == "manual"
+        coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_set_preset_mode_program_sets_clock(self):
+        coord = _coord({"/zones/zn1/userMode": {"value": "manual"}})
+        ent = _climate(coord)
+
+        await ent.async_set_preset_mode("program")
+
+        coord.client.put.assert_awaited_once_with("/zones/zn1/userMode", "clock")
+        assert ent.preset_mode == "program"
+        assert ent.hvac_mode == HVACMode.AUTO
         coord.async_request_refresh.assert_awaited_once()
 
 

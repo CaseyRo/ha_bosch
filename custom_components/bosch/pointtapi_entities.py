@@ -442,9 +442,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     _attr_has_entity_name = True
     _attr_name = None
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
+    _attr_hvac_modes = [HVACMode.AUTO, HVACMode.HEAT, HVACMode.OFF]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
+        | ClimateEntityFeature.PRESET_MODE
         | ClimateEntityFeature.TURN_OFF
         | ClimateEntityFeature.TURN_ON
     )
@@ -464,8 +465,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._attr_device_info = _resolve_device_info(
             uuid, f"/zones/{zone_id}", data=coordinator.data or {}
         )
+        self._attr_preset_modes = ["program", "manual"]
         self._current: float | None = None
         self._target: float | None = None
+        self._preset_mode: str | None = None
         self._hvac_mode = HVACMode.HEAT
 
     @callback
@@ -479,8 +482,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         data = self.coordinator.data or {}
         self._current = _val(data, f"/zones/{self._zone_id}/temperatureActual")
         self._target = _val(data, f"/zones/{self._zone_id}/temperatureHeatingSetpoint")
+        if self._target is None:
+            # Some payloads expose manual setpoint only in manualTemperatureHeating.
+            self._target = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
         user_mode = _val(data, f"/zones/{self._zone_id}/userMode")
         manual_temp = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
+        self._preset_mode = "program" if user_mode == "clock" else "manual"
         # OFF = manual mode with temp at or below minimum
         try:
             is_off = (
@@ -493,6 +500,8 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             is_off = False
         if is_off:
             self._hvac_mode = HVACMode.OFF
+        elif user_mode == "clock":
+            self._hvac_mode = HVACMode.AUTO
         else:
             self._hvac_mode = HVACMode.HEAT
         self.async_write_ha_state()
@@ -508,6 +517,10 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     @property
     def hvac_mode(self) -> str:
         return self._hvac_mode
+
+    @property
+    def preset_mode(self) -> str | None:
+        return self._preset_mode
 
     @property
     def min_temp(self) -> float:
@@ -543,18 +556,18 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             ) from err
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        """Set HVAC mode via POINTTAPI PUT (task 6.2).
+        """Set HVAC mode via zone userMode semantics.
 
-        API accepts: "weather" (auto/weather-compensated), "room" (room-based), not "off"/"auto".
-        OFF is not directly supported by the hc1/control endpoint; we set zone userMode to manual
-        with a low setpoint instead.
+        - AUTO -> clock (program/schedule mode)
+        - HEAT -> manual mode
+        - OFF  -> manual mode + min temp
         """
         if hvac_mode == HVACMode.OFF:
-            # No direct "off" for hc1/control; set zone to manual with min temp
             try:
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/manualTemperatureHeating", self.min_temp)
                 self._hvac_mode = hvac_mode
+                self._preset_mode = "manual"
                 self.async_write_ha_state()
                 await self.coordinator.async_request_refresh()
             except ConfigEntryAuthFailed:
@@ -565,11 +578,19 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
                     f"POINTTAPI set hvac_mode OFF failed: {err}"
                 ) from err
             return
-        value = "weather"
-        path = "/heatingCircuits/hc1/control"
+
+        if hvac_mode == HVACMode.AUTO:
+            path = f"/zones/{self._zone_id}/userMode"
+            value = "clock"
+            next_preset = "program"
+        else:
+            path = f"/zones/{self._zone_id}/userMode"
+            value = "manual"
+            next_preset = "manual"
         try:
             await self.coordinator.client.put(path, value)
             self._hvac_mode = hvac_mode
+            self._preset_mode = next_preset
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
@@ -578,6 +599,26 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError(
                 f"POINTTAPI set hvac_mode failed: {err}"
+            ) from err
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set zone scheduling mode directly: program (clock) or manual."""
+        if preset_mode not in {"program", "manual"}:
+            raise HomeAssistantError(f"Unsupported preset mode: {preset_mode}")
+        value = "clock" if preset_mode == "program" else "manual"
+        try:
+            await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", value)
+            self._preset_mode = preset_mode
+            if self._hvac_mode != HVACMode.OFF:
+                self._hvac_mode = HVACMode.AUTO if preset_mode == "program" else HVACMode.HEAT
+            self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"POINTTAPI set preset_mode failed: {err}"
             ) from err
 
 
