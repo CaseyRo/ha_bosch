@@ -395,6 +395,32 @@ class TestComfortControlDescriptions:
         assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
         assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
 
+    def test_thermostat_valve_sensor_device_name_is_localized(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "signal": 71,
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data, language="fr")
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/signal"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.device_info["name"] == "Vanne thermostatique Salle de bains-1"
+
     def test_thermostat_valve_warning_binary_sensors_are_discovered(self):
         data = {
             "/devices/list": {
@@ -466,13 +492,17 @@ class TestComfortControlDescriptions:
 # ── Entity behavior (value mapping, availability, failure path) ─────────────
 
 
-def _mock_coordinator(data):
+def _mock_coordinator(data, language: str | None = None):
     coord = MagicMock()
     coord.data = data
     coord.last_update_success = True
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
     coord.async_request_refresh = AsyncMock()
+    if language is not None:
+        coord.hass = MagicMock()
+        coord.hass.config = MagicMock()
+        coord.hass.config.language = language
     return coord
 
 
