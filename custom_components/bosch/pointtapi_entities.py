@@ -909,6 +909,73 @@ def _pointtapi_zone_valve_sensor_descriptions(
     )
 
 
+def _zone_clock_program_id(data: dict[str, Any], zone_id: str) -> str | None:
+    """Return program id (e.g. pg3) assigned to a zone via clockProgram."""
+    raw = _val(data, f"/zones/{zone_id}/clockProgram")
+    if raw is None:
+        return None
+
+    try:
+        # API exposes floatValue for clockProgram (e.g. 3.0).
+        program_index = int(float(raw))
+    except (TypeError, ValueError):
+        return None
+
+    if program_index <= 0:
+        return None
+    return f"pg{program_index}"
+
+
+def _zone_assigned_program_name(data: dict[str, Any], zone_id: str) -> str | None:
+    """Resolve zone assigned program name from /programs/{pg}/name.
+
+    Returns decoded base64 name when available, otherwise falls back to the
+    program id (e.g. pg3). If mapping data is absent, returns None.
+    """
+    program_id = _zone_clock_program_id(data, zone_id)
+    if program_id is None:
+        return None
+
+    raw_name = _val(data, f"/programs/{program_id}/name")
+    decoded_name = _decode_zone_name(raw_name)
+    if isinstance(decoded_name, str) and decoded_name.strip():
+        return decoded_name
+
+    return program_id
+
+
+def _zone_assigned_program_attributes(
+    data: dict[str, Any], zone_id: str
+) -> dict[str, Any] | None:
+    """Expose resolved program id/path as extra attributes for debugging/UI."""
+    program_id = _zone_clock_program_id(data, zone_id)
+    if program_id is None:
+        return None
+    return {
+        "program_id": program_id,
+        "program_name_path": f"/programs/{program_id}/name",
+    }
+
+
+def _pointtapi_zone_assigned_program_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return one sensor per zone exposing the assigned schedule/program name."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/assignedProgramName",
+            translation_key="assigned_program",
+            value_fn=lambda d, zid=zone_id: _zone_assigned_program_name(d, zid),
+            attributes_fn=lambda d, zid=zone_id: _zone_assigned_program_attributes(d, zid),
+            available_fn=lambda d, zid=zone_id: f"/zones/{zid}" in d,
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
 def _pointtapi_open_window_switch_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
@@ -1225,6 +1292,7 @@ def _pointtapi_sensor_descriptions(
         )
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_zone_assigned_program_sensor_descriptions(data))
     descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
     return tuple(descriptions)
 

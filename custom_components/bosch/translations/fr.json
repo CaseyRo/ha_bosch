@@ -67,6 +67,9 @@
       "return_temperature": {
         "name": "Température de retour"
       },
+      "assigned_program": {
+        "name": "Programme assigné"
+      },
       "actual_modulation": {
         "name": "Puissance de modulation actuelle"
       },

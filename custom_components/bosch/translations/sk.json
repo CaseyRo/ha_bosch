@@ -67,6 +67,9 @@
       "return_temperature": {
         "name": "Teplota spiatočky"
       },
+      "assigned_program": {
+        "name": "Priradený program"
+      },
       "actual_modulation": {
         "name": "Aktuálna výkonová modulácia"
       },

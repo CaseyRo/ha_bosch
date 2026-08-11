@@ -130,6 +130,9 @@
       "return_temperature": {
         "name": "Return temperature"
       },
+      "assigned_program": {
+        "name": "Assigned program"
+      },
       "refill_needed": {
         "name": "Refill needed"
       },

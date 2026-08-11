@@ -285,6 +285,83 @@ class TestComfortControlDescriptions:
         assert "/devices/list/thermostat_valve/3/signal" in descs
         assert "/devices/list/thermostat_valve/1/signal" not in descs
 
+    def test_zone_assigned_program_sensors_are_discovered_from_zone_paths(self):
+        data = {
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn10/temperatureHeatingSetpoint": {"value": 20.0},
+        }
+
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+        assert "/zones/zn1/assignedProgramName" in descs
+        assert "/zones/zn2/assignedProgramName" in descs
+        assert "/zones/zn10/assignedProgramName" in descs
+        assert descs["/zones/zn2/assignedProgramName"].translation_key == "assigned_program"
+
+    def test_zone_assigned_program_sensor_resolves_base64_program_name(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/assignedProgramName"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "Salle de bains"
+        assert ent.extra_state_attributes["program_id"] == "pg3"
+        assert ent.extra_state_attributes["program_name_path"] == "/programs/pg3/name"
+
+    def test_zone_assigned_program_sensor_falls_back_when_program_name_missing(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/assignedProgramName"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "pg3"
+        assert ent.extra_state_attributes["program_id"] == "pg3"
+
+    def test_zone_assigned_program_sensor_returns_none_when_clock_program_missing(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/assignedProgramName"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value is None
+        assert ent.extra_state_attributes == {}
+
     def test_thermostat_valve_sensor_uses_dedicated_device_and_decoded_name(self):
         data = {
             "/devices/list": {

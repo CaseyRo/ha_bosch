@@ -67,6 +67,9 @@
       "return_temperature": {
         "name": "Retourtemperatuur"
       },
+      "assigned_program": {
+        "name": "Toegewezen programma"
+      },
       "actual_modulation": {
         "name": "Huidige modulatiedruk"
       },
