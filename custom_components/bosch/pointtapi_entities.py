@@ -1093,6 +1093,34 @@ def _pointtapi_zone_assigned_program_sensor_descriptions(
     )
 
 
+def _pointtapi_electricity_average_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return electricity average sensors only when paths are available.
+
+    Exposes /energy/electricity/dayAverage and /energy/electricity/monthAverage
+    only when the appliance reports those resources as available.
+    """
+    if not data:
+        return ()
+
+    candidates = (
+        ("/energy/electricity/dayAverage", "electricity_day_average"),
+        ("/energy/electricity/monthAverage", "electricity_month_average"),
+    )
+
+    descriptions: list[BoschPoinTTAPISensorEntityDescription] = []
+    for path, translation_key in candidates:
+        if isinstance(data.get(path), dict) and _path_available(data, path):
+            descriptions.append(
+                BoschPoinTTAPISensorEntityDescription(
+                    key=path,
+                    translation_key=translation_key,
+                )
+            )
+    return tuple(descriptions)
+
+
 def _pointtapi_open_window_switch_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
@@ -1410,6 +1438,7 @@ def _pointtapi_sensor_descriptions(
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_assigned_program_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))
     descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
     return tuple(descriptions)
 

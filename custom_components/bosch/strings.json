@@ -133,6 +133,12 @@
       "assigned_program": {
         "name": "Assigned program"
       },
+      "electricity_day_average": {
+        "name": "Electricity day average"
+      },
+      "electricity_month_average": {
+        "name": "Electricity month average"
+      },
       "refill_needed": {
         "name": "Refill needed"
       },

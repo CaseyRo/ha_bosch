@@ -70,6 +70,12 @@
       "assigned_program": {
         "name": "Zugewiesenes Programm"
       },
+      "electricity_day_average": {
+        "name": "Tagesdurchschnitt Strom"
+      },
+      "electricity_month_average": {
+        "name": "Monatsdurchschnitt Strom"
+      },
       "actual_modulation": {
         "name": "Aktuelle Modulationsleistung"
       },

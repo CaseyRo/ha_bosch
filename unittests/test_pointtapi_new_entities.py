@@ -161,6 +161,28 @@ class TestNotificationsHelpers:
         descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
         assert "/gateway/ui/eco" not in descs
 
+    def test_electricity_average_sensors_are_added_when_available(self):
+        data = {
+            "/energy/electricity/dayAverage": {"value": 3.21, "available": "true"},
+            "/energy/electricity/monthAverage": {"value": 4.56},
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        assert "/energy/electricity/dayAverage" in descs
+        assert "/energy/electricity/monthAverage" in descs
+        assert descs["/energy/electricity/dayAverage"].translation_key == "electricity_day_average"
+        assert descs["/energy/electricity/monthAverage"].translation_key == "electricity_month_average"
+
+    def test_electricity_average_sensors_are_not_added_when_unavailable(self):
+        data = {
+            "/energy/electricity/dayAverage": {"value": 3.21, "available": "false"},
+            # monthAverage omitted entirely
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        assert "/energy/electricity/dayAverage" not in descs
+        assert "/energy/electricity/monthAverage" not in descs
+
 
 # ── Description tables (spec: pointtapi-comfort-controls) ───────────────────
 

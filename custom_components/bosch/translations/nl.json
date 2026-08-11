@@ -70,6 +70,12 @@
       "assigned_program": {
         "name": "Toegewezen programma"
       },
+      "electricity_day_average": {
+        "name": "Daggemiddelde elektriciteit"
+      },
+      "electricity_month_average": {
+        "name": "Maandgemiddelde elektriciteit"
+      },
       "actual_modulation": {
         "name": "Huidige modulatiedruk"
       },

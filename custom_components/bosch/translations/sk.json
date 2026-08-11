@@ -70,6 +70,12 @@
       "assigned_program": {
         "name": "Priradený program"
       },
+      "electricity_day_average": {
+        "name": "Denny priemer elektriny"
+      },
+      "electricity_month_average": {
+        "name": "Mesacny priemer elektriny"
+      },
       "actual_modulation": {
         "name": "Aktuálna výkonová modulácia"
       },
