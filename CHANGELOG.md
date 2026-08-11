@@ -23,6 +23,15 @@ Collected changes for the upcoming 1.2.0 (pre-released as beta.1–beta.3, #11 t
 - **Select robustness** — unknown API values mark the select unavailable
   instead of showing a ghost state; unsupported options are rejected on write.
   Contributed by @jfhautenauven (#14).
+- **WiFi firmware version and energy-efficiency sensors** — the latter
+  (`/gateway/ui/eco`) only when the gateway advertises it. Supply temperature,
+  return temperature (new) and modulation are regular sensors now instead of
+  diagnostics. Contributed by @jfhautenauven (#15).
+
+### Removed
+- **Firmware-update-state sensor** — redundant with the update entity.
+  Existing installs keep an orphaned registry entry; delete it once by hand
+  (#15).
 
 ### Fixed
 - **Zone device names are human-readable** — the PointT API base64-encodes room
