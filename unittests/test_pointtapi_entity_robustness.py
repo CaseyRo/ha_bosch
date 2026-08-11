@@ -291,14 +291,16 @@ class TestClimateRobustness:
         ent._handle_coordinator_update()
         assert ent.hvac_action == HVACAction.HEATING
 
-    def test_hvac_action_unknown_status_maps_to_cooling(self):
+    def test_hvac_action_unknown_status_is_unknown(self):
+        # Heating-only appliance: an unrecognised status must not be reported as
+        # COOLING, which HA renders as "Cooling" in the UI.
         coord = _coord({
             "/zones/zn1/userMode": {"value": "clock"},
             "/zones/zn1/status": {"value": "circulation"},
         })
         ent = _climate(coord)
         ent._handle_coordinator_update()
-        assert ent.hvac_action == HVACAction.COOLING
+        assert ent.hvac_action is None
 
     def test_hvac_action_off_when_mode_is_off(self):
         coord = _coord({

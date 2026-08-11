@@ -672,3 +672,38 @@ class TestEntityBehavior:
             "/dhwCircuits/dhw1/thermalDisinfect/weekDay", "Mo"
         )
         assert ent.current_option == "mo"
+
+
+def test_sensor_units_are_valid_for_their_device_class() -> None:
+    """HA rejects a unit that isn't allowed for the description's device class.
+
+    Guards the whole POINTTAPI sensor table at once (e.g. SIGNAL_STRENGTH only
+    accepts dB/dBm, so a percentage link quality must not claim that class).
+    """
+    from homeassistant.components.sensor.const import DEVICE_CLASS_UNITS
+
+    data = {
+        "/devices/list": {
+            "value": [
+                {
+                    "id": 2,
+                    "name": "Q3Vpc2luZS0x",
+                    "type": "thermostat_valve",
+                    "signal": 71,
+                    "battery": "ok",
+                    "zone": 2,
+                    "protocol": "homematicip",
+                }
+            ]
+        },
+        "/energy/electricity/dayAverage": {"value": 3.21},
+    }
+
+    for desc in _pointtapi_sensor_descriptions(data):
+        allowed = DEVICE_CLASS_UNITS.get(desc.device_class)
+        if allowed is None:
+            continue
+        assert desc.native_unit_of_measurement in allowed, (
+            f"{desc.key}: unit {desc.native_unit_of_measurement!r} is invalid "
+            f"for device class {desc.device_class}"
+        )

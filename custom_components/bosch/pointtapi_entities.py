@@ -135,8 +135,6 @@ _GATEWAY_KINDS = {
 _DHW_KINDS = {
     "thermal_disinfect",
 }
-_BOILER_KINDS = {
-}
 _ENERGY_KINDS = {
     "annual_gas_goal",
 }
@@ -149,15 +147,15 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "it": "Gateway EasyControl",
         "nl": "EasyControl gateway",
         "pl": "Bramka EasyControl",
-        "sk": "Brana EasyControl",
+        "sk": "Brána EasyControl",
     },
     "boiler": {
         "en": "Boiler",
         "de": "Kessel",
-        "fr": "Chaudiere",
+        "fr": "Chaudière",
         "it": "Caldaia",
         "nl": "Ketel",
-        "pl": "Kociol",
+        "pl": "Kocioł",
         "sk": "Kotol",
     },
     "dhw": {
@@ -166,8 +164,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "fr": "Ballon d'eau chaude",
         "it": "Serbatoio acqua calda",
         "nl": "Warmwatertank",
-        "pl": "Zbiornik cieplej wody",
-        "sk": "Zasobnik teplej vody",
+        "pl": "Zbiornik ciepłej wody",
+        "sk": "Zásobník teplej vody",
     },
     "solar": {
         "en": "Solar",
@@ -185,7 +183,7 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "it": "Zona riscaldamento",
         "nl": "Verwarmingszone",
         "pl": "Strefa ogrzewania",
-        "sk": "Vykurovacia zona",
+        "sk": "Vykurovacia zóna",
     },
     "thermostat_valve": {
         "en": "Thermostat valve",
@@ -193,17 +191,17 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "fr": "Vanne thermostatique",
         "it": "Valvola termostatica",
         "nl": "Thermostaatkraan",
-        "pl": "Zawor termostatyczny",
-        "sk": "Termostaticky ventil",
+        "pl": "Zawór termostatyczny",
+        "sk": "Termostatický ventil",
     },
     "energy_performance": {
         "en": "Energy performance",
         "de": "Energieeffizienz",
-        "fr": "Performance energetique",
+        "fr": "Performance énergétique",
         "it": "Prestazioni energetiche",
         "nl": "Energieprestaties",
-        "pl": "Wydajnosc energetyczna",
-        "sk": "Energeticka vykonnost",
+        "pl": "Wydajność energetyczna",
+        "sk": "Energetická výkonnosť",
     },
 }
 
@@ -340,12 +338,6 @@ def _resolve_device_info(
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_dhw1")},
             name=_device_name("dhw", language),
-            via_device=(DOMAIN, uuid),
-        )
-    if kind in _BOILER_KINDS:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{uuid}_boiler")},
-            name=_device_name("boiler", language),
             via_device=(DOMAIN, uuid),
         )
     if kind in _ENERGY_KINDS:
@@ -521,7 +513,8 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                 BoschPoinTTAPISensorEntityDescription(
                     key=f"/devices/list/thermostat_valve/{valve_id}/signal",
                     translation_key="thermostat_valve_signal_strength",
-                    device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                    # No SIGNAL_STRENGTH device class: HA only accepts dB/dBm for
+                    # it, and /devices/list reports link quality as a percentage.
                     native_unit_of_measurement="%",
                     entity_category=EntityCategory.DIAGNOSTIC,
                     value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "signal"),
@@ -680,6 +673,14 @@ def _gas_total_hourly(data: dict[str, Any]) -> float | None:
     return round((e.get("gCh") or 0.0) + (e.get("gHw") or 0.0), 2)
 
 
+# Zone /status -> HVAC action. Unknown values map to None (unknown), never to
+# COOLING — these appliances are heating-only.
+_ZONE_STATUS_ACTIONS = {
+    "idle": HVACAction.IDLE,
+    "heat request": HVACAction.HEATING,
+}
+
+
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
     """Climate entity for one POINTTAPI zone: current/setpoint from coordinator.data."""
 
@@ -751,30 +752,13 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         if is_off:
             self._hvac_mode = HVACMode.OFF
             self._hvac_action = HVACAction.OFF
-        elif user_mode == "clock":
-            self._hvac_mode = HVACMode.AUTO
-            if isinstance(zone_status, str):
-                norm_status = zone_status.strip().lower()
-                if norm_status == "idle":
-                    self._hvac_action = HVACAction.IDLE
-                elif norm_status == "heat request":
-                    self._hvac_action = HVACAction.HEATING
-                else:
-                    self._hvac_action = HVACAction.COOLING
-            else:
-                self._hvac_action = None
         else:
-            self._hvac_mode = HVACMode.HEAT
-            if isinstance(zone_status, str):
-                norm_status = zone_status.strip().lower()
-                if norm_status == "idle":
-                    self._hvac_action = HVACAction.IDLE
-                elif norm_status == "heat request":
-                    self._hvac_action = HVACAction.HEATING
-                else:
-                    self._hvac_action = HVACAction.COOLING
-            else:
-                self._hvac_action = None
+            self._hvac_mode = HVACMode.AUTO if user_mode == "clock" else HVACMode.HEAT
+            self._hvac_action = (
+                _ZONE_STATUS_ACTIONS.get(zone_status.strip().lower())
+                if isinstance(zone_status, str)
+                else None
+            )
         self.async_write_ha_state()
 
     @property
