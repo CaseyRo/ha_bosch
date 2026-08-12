@@ -928,7 +928,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     _attr_hvac_modes = [HVACMode.AUTO, HVACMode.HEAT, HVACMode.OFF]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
-        | ClimateEntityFeature.PRESET_MODE
         | ClimateEntityFeature.TURN_OFF
         | ClimateEntityFeature.TURN_ON
     )
@@ -952,10 +951,8 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             language=self._language,
             data=coordinator.data or {},
         )
-        self._attr_preset_modes = ["program", "manual"]
         self._current: float | None = None
         self._target: float | None = None
-        self._preset_mode: str | None = None
         self._hvac_mode = HVACMode.HEAT
         self._hvac_action: HVACAction | None = None
 
@@ -976,7 +973,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         user_mode = _val(data, f"/zones/{self._zone_id}/userMode")
         manual_temp = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
         zone_status = _val(data, f"/zones/{self._zone_id}/status")
-        self._preset_mode = "program" if user_mode == "clock" else "manual"
         # OFF = manual mode with temp at or below minimum
         try:
             is_off = (
@@ -1014,10 +1010,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     @property
     def hvac_action(self) -> HVACAction | None:
         return self._hvac_action
-
-    @property
-    def preset_mode(self) -> str | None:
-        return self._preset_mode
 
     @property
     def min_temp(self) -> float:
@@ -1064,7 +1056,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/manualTemperatureHeating", self.min_temp)
                 self._hvac_mode = hvac_mode
-                self._preset_mode = "manual"
                 self.async_write_ha_state()
                 await self.coordinator.async_request_refresh()
             except ConfigEntryAuthFailed:
@@ -1079,15 +1070,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         if hvac_mode == HVACMode.AUTO:
             path = f"/zones/{self._zone_id}/userMode"
             value = "clock"
-            next_preset = "program"
         else:
             path = f"/zones/{self._zone_id}/userMode"
             value = "manual"
-            next_preset = "manual"
         try:
             await self.coordinator.client.put(path, value)
             self._hvac_mode = hvac_mode
-            self._preset_mode = next_preset
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
@@ -1096,26 +1084,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError(
                 f"POINTTAPI set hvac_mode failed: {err}"
-            ) from err
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set zone scheduling mode directly: program (clock) or manual."""
-        if preset_mode not in {"program", "manual"}:
-            raise HomeAssistantError(f"Unsupported preset mode: {preset_mode}")
-        value = "clock" if preset_mode == "program" else "manual"
-        try:
-            await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", value)
-            self._preset_mode = preset_mode
-            if self._hvac_mode != HVACMode.OFF:
-                self._hvac_mode = HVACMode.AUTO if preset_mode == "program" else HVACMode.HEAT
-            self.async_write_ha_state()
-            await self.coordinator.async_request_refresh()
-        except ConfigEntryAuthFailed:
-            raise
-        except Exception as err:
-            await self.coordinator.async_request_refresh()
-            raise HomeAssistantError(
-                f"POINTTAPI set preset_mode failed: {err}"
             ) from err
 
 
