@@ -192,6 +192,13 @@ def async_register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 def async_remove_services(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Remove services."""
-    hass.services.async_remove(DOMAIN, SERVICE_DEBUG)
-    hass.services.async_remove(DOMAIN, SERVICE_UPDATE)
+    """Remove services that this integration actually registered.
+
+    debug_scan only registers on the XMPP/HTTP path — a POINTTAPI entry returns
+    from async_init() long before that call — so removing it unconditionally
+    asks HA to drop a service that was never there and logs "Unable to remove
+    unknown service bosch/debug_scan" on every unload and reload (#7).
+    """
+    for service in (SERVICE_DEBUG, SERVICE_UPDATE):
+        if hass.services.has_service(DOMAIN, service):
+            hass.services.async_remove(DOMAIN, service)
