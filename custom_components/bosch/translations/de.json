@@ -19,6 +19,9 @@
       "wifi_firmware_version": {
         "name": "WLAN-Firmwareversion"
       },
+      "zigbee_firmware_version": {
+        "name": "Zigbee-Firmwareversion"
+      },
       "energy_efficiency": {
         "name": "Energieeffizienz"
       },
@@ -176,6 +179,9 @@
       },
       "annual_gas_goal": {
         "name": "Jährliches Gasziel"
+      },
+      "annual_electricity_goal": {
+        "name": "Jährliches Stromziel"
       }
     },
     "binary_sensor": {

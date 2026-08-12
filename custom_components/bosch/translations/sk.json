@@ -19,6 +19,9 @@
       "wifi_firmware_version": {
         "name": "Verzia firmvéru Wi-Fi"
       },
+      "zigbee_firmware_version": {
+        "name": "Verzia firmvéru Zigbee"
+      },
       "energy_efficiency": {
         "name": "Energetická účinnosť"
       },
@@ -176,6 +179,9 @@
       },
       "annual_gas_goal": {
         "name": "Ročný cieľ spotreby plynu"
+      },
+      "annual_electricity_goal": {
+        "name": "Ročný cieľ spotreby elektriny"
       }
     },
     "binary_sensor": {

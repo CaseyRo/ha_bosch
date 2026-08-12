@@ -37,7 +37,13 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
+from homeassistant.const import (
+    UnitOfEnergy,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolume,
+)
 from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -479,6 +485,27 @@ def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> 
     return row.get(field)
 
 
+def _thermostat_valve_battery(data: dict[str, Any], valve_id: int) -> Any:
+    """Return a normalized battery state for a thermostat valve."""
+    raw = _thermostat_valve_field(data, valve_id, "battery")
+    if isinstance(raw, str) and raw.strip().lower() == "ok":
+        return "OK"
+    return raw
+
+
+def _thermostat_valve_zone_name(data: dict[str, Any], valve_id: int) -> Any:
+    """Return a zone display name for a thermostat valve when available."""
+    raw_zone = _thermostat_valve_field(data, valve_id, "zone")
+    if raw_zone is None:
+        return None
+
+    zone_id = f"zn{raw_zone}"
+    zone_name = _decode_zone_name(_val(data, f"/zones/{zone_id}/name"))
+    if isinstance(zone_name, str) and zone_name.strip():
+        return zone_name
+    return raw_zone
+
+
 def _thermostat_valve_device_info(
     uuid: str,
     data: dict[str, Any],
@@ -516,6 +543,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     # No SIGNAL_STRENGTH device class: HA only accepts dB/dBm for
                     # it, and /devices/list reports link quality as a percentage.
                     native_unit_of_measurement="%",
+                    icon="mdi:signal",
                     entity_category=EntityCategory.DIAGNOSTIC,
                     value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "signal"),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
@@ -524,8 +552,9 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                 BoschPoinTTAPISensorEntityDescription(
                     key=f"/devices/list/thermostat_valve/{valve_id}/battery",
                     translation_key="thermostat_valve_battery",
+                    icon="mdi:battery",
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "battery"),
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_battery(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 ),
@@ -533,7 +562,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     key=f"/devices/list/thermostat_valve/{valve_id}/zone",
                     translation_key="thermostat_valve_zone",
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "zone"),
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_zone_name(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 ),
@@ -635,6 +664,12 @@ def _gas_total_today(data: dict[str, Any]) -> float | None:
 def _start_of_today() -> Any:
     """Return start of today in local timezone for last_reset."""
     return dt_util.start_of_local_day()
+
+
+def _start_of_month() -> Any:
+    """Return start of the current month in local timezone for last_reset."""
+    now = dt_util.now()
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 # ── Hourly gas usage helper functions ────────────────────────────────────────
@@ -1089,17 +1124,30 @@ def _pointtapi_electricity_average_sensor_descriptions(
         return ()
 
     candidates = (
-        ("/energy/electricity/dayAverage", "electricity_day_average"),
-        ("/energy/electricity/monthAverage", "electricity_month_average"),
+        (
+            "/energy/electricity/dayAverage",
+            "electricity_day_average",
+            _start_of_today,
+        ),
+        (
+            "/energy/electricity/monthAverage",
+            "electricity_month_average",
+            _start_of_month,
+        ),
     )
 
     descriptions: list[BoschPoinTTAPISensorEntityDescription] = []
-    for path, translation_key in candidates:
+    for path, translation_key, last_reset_fn in candidates:
         if isinstance(data.get(path), dict) and _path_available(data, path):
             descriptions.append(
                 BoschPoinTTAPISensorEntityDescription(
                     key=path,
                     translation_key=translation_key,
+                    device_class=SensorDeviceClass.ENERGY,
+                    native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                    state_class=SensorStateClass.TOTAL,
+                    value_fn=lambda d, p=path: _val(d, p),
+                    last_reset_fn=last_reset_fn,
                 )
             )
     return tuple(descriptions)
@@ -1410,6 +1458,15 @@ def _pointtapi_sensor_descriptions(
         ),
     ]
 
+    if isinstance(data.get("/gateway/zigbee/versionFirmware"), dict):
+        descriptions.append(
+            BoschPoinTTAPISensorEntityDescription(
+                key="/gateway/zigbee/versionFirmware",
+                translation_key="zigbee_firmware_version",
+                entity_category=EntityCategory.DIAGNOSTIC,
+            )
+        )
+
     if _gateway_ui_has_eco_reference(data):
         descriptions.append(
             BoschPoinTTAPISensorEntityDescription(
@@ -1510,105 +1567,131 @@ class BoschPoinTTAPISensorEntity(
 # ── Number entities (boost settings) ─────────────────────────────────────────
 
 
-POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/boostTemperature",
-        translation_key="boost_temperature",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=5.0,
-        native_max_value=30.0,
-        native_step=0.5,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/boostDuration",
-        translation_key="boost_duration",
-        native_unit_of_measurement=UnitOfTime.HOURS,
-        native_min_value=0.5,
-        native_max_value=24.0,
-        native_step=0.5,
-    ),
-    # ── Heating circuit configuration (2b) ───────────────────────────────────
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/maxSupply",
-        translation_key="max_supply_temperature",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=25.0,
-        native_max_value=90.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/minSupply",
-        translation_key="min_supply_temperature",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=10.0,
-        native_max_value=90.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/nightThreshold",
-        translation_key="night_setback_threshold",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=5.0,
-        native_max_value=30.0,
-        native_step=0.5,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/suWiThreshold",
-        translation_key="summer_winter_threshold",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=10.0,
-        native_max_value=30.0,
-        native_step=0.5,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/roomInfluence",
-        translation_key="room_influence",
-        native_min_value=0.0,
-        native_max_value=3.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/system/sensors/temperatures/offset",
-        translation_key="temperature_calibration_offset",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=-5.0,
-        native_max_value=5.0,
-        native_step=0.5,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/energy/gas/annualGoal",
-        translation_key="annual_gas_goal",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        native_min_value=0.0,
-        native_max_value=1000000.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
-    NumberEntityDescription(
-        key="/dhwCircuits/dhw1/extraDhwDuration",
-        translation_key="extra_hot_water_duration",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        native_min_value=15.0,
-        native_max_value=2880.0,
-        native_step=15.0,
-    ),
-    NumberEntityDescription(
-        key="/dhwCircuits/dhw1/thermalDisinfect/time",
-        translation_key="thermal_disinfect_time",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        native_min_value=0.0,
-        native_max_value=1439.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-)
+def _pointtapi_number_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[NumberEntityDescription, ...]:
+    """Return POINTTAPI number descriptions, plus optional yearly energy goals."""
+    descriptions: list[NumberEntityDescription] = [
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/boostTemperature",
+            translation_key="boost_temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=5.0,
+            native_max_value=30.0,
+            native_step=0.5,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/boostDuration",
+            translation_key="boost_duration",
+            native_unit_of_measurement=UnitOfTime.HOURS,
+            native_min_value=0.5,
+            native_max_value=24.0,
+            native_step=0.5,
+        ),
+        # ── Heating circuit configuration (2b) ───────────────────────────────────
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/maxSupply",
+            translation_key="max_supply_temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=25.0,
+            native_max_value=90.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/minSupply",
+            translation_key="min_supply_temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=10.0,
+            native_max_value=90.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/nightThreshold",
+            translation_key="night_setback_threshold",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=5.0,
+            native_max_value=30.0,
+            native_step=0.5,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/suWiThreshold",
+            translation_key="summer_winter_threshold",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=10.0,
+            native_max_value=30.0,
+            native_step=0.5,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/roomInfluence",
+            translation_key="room_influence",
+            native_min_value=0.0,
+            native_max_value=3.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/system/sensors/temperatures/offset",
+            translation_key="temperature_calibration_offset",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=-5.0,
+            native_max_value=5.0,
+            native_step=0.5,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
+        NumberEntityDescription(
+            key="/dhwCircuits/dhw1/extraDhwDuration",
+            translation_key="extra_hot_water_duration",
+            native_unit_of_measurement=UnitOfTime.MINUTES,
+            native_min_value=15.0,
+            native_max_value=2880.0,
+            native_step=15.0,
+        ),
+        NumberEntityDescription(
+            key="/dhwCircuits/dhw1/thermalDisinfect/time",
+            translation_key="thermal_disinfect_time",
+            native_unit_of_measurement=UnitOfTime.MINUTES,
+            native_min_value=0.0,
+            native_max_value=1439.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+    ]
+
+    if isinstance((data or {}).get("/energy/gas/annualGoal"), dict):
+        descriptions.append(
+            NumberEntityDescription(
+                key="/energy/gas/annualGoal",
+                translation_key="annual_gas_goal",
+                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                native_min_value=0.0,
+                native_max_value=1000000.0,
+                native_step=1.0,
+                entity_category=EntityCategory.CONFIG,
+            )
+        )
+
+    if isinstance((data or {}).get("/energy/electricity/annualGoal"), dict):
+        descriptions.append(
+            NumberEntityDescription(
+                key="/energy/electricity/annualGoal",
+                translation_key="annual_electricity_goal",
+                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                native_min_value=0.0,
+                native_max_value=1000000.0,
+                native_step=1.0,
+                entity_category=EntityCategory.CONFIG,
+            )
+        )
+
+    return tuple(descriptions)
+
+
+POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = _pointtapi_number_descriptions()
 
 
 class BoschPoinTTAPINumberEntity(
@@ -2073,6 +2156,8 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
     BoschPoinTTAPISwitchEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/state",
         translation_key="thermal_disinfect",
+        on_value="on",
+        off_value="off",
         device_id_suffix="dhw1",
         device_name_override="Water heater",
     ),

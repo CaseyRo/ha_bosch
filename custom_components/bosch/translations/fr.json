@@ -19,6 +19,9 @@
       "wifi_firmware_version": {
         "name": "Version du firmware Wi-Fi"
       },
+      "zigbee_firmware_version": {
+        "name": "Version du firmware Zigbee"
+      },
       "energy_efficiency": {
         "name": "Efficacité énergétique"
       },
@@ -139,7 +142,7 @@
       "thermal_disinfect_last_result": {
         "name": "Dernier résultat de désinfection thermique",
         "state": {
-          "done": "Effectué"
+          "done": "Effectuée"
         }
       }
     },
@@ -176,6 +179,9 @@
       },
       "annual_gas_goal": {
         "name": "Objectif annuel de gaz"
+      },
+      "annual_electricity_goal": {
+        "name": "Objectif annuel d'électricité"
       }
     },
     "binary_sensor": {
