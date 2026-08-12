@@ -313,6 +313,100 @@ class TestComfortControlDescriptions:
         assert desc.translation_key == "thermal_disinfect_last_result"
         assert desc.value_fn is None
 
+    def test_appliance_status_sensor_maps_0h_203_to_standby(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+        }
+        assert desc.translation_key == "appliance_status"
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "standby_no_heat_demand"
+        assert desc.attributes_fn is not None
+        assert desc.attributes_fn(data) == {"display_code": "0H", "cause_code": 203}
+
+    def test_appliance_status_sensor_maps_unknown_pair_to_unknown(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "ZZ"},
+            "/system/appliance/causeCode": {"value": 999.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "unknown"
+
+    def test_appliance_status_sensor_maps_flue_gas_test_variants(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data_a = {
+            "/system/appliance/displayCode": {"value": "A"},
+            "/system/appliance/causeCode": {"value": 208.0},
+        }
+        assert desc.value_fn(data_a) == "flue_gas_test_heat_demand"
+
+        data_dash_a = {
+            "/system/appliance/displayCode": {"value": "-A"},
+            "/system/appliance/causeCode": {"value": 208.0},
+        }
+        assert desc.value_fn(data_dash_a) == "flue_gas_test_heat_demand"
+
+    def test_appliance_status_sensor_maps_internal_error_cause_range(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "EA"},
+            "/system/appliance/causeCode": {"value": 250.0},
+        }
+        assert desc.value_fn(data) == "internal_error_service_required"
+
+    def test_appliance_status_sensor_falls_back_to_cause_when_display_missing(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/causeCode": {"value": 200.0},
+        }
+        assert desc.value_fn(data) == "heating_operation"
+
+    def test_appliance_status_sensor_maps_no_flame_after_ignition(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "6A"},
+            "/system/appliance/causeCode": {"value": 227.0},
+        }
+        assert desc.value_fn(data) == "no_flame_after_ignition"
+
+    def test_appliance_status_sensor_maps_return_sensor_disconnected(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "CY"},
+            "/system/appliance/causeCode": {"value": 242.0},
+        }
+        assert desc.value_fn(data) == "return_sensor_disconnected"
+
+    def test_appliance_status_sensor_maps_regulation_system_test(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "5H"},
+            "/system/appliance/causeCode": {"value": 268.0},
+        }
+        assert desc.value_fn(data) == "regulation_system_test"
+
     def test_thermostat_valve_diagnostics_are_discovered_from_devices_list(self):
         data = {
             "/devices/list": {

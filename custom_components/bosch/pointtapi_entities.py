@@ -708,6 +708,209 @@ def _gas_total_hourly(data: dict[str, Any]) -> float | None:
     return round((e.get("gCh") or 0.0) + (e.get("gHw") or 0.0), 2)
 
 
+# Bosch/Buderus operating display pairs (not faults):
+# displayCode + causeCode -> translated status key.
+_APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
+    ("-H", 200): "heating_operation",
+    ("=H", 201): "hot_water_operation",
+    ("0A", 202): "anti_cycle_delay",
+    ("0H", 203): "standby_no_heat_demand",
+    ("0Y", 204): "supply_temp_above_setpoint",
+    ("", 207): "system_pressure_too_low",
+    ("A", 208): "flue_gas_test_heat_demand",
+    ("-A", 208): "flue_gas_test_heat_demand",
+    ("1C", 210): "flue_gas_thermostat_or_air_pressure_active",
+    ("2E", 212): "safety_supply_temp_rising_too_fast",
+    ("2P", 212): "safety_supply_temp_rising_too_fast",
+    ("2U", 213): "supply_return_temp_difference_too_high",
+    ("3Y", 214): "fan_stopped_during_safety_time",
+    ("3Y", 215): "fan_speed_too_high",
+    ("3Y", 216): "fan_malfunction",
+    ("3C", 217): "air_pressure_monitor_fault",
+    ("4A", 218): "supply_temp_too_high",
+    ("4F", 219): "safety_sensor_temp_too_high",
+    ("4U", 220): "supply_sensor_short_circuit",
+    ("4Y", 221): "supply_sensor_disconnected",
+    ("4C", 222): "safety_sensor_short_circuit",
+    ("4C", 223): "safety_sensor_disconnected",
+    ("4C", 224): "safety_limiter_active",
+    ("4L", 225): "communication_or_internal_signal_fault",
+    ("4L", 226): "internal_monitoring_fault",
+    ("6A", 227): "no_flame_after_ignition",
+    ("6C", 228): "unexpected_flame_signal",
+    ("6L", 229): "ionization_signal_lost",
+    ("6L", 230): "invalid_ionization_signal",
+    ("7C", 231): "mains_voltage_fault_or_power_loss",
+    ("8Y", 232): "external_cutoff_switch_active",
+    ("8Y", 233): "external_controller_fault",
+    ("9A", 234): "gas_valve_communication_fault",
+    ("9A", 235): "gas_valve_not_recognized",
+    ("9A", 238): "internal_electronics_fault",
+    ("9U", 239): "equipment_fault_relay_error",
+    ("9U", 240): "device_internal_fault",
+    ("CU", 240): "return_sensor_short_circuit",
+    ("CY", 241): "return_sensor_short_circuit",
+    ("CY", 242): "return_sensor_disconnected",
+    ("9Y", 243): "internal_communication_fault",
+    ("9Y", 244): "sensor_or_electronics_fault",
+    ("9Y", 245): "communication_fault",
+    ("9Y", 246): "internal_controller_fault",
+    ("EC", 257): "regulation_system_internal_fault",
+    ("EC", 258): "regulation_system_internal_fault",
+    ("EC", 259): "regulation_system_internal_fault",
+    ("EA", 260): "ignition_or_flame_fault",
+    ("EA", 261): "flame_fault",
+    ("0E", 265): "heat_demand_below_min_power",
+    ("5H", 268): "regulation_system_test",
+    ("0U", 270): "boiler_starting",
+    ("0U", 271): "boiler_startup_preventilation",
+    ("0U", 272): "burner_operation_monitoring",
+    ("0U", 273): "flame_monitoring",
+    ("0U", 274): "burner_startup_phase",
+    ("0Y", 276): "supply_temp_above_setpoint",
+    ("0U", 280): "fan_starting",
+    ("0U", 281): "startup_delay",
+    ("2Y", 282): "pump_or_flow_insufficient",
+    ("0C", 283): "burner_starting",
+    ("0L", 284): "gas_valve_opening",
+    ("0L", 285): "gas_valve_open_burner_startup",
+    ("EL", 290): "main_controller_fault",
+    ("EL", 291): "internal_electronics_fault",
+    ("EL", 292): "regulation_system_fault",
+    ("EL", 293): "internal_fault",
+    ("EL", 294): "electronic_fault",
+    ("EL", 296): "internal_controller_fault",
+    ("EL", 297): "internal_fault",
+    ("EL", 298): "electronic_fault",
+    ("EL", 299): "internal_system_fault",
+}
+
+_APPLIANCE_STATUS_BY_CAUSE: dict[int, str] = {
+    200: "heating_operation",
+    201: "hot_water_operation",
+    202: "anti_cycle_delay",
+    203: "standby_no_heat_demand",
+    204: "supply_temp_above_setpoint",
+    207: "system_pressure_too_low",
+    208: "flue_gas_test_heat_demand",
+    210: "flue_gas_thermostat_or_air_pressure_active",
+    212: "safety_supply_temp_rising_too_fast",
+    213: "supply_return_temp_difference_too_high",
+    214: "fan_stopped_during_safety_time",
+    215: "fan_speed_too_high",
+    216: "fan_malfunction",
+    217: "air_pressure_monitor_fault",
+    218: "supply_temp_too_high",
+    219: "safety_sensor_temp_too_high",
+    220: "supply_sensor_short_circuit",
+    221: "supply_sensor_disconnected",
+    222: "safety_sensor_short_circuit",
+    223: "safety_sensor_disconnected",
+    224: "safety_limiter_active",
+    225: "communication_or_internal_signal_fault",
+    226: "internal_monitoring_fault",
+    227: "no_flame_after_ignition",
+    228: "unexpected_flame_signal",
+    229: "ionization_signal_lost",
+    230: "invalid_ionization_signal",
+    231: "mains_voltage_fault_or_power_loss",
+    232: "external_cutoff_switch_active",
+    233: "external_controller_fault",
+    234: "gas_valve_communication_fault",
+    235: "gas_valve_not_recognized",
+    238: "internal_electronics_fault",
+    239: "equipment_fault_relay_error",
+    240: "device_internal_fault",
+    241: "return_sensor_short_circuit",
+    242: "return_sensor_disconnected",
+    243: "internal_communication_fault",
+    244: "sensor_or_electronics_fault",
+    245: "communication_fault",
+    246: "internal_controller_fault",
+    257: "regulation_system_internal_fault",
+    258: "regulation_system_internal_fault",
+    259: "regulation_system_internal_fault",
+    260: "ignition_or_flame_fault",
+    261: "flame_fault",
+    265: "heat_demand_below_min_power",
+    268: "regulation_system_test",
+    270: "boiler_starting",
+    271: "boiler_startup_preventilation",
+    272: "burner_operation_monitoring",
+    273: "flame_monitoring",
+    274: "burner_startup_phase",
+    276: "supply_temp_above_setpoint",
+    280: "fan_starting",
+    281: "startup_delay",
+    282: "pump_or_flow_insufficient",
+    283: "burner_starting",
+    284: "gas_valve_opening",
+    285: "gas_valve_open_burner_startup",
+    290: "main_controller_fault",
+    291: "internal_electronics_fault",
+    292: "regulation_system_fault",
+    293: "internal_fault",
+    294: "electronic_fault",
+    296: "internal_controller_fault",
+    297: "internal_fault",
+    298: "electronic_fault",
+    299: "internal_system_fault",
+}
+
+
+def _appliance_display_code(data: dict[str, Any]) -> str | None:
+    raw = _val(data, "/system/appliance/displayCode")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
+
+
+def _appliance_cause_code(data: dict[str, Any]) -> int | None:
+    raw = _val(data, "/system/appliance/causeCode")
+    if raw is None:
+        return None
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def _appliance_status_state(data: dict[str, Any]) -> str | None:
+    display = _appliance_display_code(data)
+    cause = _appliance_cause_code(data)
+    if display is None and cause is None:
+        return None
+    if display is not None and cause is not None:
+        status = _APPLIANCE_STATUS_BY_CODE.get((display, cause))
+        if status is not None:
+            return status
+    if cause is not None:
+        status = _APPLIANCE_STATUS_BY_CAUSE.get(cause)
+        if status is not None:
+            return status
+        if 242 <= cause <= 259:
+            return "internal_error_service_required"
+    return "unknown"
+
+
+def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
+    display = _appliance_display_code(data)
+    cause = _appliance_cause_code(data)
+    if display is None and cause is None:
+        return None
+    return {
+        "display_code": display,
+        "cause_code": cause,
+    }
+
+
+def _appliance_status_available(data: dict[str, Any]) -> bool:
+    return _val(data, "/system/appliance/displayCode") is not None or _val(
+        data, "/system/appliance/causeCode"
+    ) is not None
+
+
 # Zone /status -> HVAC action. Unknown values map to None (unknown), never to
 # COOLING — these appliances are heating-only.
 _ZONE_STATUS_ACTIONS = {
@@ -1348,6 +1551,14 @@ def _pointtapi_sensor_descriptions(
             key="/system/appliance/causeCode",
             translation_key="cause_code",
             entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/status",
+            translation_key="appliance_status",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=_appliance_status_state,
+            attributes_fn=_appliance_status_attributes,
+            available_fn=_appliance_status_available,
         ),
         # ── Firmware & circuit info (1c) ──────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
