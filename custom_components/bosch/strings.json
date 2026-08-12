@@ -157,6 +157,14 @@
       "actual_modulation": {
         "name": "Actual modulation"
       },
+      "heat_demand_type": {
+        "name": "Demand type",
+        "state": {
+          "off": "No demand",
+          "ch": "Heating",
+          "dhw": "Domestic hot water"
+        }
+      },
       "collector_temperature": {
         "name": "Collector temperature"
       },

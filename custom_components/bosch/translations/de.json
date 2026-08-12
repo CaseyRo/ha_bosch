@@ -151,6 +151,14 @@
       "actual_modulation": {
         "name": "Aktuelle Modulationsleistung"
       },
+      "heat_demand_type": {
+        "name": "Anforderungsart",
+        "state": {
+          "off": "Keine Anforderung",
+          "ch": "Heizung",
+          "dhw": "Warmwasser"
+        }
+      },
       "gas_heating_today": {
         "name": "Gas Heizung heute"
       },

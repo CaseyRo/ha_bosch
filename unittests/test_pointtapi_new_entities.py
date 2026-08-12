@@ -344,6 +344,34 @@ class TestComfortControlDescriptions:
         assert desc.attributes_fn is not None
         assert desc.attributes_fn(data) == {"display_code": "0H", "cause_code": 203}
 
+    def test_cause_code_sensor_normalizes_float_to_int(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/causeCode"]
+        data = {"/system/appliance/causeCode": {"value": 201.0}}
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == 201
+
+    def test_heat_demand_type_sensor_is_described(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/heatSources/flameIndication"]
+        assert desc.translation_key == "heat_demand_type"
+        assert desc.value_fn is not None
+
+    def test_heat_demand_type_sensor_maps_known_values(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/heatSources/flameIndication"]
+        assert desc.value_fn is not None
+
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "off"}}) == "off"
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "ch"}}) == "ch"
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "dhw"}}) == "dhw"
+
+    def test_heat_demand_type_sensor_returns_none_for_unknown(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/heatSources/flameIndication"]
+        assert desc.value_fn is not None
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "unexpected"}}) is None
+
     def test_appliance_status_sensor_maps_unknown_pair_to_unknown(self):
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         desc = descs["/system/appliance/status"]

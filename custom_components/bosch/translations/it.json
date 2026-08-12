@@ -151,6 +151,14 @@
       "actual_modulation": {
         "name": "Potenza di modulazione attuale"
       },
+      "heat_demand_type": {
+        "name": "Tipo di richiesta",
+        "state": {
+          "off": "Nessuna richiesta",
+          "ch": "Riscaldamento",
+          "dhw": "Acqua calda sanitaria"
+        }
+      },
       "gas_heating_today": {
         "name": "Gas riscaldamento oggi"
       },

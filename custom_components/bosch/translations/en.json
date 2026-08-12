@@ -163,6 +163,14 @@
       "storage_temperature": {
         "name": "Storage temperature"
       },
+       "heat_demand_type": {
+         "name": "Demand type",
+         "state": {
+           "off": "No demand",
+           "ch": "Heating",
+           "dhw": "Domestic hot water"
+         }
+       },
       "pump_modulation": {
         "name": "Pump modulation"
       },

@@ -151,6 +151,14 @@
       "actual_modulation": {
         "name": "Huidige modulatiedruk"
       },
+      "heat_demand_type": {
+        "name": "Vraagtype",
+        "state": {
+          "off": "Geen vraag",
+          "ch": "Verwarming",
+          "dhw": "Warm tapwater"
+        }
+      },
       "gas_heating_today": {
         "name": "Gas verwarming vandaag"
       },

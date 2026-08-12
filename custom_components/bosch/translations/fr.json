@@ -151,6 +151,14 @@
       "actual_modulation": {
         "name": "Puissance de modulation actuelle"
       },
+      "heat_demand_type": {
+        "name": "Type de demande",
+        "state": {
+          "off": "Aucune demande",
+          "ch": "Chauffage",
+          "dhw": "Eau chaude sanitaire"
+        }
+      },
       "gas_heating_today": {
         "name": "Gaz chauffage aujourd'hui"
       },

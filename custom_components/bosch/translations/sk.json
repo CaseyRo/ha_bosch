@@ -151,6 +151,14 @@
       "actual_modulation": {
         "name": "Aktuálna výkonová modulácia"
       },
+      "heat_demand_type": {
+        "name": "Typ požiadavky",
+        "state": {
+          "off": "Bez požiadavky",
+          "ch": "Vykurovanie",
+          "dhw": "Teplá úžitková voda"
+        }
+      },
       "gas_heating_today": {
         "name": "Plyn vykurovanie dnes"
       },

@@ -911,6 +911,17 @@ def _appliance_status_available(data: dict[str, Any]) -> bool:
     ) is not None
 
 
+def _heat_demand_type_state(data: dict[str, Any]) -> str | None:
+    """Map /heatSources/flameIndication to a stable demand-type state key."""
+    raw = _val(data, "/heatSources/flameIndication")
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip().lower()
+    if value in {"off", "ch", "dhw"}:
+        return value
+    return None
+
+
 # Zone /status -> HVAC action. Unknown values map to None (unknown), never to
 # COOLING — these appliances are heating-only.
 _ZONE_STATUS_ACTIONS = {
@@ -1519,6 +1530,7 @@ def _pointtapi_sensor_descriptions(
             key="/system/appliance/causeCode",
             translation_key="cause_code",
             entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=_appliance_cause_code,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/system/appliance/status",
@@ -1558,6 +1570,11 @@ def _pointtapi_sensor_descriptions(
             translation_key="actual_modulation",
             native_unit_of_measurement="%",
             icon="mdi:signal-cellular-2",
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/flameIndication",
+            translation_key="heat_demand_type",
+            value_fn=_heat_demand_type_state,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/heatSources/returnTemperature",
