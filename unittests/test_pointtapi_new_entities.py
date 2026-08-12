@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.const import UnitOfVolume
 from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.bosch.pointtapi_entities import (
@@ -151,6 +150,25 @@ class TestNotificationsHelpers:
         desc = descs["/gateway/ui/eco"]
         assert desc.translation_key == "energy_efficiency"
         assert desc.native_unit_of_measurement == "%"
+
+    def test_energy_efficiency_sensor_routes_to_energy_performance_device(self):
+        data = {
+            "/gateway/ui": {
+                "references": [
+                    {"id": "/gateway/ui/eco"},
+                ]
+            },
+            "/gateway/ui/eco": {"value": 70},
+        }
+        coord = _mock_coordinator(data, language="fr")
+        desc = {d.key: d for d in _pointtapi_sensor_descriptions(data)}["/gateway/ui/eco"]
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.device_info["name"] == "Performance énergétique"
+        assert (("bosch", "uuid1_energy") in ent.device_info["identifiers"])
 
     def test_energy_efficiency_sensor_is_not_added_without_reference(self):
         data = {
