@@ -1589,6 +1589,7 @@ def _pointtapi_sensor_descriptions(
             key="/heatSources/actualModulation",
             translation_key="actual_modulation",
             native_unit_of_measurement="%",
+            icon="mdi:signal-cellular-2",
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/heatSources/returnTemperature",
@@ -1635,6 +1636,7 @@ def _pointtapi_sensor_descriptions(
             key="/heatSources/numberOfStarts",
             translation_key="boiler_ignition_starts",
             state_class=SensorStateClass.TOTAL_INCREASING,
+            icon="mdi:reload",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         # ── Firmware update diagnostic timestamps (v0.32.0) ──────────────────
