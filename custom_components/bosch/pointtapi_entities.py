@@ -2660,6 +2660,20 @@ def _resolve_on_off(raw: Any) -> bool | None:
     return None
 
 
+def _burner_flame_state(data: dict[str, Any]) -> bool | None:
+    """Resolve burner flame state from current burner modulation.
+
+    POINTTAPI flameIndication can return multiple string dialects (off/ch/dhw),
+    which is not stable enough for a strict on/off parser. actualModulation is
+    a numeric signal and better reflects whether the burner is actively firing.
+    """
+    raw = _val(data, "/heatSources/actualModulation")
+    try:
+        return float(raw) > 0.0
+    except (TypeError, ValueError):
+        return None
+
+
 # ── Boost session: in-memory tracking of HA-triggered boost (v0.33.0) ──────
 
 
@@ -2780,6 +2794,7 @@ POINTTAPI_BINARY_SENSOR_DESCRIPTIONS: tuple[BoschPoinTTAPIBinarySensorEntityDesc
         key="/heatSources/flameIndication",
         translation_key="burner_flame",
         device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_burner_flame_state,
     ),
     BoschPoinTTAPIBinarySensorEntityDescription(
         key="/heatSources/refillNeeded",

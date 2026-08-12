@@ -812,6 +812,34 @@ class TestEntityBehavior:
         ent._handle_coordinator_update()
         assert ent.is_on is False
 
+    def test_burner_flame_uses_actual_modulation_positive_as_on(self):
+        coord = _mock_coordinator(
+            {
+                "/heatSources/flameIndication": {"value": "dhw"},
+                "/heatSources/actualModulation": {"value": 12.0},
+            }
+        )
+        ent = _binary_sensor(coord, "/heatSources/flameIndication")
+        ent._handle_coordinator_update()
+        assert ent.is_on is True
+
+    def test_burner_flame_uses_actual_modulation_zero_as_off(self):
+        coord = _mock_coordinator(
+            {
+                "/heatSources/flameIndication": {"value": "ch"},
+                "/heatSources/actualModulation": {"value": 0.0},
+            }
+        )
+        ent = _binary_sensor(coord, "/heatSources/flameIndication")
+        ent._handle_coordinator_update()
+        assert ent.is_on is False
+
+    def test_burner_flame_unknown_when_actual_modulation_missing(self):
+        coord = _mock_coordinator({"/heatSources/flameIndication": {"value": "dhw"}})
+        ent = _binary_sensor(coord, "/heatSources/flameIndication")
+        ent._handle_coordinator_update()
+        assert ent.is_on is None
+
     def test_switch_unavailable_when_path_absent(self):
         coord = _mock_coordinator({})
         ent = _switch(coord, "/dhwCircuits/dhw1/extraDhw")
