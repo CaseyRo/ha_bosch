@@ -38,14 +38,14 @@
         "name": "Puissance de la chaudière"
       },
       "blocking_error": {
-        "name": "Erreur bloquante",
+        "name": "Code de défaut bloquant",
         "state": {
           "false": "Pas d'erreur",
           "true": "Erreur"
         }
       },
       "locking_error": {
-        "name": "Erreur de verrouillage",
+        "name": "Code de défaut verrouillant",
         "state": {
           "false": "Pas d'erreur",
           "true": "Erreur"
@@ -59,26 +59,34 @@
         }
       },
       "display_code": {
-        "name": "Code affiché"
+        "name": "Code d'affichage"
       },
       "cause_code": {
-        "name": "Code cause"
+        "name": "Code de service"
       },
       "appliance_status": {
         "name": "Etat de la chaudière",
         "state": {
-          "unknown": "Inconnu",
+            "unknown": "Inconnu",
+            "locking_fault_code_active": "Code de défaut verrouillant actif",
+            "blocking_fault_code_active": "Code de défaut bloquant actif",
           "standby_no_heat_demand": "En veille - aucune demande de chaleur",
           "heating_operation": "Chauffage en fonctionnement",
           "hot_water_operation": "Production d'eau chaude sanitaire",
           "anti_cycle_delay": "Temporisation anti-cycles",
+          "dhw_post_heating_lockout": "Maintien ECS actif (temporisation)",
           "system_pressure_too_low": "Pression du système trop faible",
           "flue_gas_test_heat_demand": "Demande thermique due au test des fumées",
           "flue_gas_thermostat_or_air_pressure_active": "Thermostat des fumées ou contrôleur de pression d'air activé",
           "safety_supply_temp_rising_too_fast": "Température de sécurité/de départ qui augmente trop rapidement",
+          "heating_gradient_limitation": "Limitation de gradient en mode chauffage",
+          "dhw_gradient_limitation": "Limitation de gradient en ECS",
           "supply_return_temp_difference_too_high": "Différence température départ/retour trop importante",
+          "pump_no_pressure_difference": "Le circulateur ne génère aucune différence de pression",
           "fan_stopped_during_safety_time": "Ventilateur arrêté pendant le temps de sécurité",
+          "fan_stopped_during_operation": "Ventilateur arrêté pendant la marche",
           "fan_speed_too_high": "Vitesse du ventilateur trop élevée",
+           "fan_speed_too_low": "Ventilateur trop lent",
           "fan_malfunction": "Ventilateur ne fonctionne pas correctement",
           "air_pressure_monitor_fault": "Pressostat ou contrôle de pression d'air",
           "supply_temp_too_high": "Température de départ trop élevée",
@@ -94,12 +102,16 @@
           "unexpected_flame_signal": "Signal de flamme présent alors qu'aucune flamme n'est attendue",
           "ionization_signal_lost": "Perte du signal d'ionisation pendant le fonctionnement",
           "invalid_ionization_signal": "Signal d'ionisation incorrect",
+           "flame_detected_after_gas_shutdown": "Flamme détectée après coupure du gaz",
           "mains_voltage_fault_or_power_loss": "Défaut de tension réseau ou coupure de courant",
+          "first_safety_time_fault": "Défaut horaire du premier délai de sécurité",
+          "restart_attempt_time_fault": "Défaut horaire de la tentative de redémarrage",
           "external_cutoff_switch_active": "Interrupteur de coupure externe activé",
           "external_controller_fault": "Défaut du contrôleur externe",
           "gas_valve_communication_fault": "Défaut de communication avec le bloc gaz",
           "gas_valve_not_recognized": "Bloc gaz non reconnu",
           "internal_electronics_fault": "Défaut électronique interne",
+           "kim_not_recognized": "KIM non reconnu",
           "equipment_fault_relay_error": "Erreur de relais de défaut équipement",
           "device_internal_fault": "Défaut interne de l'appareil",
           "return_sensor_short_circuit": "Court-circuit de la sonde de retour",
@@ -115,10 +127,13 @@
           "boiler_startup_preventilation": "Démarrage ou préventilation",
           "burner_operation_monitoring": "Surveillance du fonctionnement du brûleur",
           "flame_monitoring": "Surveillance de la flamme",
+          "safety_shutdown_after_24h_continuous_operation": "Arrêt de sécurité après 24 h de fonctionnement continu brûleur/ventilateur",
           "burner_startup_phase": "Brûleur en phase de démarrage",
           "fan_starting": "Démarrage du ventilateur",
           "startup_delay": "Temporisation avant démarrage",
           "pump_or_flow_insufficient": "Circulateur ou débit insuffisant",
+          "purge_function_active": "Fonction de purge active",
+          "pump_or_three_way_valve_anti_seizure": "Protection anti-blocage du circulateur/vanne 3 voies active",
           "internal_error_service_required": "Erreur interne - intervention SAV",
           "burner_starting": "Brûleur en démarrage",
           "heat_demand_below_min_power": "Demande de chaleur inférieure à la puissance minimale",
@@ -126,6 +141,7 @@
           "gas_valve_open_burner_startup": "Bloc gaz ouvert ou démarrage brûleur",
           "boiler_starting": "Chaudière en démarrage",
           "supply_temp_above_setpoint": "Température de départ supérieure à la consigne",
+          "dhw_sensor_temp_too_high": "Température de la sonde ECS trop élevée",
           "main_controller_fault": "Défaut du contrôleur principal",
           "regulation_system_fault": "Défaut du système de régulation",
           "internal_fault": "Défaut interne",

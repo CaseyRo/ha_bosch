@@ -38,14 +38,14 @@
         "name": "Moc kotła"
       },
       "blocking_error": {
-        "name": "Błąd blokujący",
+        "name": "Blokujący kod błędu",
         "state": {
           "false": "Brak błędu",
           "true": "Błąd"
         }
       },
       "locking_error": {
-        "name": "Błąd blokady",
+        "name": "Blokujący kod błędu",
         "state": {
           "false": "Brak błędu",
           "true": "Błąd"
@@ -62,22 +62,30 @@
         "name": "Kod wyświetlacza"
       },
       "cause_code": {
-        "name": "Kod przyczyny"
+        "name": "Kod serwisowy"
       },
       "appliance_status": {
         "name": "Stan kotła",
         "state": {
           "unknown": "Nieznany",
+          "locking_fault_code_active": "Aktywny blokujący kod błędu",
+          "blocking_fault_code_active": "Aktywny kod błędu blokującego",
           "standby_no_heat_demand": "Stan czuwania - brak zapotrzebowania na ciepło",
           "heating_operation": "Ogrzewanie w pracy",
           "hot_water_operation": "Przygotowanie ciepłej wody użytkowej",
           "anti_cycle_delay": "Opóźnienie antycykliczne",
+          "dhw_post_heating_lockout": "Aktywny czas blokady po podgrzewaniu CWU",
           "system_pressure_too_low": "Ciśnienie instalacji zbyt niskie",
           "flue_gas_test_heat_demand": "Zapotrzebowanie na ciepło z powodu testu spalin",
           "flue_gas_thermostat_or_air_pressure_active": "Aktywny termostat spalin lub regulator ciśnienia powietrza",
           "safety_supply_temp_rising_too_fast": "Temperatura bezpieczeństwa/zasilania rośnie zbyt szybko",
+          "heating_gradient_limitation": "Ograniczenie gradientu w trybie ogrzewania",
+          "dhw_gradient_limitation": "Ograniczenie gradientu w trybie CWU",
           "supply_return_temp_difference_too_high": "Różnica temperatury zasilania i powrotu jest zbyt duża",
+          "pump_no_pressure_difference": "Pompa obiegowa nie wytwarza różnicy ciśnień",
           "fan_stopped_during_safety_time": "Wentylator zatrzymany w czasie bezpieczeństwa",
+          "fan_stopped_during_operation": "Wentylator zatrzymany podczas pracy",
+          "fan_speed_too_low": "Zbyt niska prędkość wentylatora",
           "fan_speed_too_high": "Prędkość wentylatora zbyt wysoka",
           "fan_malfunction": "Wentylator nie działa prawidłowo",
           "air_pressure_monitor_fault": "Presostat lub kontrola ciśnienia powietrza",
@@ -92,13 +100,17 @@
           "internal_monitoring_fault": "Wewnętrzny błąd monitorowania",
           "no_flame_after_ignition": "Brak płomienia po zapłonie",
           "unexpected_flame_signal": "Sygnał płomienia obecny, gdy płomień nie jest oczekiwany",
+          "flame_detected_after_gas_shutdown": "Wykryto płomień po odcięciu gazu",
           "ionization_signal_lost": "Utrata sygnału jonizacji podczas pracy",
           "invalid_ionization_signal": "Nieprawidłowy sygnał jonizacji",
           "mains_voltage_fault_or_power_loss": "Błąd napięcia sieciowego lub zanik zasilania",
+          "first_safety_time_fault": "Błąd czasowy pierwszego czasu bezpieczeństwa",
+          "restart_attempt_time_fault": "Błąd czasowy próby ponownego uruchomienia",
           "external_cutoff_switch_active": "Aktywny zewnętrzny wyłącznik odcinający",
           "external_controller_fault": "Błąd zewnętrznego sterownika",
           "gas_valve_communication_fault": "Błąd komunikacji z zaworem gazowym",
           "gas_valve_not_recognized": "Zawór gazowy nierozpoznany",
+          "kim_not_recognized": "KIM nierozpoznany",
           "internal_electronics_fault": "Wewnętrzny błąd elektroniki",
           "equipment_fault_relay_error": "Błąd przekaźnika awarii urządzenia",
           "device_internal_fault": "Wewnętrzny błąd urządzenia",
@@ -115,10 +127,13 @@
           "boiler_startup_preventilation": "Rozruch kotła lub przewietrzanie wstępne",
           "burner_operation_monitoring": "Nadzór pracy palnika",
           "flame_monitoring": "Nadzór płomienia",
+          "safety_shutdown_after_24h_continuous_operation": "Wyłączenie bezpieczeństwa po 24 h ciągłej pracy palnika/wentylatora",
           "burner_startup_phase": "Palnik w fazie rozruchu",
           "fan_starting": "Rozruch wentylatora",
           "startup_delay": "Opóźnienie rozruchu",
           "pump_or_flow_insufficient": "Niewystarczająca praca pompy lub przepływ",
+          "purge_function_active": "Aktywna funkcja odpowietrzania",
+          "pump_or_three_way_valve_anti_seizure": "Aktywna ochrona przeciwzablokowaniowa pompy/zaworu 3-drogowego",
           "internal_error_service_required": "Błąd wewnętrzny - wymagana interwencja serwisu",
           "burner_starting": "Palnik uruchamia się",
           "heat_demand_below_min_power": "Zapotrzebowanie na ciepło poniżej mocy minimalnej",
@@ -126,6 +141,7 @@
           "gas_valve_open_burner_startup": "Zawór gazowy otwarty lub rozruch palnika",
           "boiler_starting": "Kocioł uruchamia się",
           "supply_temp_above_setpoint": "Temperatura zasilania powyżej wartości zadanej",
+          "dhw_sensor_temp_too_high": "Temperatura czujnika CWU jest zbyt wysoka",
           "main_controller_fault": "Błąd głównego sterownika",
           "regulation_system_fault": "Błąd systemu regulacji",
           "internal_fault": "Błąd wewnętrzny",

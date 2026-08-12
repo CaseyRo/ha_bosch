@@ -38,14 +38,14 @@
         "name": "Výkon kotla"
       },
       "blocking_error": {
-        "name": "Blokujúca chyba",
+        "name": "Blokujúci chybový kód",
         "state": {
           "false": "Žiadna chyba",
           "true": "Chyba"
         }
       },
       "locking_error": {
-        "name": "Chyba uzamknutia",
+        "name": "Uzamykací chybový kód",
         "state": {
           "false": "Žiadna chyba",
           "true": "Chyba"
@@ -59,25 +59,33 @@
         }
       },
       "display_code": {
-        "name": "Zobrazený kód"
+        "name": "Kód zobrazenia"
       },
       "cause_code": {
-        "name": "Kód príčiny"
+        "name": "Servisný kód"
       },
       "appliance_status": {
         "name": "Stav kotla",
         "state": {
           "unknown": "Neznámy",
+          "locking_fault_code_active": "Aktívny uzamykací chybový kód",
+          "blocking_fault_code_active": "Aktívny blokujúci chybový kód",
           "standby_no_heat_demand": "Pohotovostný režim - bez požiadavky na teplo",
           "heating_operation": "Vykurovanie v prevádzke",
           "hot_water_operation": "Ohrev teplej vody v prevádzke",
           "anti_cycle_delay": "Oneskorenie proti cyklovaniu",
+          "dhw_post_heating_lockout": "Aktívny blokovací čas po ohreve TÚV",
           "system_pressure_too_low": "Tlak systému je príliš nízky",
           "flue_gas_test_heat_demand": "Požiadavka na teplo z dôvodu testu spalín",
           "flue_gas_thermostat_or_air_pressure_active": "Aktívny termostat spalín alebo regulátor tlaku vzduchu",
           "safety_supply_temp_rising_too_fast": "Bezpečnostná/prívodná teplota stúpa príliš rýchlo",
+          "heating_gradient_limitation": "Obmedzenie gradientu v režime vykurovania",
           "supply_return_temp_difference_too_high": "Rozdiel teploty prívodu a spiatočky je príliš veľký",
+           "dhw_gradient_limitation": "Obmedzenie gradientu v režime TÚV",
+          "pump_no_pressure_difference": "Obehové čerpadlo nevytvára žiadny rozdiel tlaku",
           "fan_stopped_during_safety_time": "Ventilátor sa zastavil počas bezpečnostného času",
+          "fan_stopped_during_operation": "Ventilátor sa zastavil počas prevádzky",
+          "fan_speed_too_low": "Príliš nízka rýchlosť ventilátora",
           "fan_speed_too_high": "Otáčky ventilátora sú príliš vysoké",
           "fan_malfunction": "Ventilátor nefunguje správne",
           "air_pressure_monitor_fault": "Presostat alebo kontrola tlaku vzduchu",
@@ -92,13 +100,17 @@
           "internal_monitoring_fault": "Interná porucha monitorovania",
           "no_flame_after_ignition": "Po zapálení nebol zistený plameň",
           "unexpected_flame_signal": "Signál plameňa je prítomný, hoci sa plameň neočakáva",
+          "flame_detected_after_gas_shutdown": "Plameň detegovaný po uzavretí plynu",
           "ionization_signal_lost": "Počas prevádzky sa stratil ionizačný signál",
           "invalid_ionization_signal": "Neplatný ionizačný signál",
           "mains_voltage_fault_or_power_loss": "Porucha sieťového napätia alebo výpadok elektriny",
+          "first_safety_time_fault": "Časová chyba prvého bezpečnostného času",
+          "restart_attempt_time_fault": "Časová chyba pokusu o reštart",
           "external_cutoff_switch_active": "Externý vypínací spínač je aktívny",
           "external_controller_fault": "Porucha externého regulátora",
           "gas_valve_communication_fault": "Porucha komunikácie s plynovým ventilom",
           "gas_valve_not_recognized": "Plynový ventil nie je rozpoznaný",
+          "kim_not_recognized": "KIM nerozpoznaný",
           "internal_electronics_fault": "Interná porucha elektroniky",
           "equipment_fault_relay_error": "Chyba relé poruchy zariadenia",
           "device_internal_fault": "Interná porucha zariadenia",
@@ -115,10 +127,13 @@
           "boiler_startup_preventilation": "Spúšťanie kotla alebo predvetranie",
           "burner_operation_monitoring": "Monitorovanie prevádzky horáka",
           "flame_monitoring": "Monitorovanie plameňa",
+          "safety_shutdown_after_24h_continuous_operation": "Bezpečnostné odstavenie po 24 h nepretržitej prevádzky horáka/ventilátora",
           "burner_startup_phase": "Horák je vo fáze spúšťania",
           "fan_starting": "Spúšťanie ventilátora",
           "startup_delay": "Oneskorenie spustenia",
           "pump_or_flow_insufficient": "Nedostatočná činnosť čerpadla alebo prietok",
+           "purge_function_active": "Funkcia odvzdušnenia je aktívna",
+           "pump_or_three_way_valve_anti_seizure": "Aktívna ochrana proti zablokovaniu čerpadla/trojcestného ventilu",
           "internal_error_service_required": "Interná chyba - vyžaduje sa servisný zásah",
           "burner_starting": "Horák sa spúšťa",
           "heat_demand_below_min_power": "Požiadavka na teplo pod minimálnym výkonom",
@@ -128,6 +143,7 @@
           "supply_temp_above_setpoint": "Teplota prívodu nad nastavenou hodnotou",
           "main_controller_fault": "Porucha hlavného regulátora",
           "regulation_system_fault": "Porucha regulačného systému",
+           "dhw_sensor_temp_too_high": "Teplota snímača TÚV je príliš vysoká",
           "internal_fault": "Interná porucha",
           "electronic_fault": "Elektronická porucha",
           "internal_system_fault": "Interná porucha systému"

@@ -76,23 +76,35 @@ _APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
     ("-H", 200): "heating_operation",
     ("=H", 201): "hot_water_operation",
     ("0A", 202): "anti_cycle_delay",
+    ("0A", 305): "dhw_post_heating_lockout",
     ("0H", 203): "standby_no_heat_demand",
     ("0Y", 204): "supply_temp_above_setpoint",
+    ("0Y", 359): "dhw_sensor_temp_too_high",
     ("", 207): "system_pressure_too_low",
     ("A", 208): "flue_gas_test_heat_demand",
     ("-A", 208): "flue_gas_test_heat_demand",
     ("1C", 210): "flue_gas_thermostat_or_air_pressure_active",
     ("2E", 212): "safety_supply_temp_rising_too_fast",
     ("2P", 212): "safety_supply_temp_rising_too_fast",
+    ("2P", 341): "heating_gradient_limitation",
+    ("2P", 342): "dhw_gradient_limitation",
     ("2U", 213): "supply_return_temp_difference_too_high",
+    ("3L", 214): "fan_stopped_during_safety_time",
     ("3Y", 214): "fan_stopped_during_safety_time",
     ("3Y", 215): "fan_speed_too_high",
+    ("3P", 216): "fan_speed_too_low",
     ("3Y", 216): "fan_malfunction",
-    ("3C", 217): "air_pressure_monitor_fault",
+    ("3A", 264): "fan_stopped_during_operation",
+    ("3F", 273): "safety_shutdown_after_24h_continuous_operation",
+    ("3C", 217): "fan_malfunction",
     ("4A", 218): "supply_temp_too_high",
     ("4F", 219): "safety_sensor_temp_too_high",
     ("4U", 220): "supply_sensor_short_circuit",
+    ("4U", 222): "supply_sensor_short_circuit",
+    ("4U", 350): "supply_sensor_short_circuit",
     ("4Y", 221): "supply_sensor_disconnected",
+    ("4Y", 223): "supply_sensor_disconnected",
+    ("4Y", 351): "supply_sensor_disconnected",
     ("4C", 222): "safety_sensor_short_circuit",
     ("4C", 223): "safety_sensor_disconnected",
     ("4C", 224): "safety_limiter_active",
@@ -100,14 +112,20 @@ _APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
     ("4L", 226): "internal_monitoring_fault",
     ("6A", 227): "no_flame_after_ignition",
     ("6C", 228): "unexpected_flame_signal",
+    ("6C", 306): "flame_detected_after_gas_shutdown",
     ("6L", 229): "ionization_signal_lost",
     ("6L", 230): "invalid_ionization_signal",
     ("7C", 231): "mains_voltage_fault_or_power_loss",
     ("8Y", 232): "external_cutoff_switch_active",
     ("8Y", 233): "external_controller_fault",
+    ("7L", 261): "first_safety_time_fault",
+    ("7L", 280): "restart_attempt_time_fault",
     ("9A", 234): "gas_valve_communication_fault",
+    ("9L", 234): "gas_valve_communication_fault",
     ("9A", 235): "gas_valve_not_recognized",
     ("9A", 238): "internal_electronics_fault",
+    ("9L", 238): "internal_electronics_fault",
+    ("9P", 239): "kim_not_recognized",
     ("9U", 239): "equipment_fault_relay_error",
     ("9U", 240): "device_internal_fault",
     ("CU", 240): "return_sensor_short_circuit",
@@ -120,6 +138,7 @@ _APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
     ("EC", 257): "regulation_system_internal_fault",
     ("EC", 258): "regulation_system_internal_fault",
     ("EC", 259): "regulation_system_internal_fault",
+    ("EL", 259): "regulation_system_internal_fault",
     ("EA", 260): "ignition_or_flame_fault",
     ("EA", 261): "flame_fault",
     ("0E", 265): "heat_demand_below_min_power",
@@ -132,7 +151,10 @@ _APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
     ("0Y", 276): "supply_temp_above_setpoint",
     ("0U", 280): "fan_starting",
     ("0U", 281): "startup_delay",
+    ("2Y", 281): "pump_no_pressure_difference",
     ("2Y", 282): "pump_or_flow_insufficient",
+    ("2E", 357): "purge_function_active",
+    ("2H", 358): "pump_or_three_way_valve_anti_seizure",
     ("0C", 283): "burner_starting",
     ("0L", 284): "gas_valve_opening",
     ("0L", 285): "gas_valve_open_burner_startup",
@@ -147,77 +169,24 @@ _APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
     ("EL", 299): "internal_system_fault",
 }
 
-_APPLIANCE_STATUS_BY_CAUSE: dict[int, str] = {
-    200: "heating_operation",
-    201: "hot_water_operation",
-    202: "anti_cycle_delay",
-    203: "standby_no_heat_demand",
-    204: "supply_temp_above_setpoint",
-    207: "system_pressure_too_low",
-    208: "flue_gas_test_heat_demand",
-    210: "flue_gas_thermostat_or_air_pressure_active",
-    212: "safety_supply_temp_rising_too_fast",
-    213: "supply_return_temp_difference_too_high",
-    214: "fan_stopped_during_safety_time",
-    215: "fan_speed_too_high",
-    216: "fan_malfunction",
-    217: "air_pressure_monitor_fault",
-    218: "supply_temp_too_high",
-    219: "safety_sensor_temp_too_high",
-    220: "supply_sensor_short_circuit",
-    221: "supply_sensor_disconnected",
-    222: "safety_sensor_short_circuit",
-    223: "safety_sensor_disconnected",
-    224: "safety_limiter_active",
-    225: "communication_or_internal_signal_fault",
-    226: "internal_monitoring_fault",
-    227: "no_flame_after_ignition",
-    228: "unexpected_flame_signal",
-    229: "ionization_signal_lost",
-    230: "invalid_ionization_signal",
-    231: "mains_voltage_fault_or_power_loss",
-    232: "external_cutoff_switch_active",
-    233: "external_controller_fault",
-    234: "gas_valve_communication_fault",
-    235: "gas_valve_not_recognized",
-    238: "internal_electronics_fault",
-    239: "equipment_fault_relay_error",
-    240: "device_internal_fault",
-    241: "return_sensor_short_circuit",
-    242: "return_sensor_disconnected",
-    243: "internal_communication_fault",
-    244: "sensor_or_electronics_fault",
-    245: "communication_fault",
-    246: "internal_controller_fault",
-    257: "regulation_system_internal_fault",
-    258: "regulation_system_internal_fault",
-    259: "regulation_system_internal_fault",
-    260: "ignition_or_flame_fault",
-    261: "flame_fault",
-    265: "heat_demand_below_min_power",
-    268: "regulation_system_test",
-    270: "boiler_starting",
-    271: "boiler_startup_preventilation",
-    272: "burner_operation_monitoring",
-    273: "flame_monitoring",
-    274: "burner_startup_phase",
-    276: "supply_temp_above_setpoint",
-    280: "fan_starting",
-    281: "startup_delay",
-    282: "pump_or_flow_insufficient",
-    283: "burner_starting",
-    284: "gas_valve_opening",
-    285: "gas_valve_open_burner_startup",
-    290: "main_controller_fault",
-    291: "internal_electronics_fault",
-    292: "regulation_system_fault",
-    293: "internal_fault",
-    294: "electronic_fault",
-    296: "internal_controller_fault",
-    297: "internal_fault",
-    298: "electronic_fault",
-    299: "internal_system_fault",
-}
+def _build_appliance_status_by_cause(
+    by_code: dict[tuple[str, int], str],
+) -> dict[int, str]:
+    """Build a cause-only fallback map from the pair table.
+
+    Keep the first seen mapping for a cause code to preserve the intended
+    primary meaning when multiple display codes share the same cause.
+    """
+
+    by_cause: dict[int, str] = {}
+    for (_display, cause), status in by_code.items():
+        by_cause.setdefault(cause, status)
+    return by_cause
+
+
+_APPLIANCE_STATUS_BY_CAUSE: dict[int, str] = _build_appliance_status_by_cause(
+    _APPLIANCE_STATUS_BY_CODE
+)
 
 
 def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
@@ -876,15 +845,72 @@ def _appliance_cause_code(data: dict[str, Any]) -> int | None:
         return None
 
 
+def _appliance_error_flag(data: dict[str, Any], path: str) -> bool | None:
+    """Parse appliance error flags that may be bool, numeric or string values."""
+    raw = _val(data, path)
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        return raw != 0
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"true", "1", "on", "yes"}:
+            return True
+        if value in {"false", "0", "off", "no"}:
+            return False
+    return None
+
+
+def _appliance_optional_code(data: dict[str, Any], path: str) -> int | None:
+    """Parse optional diagnostic codes (service/blocking/locking) when numeric."""
+    raw = _val(data, path)
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return int(raw)
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"", "true", "false", "on", "off", "yes", "no"}:
+            return None
+        try:
+            return int(float(value))
+        except ValueError:
+            return None
+    return None
+
+
 def _appliance_status_state(data: dict[str, Any]) -> str | None:
     display = _appliance_display_code(data)
     cause = _appliance_cause_code(data)
-    if display is None and cause is None:
-        return None
+    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
+    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
+    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
+    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+
+    # Single mapping table, context-aware lookup order:
+    # locking pair -> blocking pair -> service pair.
+    if locking is True:
+        if display is not None and locking_code is not None:
+            status = _APPLIANCE_STATUS_BY_CODE.get((display, locking_code))
+            if status is not None:
+                return status
+        return "locking_fault_code_active"
+
+    if blocking is True:
+        if display is not None and blocking_code is not None:
+            status = _APPLIANCE_STATUS_BY_CODE.get((display, blocking_code))
+            if status is not None:
+                return status
+        return "blocking_fault_code_active"
+
     if display is not None and cause is not None:
         status = _APPLIANCE_STATUS_BY_CODE.get((display, cause))
         if status is not None:
             return status
+
+    if display is None and cause is None and blocking is None and locking is None:
+        return None
+
     if cause is not None:
         status = _APPLIANCE_STATUS_BY_CAUSE.get(cause)
         if status is not None:
@@ -897,17 +923,32 @@ def _appliance_status_state(data: dict[str, Any]) -> str | None:
 def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
     display = _appliance_display_code(data)
     cause = _appliance_cause_code(data)
-    if display is None and cause is None:
+    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
+    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
+    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
+    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    if display is None and cause is None and blocking is None and locking is None:
         return None
-    return {
+    attrs: dict[str, Any] = {
         "display_code": display,
         "cause_code": cause,
     }
+    if blocking is not None:
+        attrs["blocking_error"] = blocking
+    if blocking_code is not None:
+        attrs["blocking_code"] = blocking_code
+    if locking is not None:
+        attrs["locking_error"] = locking
+    if locking_code is not None:
+        attrs["locking_code"] = locking_code
+    return attrs
 
 
 def _appliance_status_available(data: dict[str, Any]) -> bool:
     return _val(data, "/system/appliance/displayCode") is not None or _val(
         data, "/system/appliance/causeCode"
+    ) is not None or _val(data, "/system/appliance/blockingError") is not None or _val(
+        data, "/system/appliance/lockingError"
     ) is not None
 
 

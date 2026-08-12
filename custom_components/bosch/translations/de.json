@@ -38,14 +38,14 @@
         "name": "Kesselleistung"
       },
       "blocking_error": {
-        "name": "Blockierender Fehler",
+        "name": "Blockierender Fehlercode",
         "state": {
           "false": "Kein Fehler",
           "true": "Fehler"
         }
       },
       "locking_error": {
-        "name": "Sperrfehler",
+        "name": "Sperrender Fehlercode",
         "state": {
           "false": "Kein Fehler",
           "true": "Fehler"
@@ -62,23 +62,31 @@
         "name": "Anzeigecode"
       },
       "cause_code": {
-        "name": "Ursachencode"
+        "name": "Servicecode"
       },
       "appliance_status": {
         "name": "Kesselstatus",
         "state": {
           "unknown": "Unbekannt",
+          "locking_fault_code_active": "Sperrender Fehlercode aktiv",
+          "blocking_fault_code_active": "Blockierender Fehlercode aktiv",
           "standby_no_heat_demand": "Standby - keine Wärmeanforderung",
           "heating_operation": "Heizbetrieb",
           "hot_water_operation": "Warmwasserbetrieb",
           "anti_cycle_delay": "Taktsperre",
+          "dhw_post_heating_lockout": "Warmwasser-Nachhaltezeit aktiv",
           "system_pressure_too_low": "Systemdruck zu niedrig",
           "flue_gas_test_heat_demand": "Wärmeanforderung durch Abgastest",
           "flue_gas_thermostat_or_air_pressure_active": "Abgasthermostat oder Luftdruckregler aktiv",
           "safety_supply_temp_rising_too_fast": "Sicherheits-/Vorlauftemperatur steigt zu schnell",
+          "heating_gradient_limitation": "Gradientenbegrenzung im Heizbetrieb",
+          "dhw_gradient_limitation": "Gradientenbegrenzung im Warmwasserbetrieb",
           "supply_return_temp_difference_too_high": "Differenz zwischen Vorlauf- und Rücklauftemperatur zu hoch",
+          "pump_no_pressure_difference": "Die Umwälzpumpe erzeugt keine Druckdifferenz",
           "fan_stopped_during_safety_time": "Lüfter während der Sicherheitszeit gestoppt",
+          "fan_stopped_during_operation": "Lüfter während des Betriebs gestoppt",
           "fan_speed_too_high": "Lüfterdrehzahl zu hoch",
+           "fan_speed_too_low": "Lüfterdrehzahl zu niedrig",
           "fan_malfunction": "Lüfter funktioniert nicht korrekt",
           "air_pressure_monitor_fault": "Luftdrucküberwachung oder Pressostatfehler",
           "supply_temp_too_high": "Vorlauftemperatur zu hoch",
@@ -92,13 +100,17 @@
           "internal_monitoring_fault": "Interner Überwachungsfehler",
           "no_flame_after_ignition": "Keine Flamme nach der Zündung erkannt",
           "unexpected_flame_signal": "Flammensignal vorhanden, obwohl keine Flamme erwartet wird",
+           "flame_detected_after_gas_shutdown": "Flamme nach Gasabschaltung erkannt",
           "ionization_signal_lost": "Ionisationssignal während des Betriebs verloren",
           "invalid_ionization_signal": "Ungültiges Ionisationssignal",
           "mains_voltage_fault_or_power_loss": "Netzspannungsfehler oder Stromausfall",
+           "first_safety_time_fault": "Zeitfehler für die erste Sicherheitszeit",
+           "restart_attempt_time_fault": "Zeitfehler für den Wiederanlaufversuch",
           "external_cutoff_switch_active": "Externer Abschaltschalter aktiv",
           "external_controller_fault": "Fehler des externen Reglers",
           "gas_valve_communication_fault": "Kommunikationsfehler mit dem Gasventil",
           "gas_valve_not_recognized": "Gasventil nicht erkannt",
+           "kim_not_recognized": "KIM nicht erkannt",
           "internal_electronics_fault": "Interner Elektronikfehler",
           "equipment_fault_relay_error": "Fehler am Störungsrelais",
           "device_internal_fault": "Interner Gerätefehler",
@@ -115,10 +127,13 @@
           "boiler_startup_preventilation": "Kesselstart oder Vorlüftung",
           "burner_operation_monitoring": "Überwachung des Brennerbetriebs",
           "flame_monitoring": "Flammenüberwachung",
+          "safety_shutdown_after_24h_continuous_operation": "Sicherheitsabschaltung nach 24 h Dauerbetrieb von Brenner/Lüfter",
           "burner_startup_phase": "Brenner in der Startphase",
           "fan_starting": "Lüfterstart",
           "startup_delay": "Startverzögerung",
           "pump_or_flow_insufficient": "Pumpe oder Durchfluss unzureichend",
+          "purge_function_active": "Entlüftungsfunktion aktiv",
+          "pump_or_three_way_valve_anti_seizure": "Blockierschutz für Pumpe/3-Wege-Ventil aktiv",
           "internal_error_service_required": "Interner Fehler - Service erforderlich",
           "burner_starting": "Brenner startet",
           "heat_demand_below_min_power": "Wärmeanforderung unter Mindestleistung",
@@ -126,6 +141,7 @@
           "gas_valve_open_burner_startup": "Gasventil offen oder Brennerstart",
           "boiler_starting": "Kessel startet",
           "supply_temp_above_setpoint": "Vorlauftemperatur über Sollwert",
+          "dhw_sensor_temp_too_high": "Warmwasserfühler-Temperatur zu hoch",
           "main_controller_fault": "Fehler des Hauptreglers",
           "regulation_system_fault": "Fehler des Regelsystems",
           "internal_fault": "Interner Fehler",

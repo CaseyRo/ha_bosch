@@ -11,6 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.bosch.pointtapi_entities import (
+    _APPLIANCE_STATUS_BY_CODE,
     POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
     POINTTAPI_NUMBER_DESCRIPTIONS,
     POINTTAPI_SELECT_DESCRIPTIONS,
@@ -225,6 +226,39 @@ class TestTranslationCatalog:
 
 
 class TestComfortControlDescriptions:
+    def test_appliance_pair_table_contains_requested_combinations(self):
+        required_pairs = {
+            ("8Y", 232),
+            ("EL", 290),
+            ("3C", 217),
+            ("3L", 214),
+            ("3P", 216),
+            ("3Y", 215),
+            ("4C", 224),
+            ("4U", 222),
+            ("4Y", 223),
+            ("6A", 227),
+            ("6C", 228),
+            ("6C", 306),
+            ("7L", 261),
+            ("7L", 280),
+            ("9L", 234),
+            ("9L", 238),
+            ("9P", 239),
+            ("EL", 259),
+            ("0Y", 276),
+            ("0Y", 359),
+            ("2P", 341),
+            ("2Y", 281),
+            ("3A", 264),
+            ("3F", 273),
+            ("4U", 350),
+            ("4Y", 351),
+            ("6L", 229),
+        }
+        missing = sorted(required_pairs - set(_APPLIANCE_STATUS_BY_CODE))
+        assert not missing, f"Missing appliance status pairs: {missing}"
+
     def test_wifi_firmware_sensor_is_described(self):
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         d = descs["/gateway/wifi/versionFirmware"]
@@ -344,6 +378,123 @@ class TestComfortControlDescriptions:
         assert desc.attributes_fn is not None
         assert desc.attributes_fn(data) == {"display_code": "0H", "cause_code": 203}
 
+    def test_appliance_status_sensor_prioritizes_locking_error_over_running_state(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/lockingError": {"value": "true"},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "locking_fault_code_active"
+
+    def test_appliance_status_sensor_prioritizes_blocking_error_over_running_state(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/blockingError": {"value": True},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "blocking_fault_code_active"
+
+    def test_appliance_status_sensor_uses_display_and_locking_code_pair_when_present(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "2H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/lockingError": {"value": 358.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "pump_or_three_way_valve_anti_seizure"
+
+    def test_appliance_status_sensor_uses_display_and_blocking_code_pair_when_present(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "2E"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/blockingError": {"value": 357.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "purge_function_active"
+
+    def test_appliance_status_sensor_sets_fault_attributes_when_present(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/blockingError": {"value": "1"},
+            "/system/appliance/lockingError": {"value": "0"},
+        }
+        assert desc.attributes_fn is not None
+        assert desc.attributes_fn(data) == {
+            "display_code": "0H",
+            "cause_code": 203,
+            "blocking_error": True,
+            "blocking_code": 1,
+            "locking_error": False,
+            "locking_code": 0,
+        }
+
+    def test_appliance_status_sensor_available_with_only_fault_flags(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/lockingError": {"value": True},
+        }
+        assert desc.available_fn is not None
+        assert desc.available_fn(data) is True
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "locking_fault_code_active"
+
+    def test_appliance_status_sensor_maps_0a_305_to_dhw_lockout(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0A"},
+            "/system/appliance/causeCode": {"value": 305.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "dhw_post_heating_lockout"
+
+    def test_appliance_status_sensor_maps_additional_documented_pairs(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        assert (
+            desc.value_fn(
+                {
+                    "/system/appliance/displayCode": {"value": "2P"},
+                    "/system/appliance/causeCode": {"value": 342.0},
+                }
+            )
+            == "dhw_gradient_limitation"
+        )
+        assert (
+            desc.value_fn(
+                {
+                    "/system/appliance/displayCode": {"value": "2E"},
+                    "/system/appliance/causeCode": {"value": 357.0},
+                }
+            )
+            == "purge_function_active"
+        )
+        assert (
+            desc.value_fn(
+                {
+                    "/system/appliance/displayCode": {"value": "2H"},
+                    "/system/appliance/causeCode": {"value": 358.0},
+                }
+            )
+            == "pump_or_three_way_valve_anti_seizure"
+        )
+
     def test_cause_code_sensor_normalizes_float_to_int(self):
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         desc = descs["/system/appliance/causeCode"]
@@ -452,6 +603,17 @@ class TestComfortControlDescriptions:
             "/system/appliance/causeCode": {"value": 268.0},
         }
         assert desc.value_fn(data) == "regulation_system_test"
+
+    def test_appliance_status_sensor_maps_0y_359_to_dhw_sensor_overtemp(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "0Y"},
+            "/system/appliance/causeCode": {"value": 359.0},
+        }
+        assert desc.value_fn(data) == "dhw_sensor_temp_too_high"
 
     def test_thermostat_valve_diagnostics_are_discovered_from_devices_list(self):
         data = {
