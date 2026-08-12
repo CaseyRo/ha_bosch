@@ -158,6 +158,9 @@
       "assigned_program": {
         "name": "Toegewezen programma"
       },
+      "optimum_start_state": {
+        "name": "Status optimaal starten"
+      },
       "electricity_day_average": {
         "name": "Daggemiddelde elektriciteit"
       },

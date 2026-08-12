@@ -158,6 +158,9 @@
       "assigned_program": {
         "name": "Priradený program"
       },
+      "optimum_start_state": {
+        "name": "Stav optimálneho štartu"
+      },
       "electricity_day_average": {
         "name": "Denny priemer elektriny"
       },

@@ -1448,6 +1448,24 @@ def _pointtapi_zone_assigned_program_sensor_descriptions(
     )
 
 
+def _pointtapi_zone_optimum_start_state_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return one raw optimum-start-state sensor per zone when advertised."""
+    if not data:
+        return ()
+
+    zone_ids = _zone_ids_with_reference(data, "optimumStartState")
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/optimumStartState",
+            translation_key="optimum_start_state",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        )
+        for zone_id in zone_ids
+    )
+
+
 def _pointtapi_electricity_average_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -1837,6 +1855,7 @@ def _pointtapi_sensor_descriptions(
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_assigned_program_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_zone_optimum_start_state_sensor_descriptions(data))
     descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))
     descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
     return tuple(descriptions)

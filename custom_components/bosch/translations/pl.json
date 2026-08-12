@@ -158,6 +158,9 @@
       "assigned_program": {
         "name": "Przypisany program"
       },
+      "optimum_start_state": {
+        "name": "Stan optymalnego startu"
+      },
       "electricity_day_average": {
         "name": "Średnia dzienna energii elektrycznej"
       },

@@ -672,6 +672,54 @@ class TestComfortControlDescriptions:
         assert "/zones/zn10/assignedProgramName" in descs
         assert descs["/zones/zn2/assignedProgramName"].translation_key == "assigned_program"
 
+    def test_zone_optimum_start_state_sensors_are_discovered_from_zone_references(self):
+        data = {
+            "/zones/zn2": {
+                "references": [
+                    {"id": "/zones/zn2/optimumStartState"},
+                ]
+            },
+            "/zones/zn1": {
+                "references": [
+                    {"id": "/zones/zn1/optimumStartState"},
+                ]
+            },
+            "/zones/zn3": {
+                "references": [
+                    {"id": "/zones/zn3/status"},
+                ]
+            },
+        }
+
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+        assert "/zones/zn1/optimumStartState" in descs
+        assert "/zones/zn2/optimumStartState" in descs
+        assert "/zones/zn3/optimumStartState" not in descs
+        assert descs["/zones/zn1/optimumStartState"].translation_key == "optimum_start_state"
+
+    def test_zone_optimum_start_state_sensor_keeps_raw_value(self):
+        data = {
+            "/zones/zn2": {
+                "id": "/zones/zn2",
+                "references": [{"id": "/zones/zn2/optimumStartState"}],
+            },
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/optimumStartState": {"value": "idle"},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/optimumStartState"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "idle"
+
     def test_zone_assigned_program_sensor_resolves_base64_program_name(self):
         data = {
             "/zones/zn2": {"id": "/zones/zn2"},

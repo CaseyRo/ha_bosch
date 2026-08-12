@@ -158,6 +158,9 @@
       "assigned_program": {
         "name": "Zugewiesenes Programm"
       },
+      "optimum_start_state": {
+        "name": "Status optimaler Start"
+      },
       "electricity_day_average": {
         "name": "Tagesdurchschnitt Strom"
       },

@@ -229,6 +229,9 @@
       "assigned_program": {
         "name": "Assigned program"
       },
+      "optimum_start_state": {
+        "name": "Optimum start state"
+      },
       "electricity_day_average": {
         "name": "Electricity day average"
       },

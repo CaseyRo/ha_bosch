@@ -158,6 +158,9 @@
       "assigned_program": {
         "name": "Programme assigné"
       },
+      "optimum_start_state": {
+        "name": "État du démarrage optimal"
+      },
       "electricity_day_average": {
         "name": "Moyenne journalière électricité"
       },
