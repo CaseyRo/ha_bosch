@@ -43,6 +43,8 @@ POINTTAPI_COORDINATOR_ROOTS = [
     # Away mode leaf — not reachable via the /system/sensors or
     # /system/appliance reference walks (writeable: 1, verified 2026-06-05).
     "/system/awayMode/enabled",
+    "/programs",
+    "/devices",
 ]
 REFERENCES_KEY = "references"
 ID_KEY = "id"
@@ -122,6 +124,57 @@ async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
     return ["/zones/zn1"]
 
 
+async def _program_roots(client: PoinTTAPIClient) -> list[str]:
+    """GET /programs and return one walk root per listed program.
+
+    Mirrors zone-root expansion: use the listing references as source-of-truth
+    and fall back to the top-level /programs root when discovery is missing or
+    unavailable.
+    """
+    try:
+        resp = await client.get("/programs")
+        if isinstance(resp, dict):
+            roots = [
+                r[ID_KEY]
+                for r in (resp.get(REFERENCES_KEY) or [])
+                if isinstance(r, dict) and r.get(ID_KEY)
+            ]
+            if roots:
+                return roots
+    except ConfigEntryAuthFailed:
+        _LOGGER.debug("POINTTAPI 401/403 on /programs, using /programs root")
+    except Exception as err:
+        _LOGGER.debug(
+            "POINTTAPI /programs listing unavailable (%s), using /programs root", err
+        )
+    return ["/programs"]
+
+
+async def _device_roots(client: PoinTTAPIClient) -> list[str]:
+    """GET /devices and return one walk root per listed device.
+
+    Mirrors zone/program root expansion and falls back to the top-level
+    /devices root when discovery is missing or unavailable.
+    """
+    try:
+        resp = await client.get("/devices")
+        if isinstance(resp, dict):
+            roots = [
+                r[ID_KEY]
+                for r in (resp.get(REFERENCES_KEY) or [])
+                if isinstance(r, dict) and r.get(ID_KEY)
+            ]
+            if roots:
+                return roots
+    except ConfigEntryAuthFailed:
+        _LOGGER.debug("POINTTAPI 401/403 on /devices, using /devices root")
+    except Exception as err:
+        _LOGGER.debug(
+            "POINTTAPI /devices listing unavailable (%s), using /devices root", err
+        )
+    return ["/devices"]
+
+
 async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
@@ -132,7 +185,16 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     data: dict[str, Any] = {}
     roots: list[str] = []
     for r in POINTTAPI_COORDINATOR_ROOTS:
-        roots.extend(await _zone_roots(client) if r == "/zones" else [r])
+        if r == "/zones":
+            roots.extend(await _zone_roots(client))
+            continue
+        if r == "/programs":
+            roots.extend(await _program_roots(client))
+            continue
+        if r == "/devices":
+            roots.extend(await _device_roots(client))
+            continue
+        roots.append(r)
     for root in roots:
         if root == "/energy/historyHourly":
             try:

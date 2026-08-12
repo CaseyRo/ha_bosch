@@ -88,7 +88,93 @@ class TestZoneDeviceNaming:
         assert ent.device_info["name"] == "Heating Zone Küche"
         assert (("bosch", "uuid1_zn2") in ent.device_info["identifiers"])
 
-    def test_zn1_keeps_bare_name(self):
-        coord = _coord({"/zones/zn1/name": {"value": "Wohnzimmer"}})
+    def test_zn1_keeps_bare_name_on_single_zone(self):
+        coord = _coord(
+            {
+                "/zones/zn1/name": {"value": "Wohnzimmer"},
+                "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+            }
+        )
         ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
         assert ent.device_info["name"] == "Heating Zone"
+
+    def test_zn1_named_after_room_on_multi_zone(self):
+        """Issue #11: on a multi-zone install the master zone (zn1, where the
+        CT200 sits) must carry its room name too — a bare "Heating Zone" among
+        nine room-named devices read as 'living room missing'."""
+        coord = _coord(
+            {
+                "/zones/zn1/name": {"value": "Wohnzimmer"},
+                "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+                "/zones/zn2/name": {"value": "Küche"},
+                "/zones/zn2/temperatureHeatingSetpoint": {"value": 19.0},
+            }
+        )
+        ent = BoschPoinTTAPIClimateEntity(coord, "entry1", "uuid1", "zn1")
+        assert ent.device_info["name"] == "Heating Zone Wohnzimmer"
+        assert (("bosch", "uuid1_zn1") in ent.device_info["identifiers"])
+
+    def test_every_zone_entity_class_resolves_room_name(self):
+        """Regression (#9, beta.5): the open-window switch and binary sensor
+        registered their zone device without coordinator data, so the last
+        entity to register clobbered "Heating Zone Küche" back to
+        "Heating Zone zn2". Every entity class that can attach to a zone
+        device must construct with the room-name suffix."""
+        from custom_components.bosch.pointtapi_entities import (
+            BoschPoinTTAPIBinarySensorEntity,
+            BoschPoinTTAPIGenericSwitchEntity,
+            BoschPoinTTAPISensorEntity,
+            _pointtapi_open_window_binary_sensor_descriptions,
+            _pointtapi_open_window_switch_descriptions,
+            _pointtapi_zone_valve_sensor_descriptions,
+        )
+
+        data = {}
+        for z in ("zn1", "zn2"):
+            data[f"/zones/{z}"] = {
+                "references": [
+                    {"id": f"/zones/{z}/openWindowDetection"},
+                    {"id": f"/zones/{z}/actualValvePosition"},
+                ]
+            }
+            data[f"/zones/{z}/temperatureHeatingSetpoint"] = {"value": 21.0}
+        data["/zones/zn1/name"] = {"value": "Wohnzimmer"}
+        data["/zones/zn2/name"] = {"value": "Küche"}
+        coord = _coord(data)
+
+        entities = [BoschPoinTTAPIClimateEntity(coord, "e1", "u1", "zn2")]
+        entities += [
+            BoschPoinTTAPIGenericSwitchEntity(coord, "e1", "u1", d)
+            for d in _pointtapi_open_window_switch_descriptions(data)
+        ]
+        entities += [
+            BoschPoinTTAPIBinarySensorEntity(coord, "e1", "u1", d)
+            for d in _pointtapi_open_window_binary_sensor_descriptions(data)
+        ]
+        entities += [
+            BoschPoinTTAPISensorEntity(coord, "e1", "u1", d)
+            for d in _pointtapi_zone_valve_sensor_descriptions(data)
+        ]
+
+        zn2 = [
+            e for e in entities
+            if ("bosch", "u1_zn2") in e.device_info["identifiers"]
+        ]
+        assert len(zn2) >= 4  # climate + ow switch + ow sensor + valve sensor
+        for ent in zn2:
+            assert ent.device_info["name"] == "Heating Zone Küche", type(ent).__name__
+
+    def test_zn1_attached_entities_agree_on_device_name(self):
+        """Every entity on the zn1 device must resolve the same name, or the
+        registry name flip-flops with registration order."""
+        from custom_components.bosch.pointtapi_entities import _resolve_device_info
+
+        data = {
+            "/zones/zn1/name": {"value": "Wohnzimmer"},
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+            "/zones/zn2/name": {"value": "Küche"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 19.0},
+        }
+        for path in ("/zones/zn1", "/zones/zn1/actualValvePosition", "/zones/zn1/userMode"):
+            info = _resolve_device_info("uuid1", path, data=data)
+            assert info["name"] == "Heating Zone Wohnzimmer", path

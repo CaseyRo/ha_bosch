@@ -7,14 +7,20 @@
       "indoor_humidity": {
         "name": "Humidité intérieure"
       },
+      "valve_position": {
+        "name": "Position de la vanne"
+      },
       "system_pressure": {
         "name": "Pression du système"
       },
       "wifi_rssi": {
         "name": "Puissance du signal Wi-Fi"
       },
-      "update_state": {
-        "name": "État de mise à jour du firmware"
+      "wifi_firmware_version": {
+        "name": "Version du firmware Wi-Fi"
+      },
+      "energy_efficiency": {
+        "name": "Efficacité énergétique"
       },
       "boost_remaining_time": {
         "name": "Temps de boost restant"
@@ -56,10 +62,22 @@
         "name": "Code cause"
       },
       "actual_supply_temperature": {
-        "name": "Température de départ réelle"
+        "name": "Température de départ"
+      },
+      "return_temperature": {
+        "name": "Température de retour"
+      },
+      "assigned_program": {
+        "name": "Programme assigné"
+      },
+      "electricity_day_average": {
+        "name": "Moyenne journalière électricité"
+      },
+      "electricity_month_average": {
+        "name": "Moyenne mensuelle électricité"
       },
       "actual_modulation": {
-        "name": "Modulation réelle"
+        "name": "Puissance de modulation actuelle"
       },
       "gas_heating_today": {
         "name": "Gaz chauffage aujourd'hui"
@@ -95,7 +113,7 @@
         "name": "Température"
       },
       "boiler_ignition_starts": {
-        "name": "Démarrages d'allumage"
+        "name": "Nombre de démarrages"
       },
       "last_update_check": {
         "name": "Dernière vérification de mise à jour"
@@ -106,8 +124,23 @@
       "notifications": {
         "name": "Notifications"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Puissance du signal de la vanne thermostatique"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batterie de la vanne thermostatique"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zone de la vanne thermostatique"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protocole de la vanne thermostatique"
+      },
       "thermal_disinfect_last_result": {
-        "name": "Dernier résultat de désinfection thermique"
+        "name": "Dernier résultat de désinfection thermique",
+        "state": {
+          "done": "Effectué"
+        }
       }
     },
     "number": {
@@ -130,7 +163,7 @@
         "name": "Seuil été/hiver"
       },
       "room_influence": {
-        "name": "Influence de la pièce"
+        "name": "Influence de la température ambiante"
       },
       "temperature_calibration_offset": {
         "name": "Décalage de calibration de température"
@@ -147,13 +180,27 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Chauffage"
+        "name": "Statut",
+        "state": {
+          "off": "Arrêt",
+          "on": "En chauffe"
+        }
+      },
+      "open_window_detected": {
+        "name": "Fenêtre ouverte détectée",
+        "state": {
+          "off": "Fermée",
+          "on": "Ouverte"
+        }
       },
       "burner_flame": {
         "name": "Flamme"
       },
       "refill_needed": {
         "name": "Remplissage nécessaire"
+      },
+      "thermostat_valve_warning": {
+        "name": "Avertissement de la vanne thermostatique"
       }
     },
     "switch": {
@@ -171,13 +218,19 @@
       },
       "extra_hot_water": {
         "name": "Eau chaude supplémentaire"
+      },
+      "open_window_detection": {
+        "name": "Détection fenêtre ouverte"
+      },
+      "thermal_disinfect": {
+        "name": "Désinfection thermique"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Mode de zone",
         "state": {
-          "clock": "Horloge",
+          "clock": "Programme",
           "manual": "Manuel"
         }
       },

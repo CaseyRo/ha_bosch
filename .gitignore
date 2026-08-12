@@ -88,6 +88,9 @@ venv.bak/
 .vscode/*
 !.vscode/settings.json
 
+# Backup/original files
+*.orig
+
 # Data folder
 Daten/
 home-assistant-bosch-custom-component-master.code-workspace

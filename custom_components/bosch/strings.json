@@ -16,8 +16,11 @@
       "wifi_rssi": {
         "name": "WiFi signal strength"
       },
-      "update_state": {
-        "name": "Firmware update state"
+      "wifi_firmware_version": {
+        "name": "WiFi firmware version"
+      },
+      "energy_efficiency": {
+        "name": "Energy efficiency"
       },
       "boost_remaining_time": {
         "name": "Boost remaining time"
@@ -77,7 +80,7 @@
         "name": "Boiler power"
       },
       "actual_supply_temperature": {
-        "name": "Actual supply temperature"
+        "name": "Supply temperature"
       },
       "actual_modulation": {
         "name": "Actual modulation"
@@ -127,14 +130,38 @@
       "return_temperature": {
         "name": "Return temperature"
       },
+      "assigned_program": {
+        "name": "Assigned program"
+      },
+      "electricity_day_average": {
+        "name": "Electricity day average"
+      },
+      "electricity_month_average": {
+        "name": "Electricity month average"
+      },
       "refill_needed": {
         "name": "Refill needed"
       },
       "notifications": {
         "name": "Notifications"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Thermostat valve signal strength"
+      },
+      "thermostat_valve_battery": {
+        "name": "Thermostat valve battery"
+      },
+      "thermostat_valve_zone": {
+        "name": "Thermostat valve zone"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Thermostat valve protocol"
+      },
       "thermal_disinfect_last_result": {
-        "name": "Thermal disinfect last result"
+        "name": "Thermal disinfect last result",
+        "state": {
+          "done": "Done"
+        }
       }
     },
     "number": {
@@ -157,7 +184,7 @@
         "name": "Summer/winter threshold"
       },
       "room_influence": {
-        "name": "Room influence"
+        "name": "Ambient temperature influence"
       },
       "temperature_calibration_offset": {
         "name": "Temperature calibration offset"
@@ -174,13 +201,27 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Heating"
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "on": "Heating"
+        }
+      },
+      "open_window_detected": {
+        "name": "Open window detected",
+        "state": {
+          "off": "Closed",
+          "on": "Open"
+        }
       },
       "burner_flame": {
         "name": "Flame"
       },
       "refill_needed": {
         "name": "Refill needed"
+      },
+      "thermostat_valve_warning": {
+        "name": "Thermostat valve warning"
       }
     },
     "switch": {
@@ -198,6 +239,12 @@
       },
       "extra_hot_water": {
         "name": "Extra hot water"
+      },
+      "open_window_detection": {
+        "name": "Open window detection"
+      },
+      "thermal_disinfect": {
+        "name": "Thermal disinfect"
       }
     },
     "select": {

@@ -7,14 +7,20 @@
       "indoor_humidity": {
         "name": "Innenraumluftfeuchtigkeit"
       },
+      "valve_position": {
+        "name": "Ventilstellung"
+      },
       "system_pressure": {
         "name": "Systemdruck"
       },
       "wifi_rssi": {
         "name": "WLAN-Signalstärke"
       },
-      "update_state": {
-        "name": "Firmware-Update-Status"
+      "wifi_firmware_version": {
+        "name": "WLAN-Firmwareversion"
+      },
+      "energy_efficiency": {
+        "name": "Energieeffizienz"
       },
       "boost_remaining_time": {
         "name": "Verbleibende Boost-Zeit"
@@ -56,10 +62,22 @@
         "name": "Ursachencode"
       },
       "actual_supply_temperature": {
-        "name": "Aktuelle Vorlauftemperatur"
+        "name": "Vorlauftemperatur"
+      },
+      "return_temperature": {
+        "name": "Rücklauftemperatur"
+      },
+      "assigned_program": {
+        "name": "Zugewiesenes Programm"
+      },
+      "electricity_day_average": {
+        "name": "Tagesdurchschnitt Strom"
+      },
+      "electricity_month_average": {
+        "name": "Monatsdurchschnitt Strom"
       },
       "actual_modulation": {
-        "name": "Aktuelle Modulation"
+        "name": "Aktuelle Modulationsleistung"
       },
       "gas_heating_today": {
         "name": "Gas Heizung heute"
@@ -106,8 +124,23 @@
       "notifications": {
         "name": "Benachrichtigungen"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Signalstärke Thermostatventil"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batteriestand Thermostatventil"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zone Thermostatventil"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokoll Thermostatventil"
+      },
       "thermal_disinfect_last_result": {
-        "name": "Letzte thermische Desinfektion"
+        "name": "Letzte thermische Desinfektion",
+        "state": {
+          "done": "Abgeschlossen"
+        }
       }
     },
     "number": {
@@ -130,7 +163,7 @@
         "name": "Sommer/Winter-Schwellwert"
       },
       "room_influence": {
-        "name": "Raumeinfluss"
+        "name": "Einfluss der Umgebungstemperatur"
       },
       "temperature_calibration_offset": {
         "name": "Temperaturkalibrierungsversatz"
@@ -147,13 +180,27 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Heizung"
+        "name": "Status",
+        "state": {
+          "off": "Aus",
+          "on": "Heizt"
+        }
+      },
+      "open_window_detected": {
+        "name": "Offenes Fenster erkannt",
+        "state": {
+          "off": "Geschlossen",
+          "on": "Offen"
+        }
       },
       "burner_flame": {
         "name": "Flamme"
       },
       "refill_needed": {
         "name": "Nachfüllen erforderlich"
+      },
+      "thermostat_valve_warning": {
+        "name": "Warnung Thermostatventil"
       }
     },
     "switch": {
@@ -171,13 +218,19 @@
       },
       "extra_hot_water": {
         "name": "Zusätzliches Warmwasser"
+      },
+      "open_window_detection": {
+        "name": "Fenster-offen-Erkennung"
+      },
+      "thermal_disinfect": {
+        "name": "Thermische Desinfektion"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Zonenmodus",
         "state": {
-          "clock": "Uhr",
+          "clock": "Programm",
           "manual": "Manuell"
         }
       },

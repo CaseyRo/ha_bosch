@@ -24,6 +24,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         from .pointtapi_entities import (
             BoschPoinTTAPIBinarySensorEntity,
             POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
+            _pointtapi_open_window_binary_sensor_descriptions,
+            _pointtapi_thermostat_valve_warning_binary_sensor_descriptions,
         )
         rt_data = config_entry.runtime_data
         coordinator = getattr(rt_data, "coordinator", None)
@@ -31,6 +33,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             async_add_entities([])
             return True
         uuid = config_entry.data.get(UUID)
+        descriptions = list(POINTTAPI_BINARY_SENSOR_DESCRIPTIONS)
+        descriptions.extend(
+            _pointtapi_open_window_binary_sensor_descriptions(
+                coordinator.data or {}
+            )
+        )
+        descriptions.extend(
+            _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(
+                coordinator.data or {}
+            )
+        )
         entities = [
             BoschPoinTTAPIBinarySensorEntity(
                 coordinator,
@@ -38,7 +51,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 uuid,
                 desc,
             )
-            for desc in POINTTAPI_BINARY_SENSOR_DESCRIPTIONS
+            for desc in descriptions
         ]
         async_add_entities(entities)
         return True

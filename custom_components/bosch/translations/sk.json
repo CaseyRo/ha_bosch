@@ -7,14 +7,20 @@
       "indoor_humidity": {
         "name": "Vnútorná vlhkosť"
       },
+      "valve_position": {
+        "name": "Poloha ventilu"
+      },
       "system_pressure": {
         "name": "Systémový tlak"
       },
       "wifi_rssi": {
         "name": "Sila signálu Wi-Fi"
       },
-      "update_state": {
-        "name": "Stav aktualizácie firmvéru"
+      "wifi_firmware_version": {
+        "name": "Verzia firmvéru Wi-Fi"
+      },
+      "energy_efficiency": {
+        "name": "Energetická účinnosť"
       },
       "boost_remaining_time": {
         "name": "Zostávajúci čas boostu"
@@ -56,10 +62,22 @@
         "name": "Kód príčiny"
       },
       "actual_supply_temperature": {
-        "name": "Aktuálna teplota prívodu"
+        "name": "Teplota prívodu"
+      },
+      "return_temperature": {
+        "name": "Teplota spiatočky"
+      },
+      "assigned_program": {
+        "name": "Priradený program"
+      },
+      "electricity_day_average": {
+        "name": "Denny priemer elektriny"
+      },
+      "electricity_month_average": {
+        "name": "Mesacny priemer elektriny"
       },
       "actual_modulation": {
-        "name": "Aktuálna modulácia"
+        "name": "Aktuálna výkonová modulácia"
       },
       "gas_heating_today": {
         "name": "Plyn vykurovanie dnes"
@@ -106,8 +124,23 @@
       "notifications": {
         "name": "Upozornenia"
       },
+      "thermostat_valve_signal_strength": {
+        "name": "Sila signálu termostatického ventilu"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batéria termostatického ventilu"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zóna termostatického ventilu"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokol termostatického ventilu"
+      },
       "thermal_disinfect_last_result": {
-        "name": "Posledný výsledok termickej dezinfekcie"
+        "name": "Posledný výsledok termickej dezinfekcie",
+        "state": {
+          "done": "Vykonané"
+        }
       }
     },
     "number": {
@@ -130,7 +163,7 @@
         "name": "Prahová hodnota leto/zima"
       },
       "room_influence": {
-        "name": "Vplyv miestnosti"
+        "name": "Vplyv okolitej teploty"
       },
       "temperature_calibration_offset": {
         "name": "Posun kalibrácie teploty"
@@ -147,13 +180,27 @@
     },
     "binary_sensor": {
       "dhw_heating": {
-        "name": "Ohrev"
+        "name": "Stav",
+        "state": {
+          "off": "Vypnuté",
+          "on": "Vykurovanie"
+        }
+      },
+      "open_window_detected": {
+        "name": "Zistené otvorené okno",
+        "state": {
+          "off": "Zatvorené",
+          "on": "Otvorené"
+        }
       },
       "burner_flame": {
         "name": "Plameň"
       },
       "refill_needed": {
         "name": "Potrebné doplnenie"
+      },
+      "thermostat_valve_warning": {
+        "name": "Upozornenie termostatického ventilu"
       }
     },
     "switch": {
@@ -171,13 +218,19 @@
       },
       "extra_hot_water": {
         "name": "Dodatočný ohrev vody"
+      },
+      "open_window_detection": {
+        "name": "Detekcia otvoreného okna"
+      },
+      "thermal_disinfect": {
+        "name": "Termická dezinfekcia"
       }
     },
     "select": {
       "zone_mode": {
         "name": "Režim zóny",
         "state": {
-          "clock": "Hodiny",
+          "clock": "Program",
           "manual": "Manuálny"
         }
       },

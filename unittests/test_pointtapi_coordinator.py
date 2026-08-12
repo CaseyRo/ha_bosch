@@ -172,6 +172,110 @@ class TestFetchPaths:
         assert "/gateway" in data
         assert "/system/sensors" not in data
 
+    @pytest.mark.asyncio
+    async def test_program_listing_expands_roots(self):
+        """/programs should expand to listed program roots, like /zones does."""
+
+        async def mock_get(path):
+            if path == "/programs":
+                return {
+                    "id": "/programs",
+                    "type": "refEnum",
+                    "references": [{"id": "/programs/A"}, {"id": "/programs/B"}],
+                }
+            if path in ("/programs/A", "/programs/B"):
+                return {
+                    "id": path,
+                    "references": [{"id": f"{path}/active"}],
+                }
+            if path in ("/programs/A/active", "/programs/B/active"):
+                return {"id": path, "value": "true"}
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+        assert "/programs/A/active" in data
+        assert "/programs/B/active" in data
+        # Expanded roots are fetched instead of the plain listing root.
+        assert "/programs" not in data
+
+    @pytest.mark.asyncio
+    async def test_program_listing_failure_falls_back_to_programs_root(self):
+        """If /programs listing fails, keep legacy /programs root behavior."""
+
+        programs_calls = 0
+
+        async def mock_get(path):
+            nonlocal programs_calls
+            if path == "/programs":
+                programs_calls += 1
+                # First call is the listing probe, second call is fallback root fetch.
+                if programs_calls == 1:
+                    raise RuntimeError("404")
+                return {"id": "/programs", "value": "stub"}
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+        assert "/programs" in data
+        assert programs_calls == 2
+
+    @pytest.mark.asyncio
+    async def test_device_listing_expands_roots(self):
+        """/devices should expand to listed device roots, like /zones does."""
+
+        async def mock_get(path):
+            if path == "/devices":
+                return {
+                    "id": "/devices",
+                    "type": "refEnum",
+                    "references": [{"id": "/devices/dev1"}, {"id": "/devices/dev2"}],
+                }
+            if path in ("/devices/dev1", "/devices/dev2"):
+                return {
+                    "id": path,
+                    "references": [{"id": f"{path}/rssi"}],
+                }
+            if path in ("/devices/dev1/rssi", "/devices/dev2/rssi"):
+                return {"id": path, "value": -60}
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+        assert "/devices/dev1/rssi" in data
+        assert "/devices/dev2/rssi" in data
+        # Expanded roots are fetched instead of the plain listing root.
+        assert "/devices" not in data
+
+    @pytest.mark.asyncio
+    async def test_device_listing_failure_falls_back_to_devices_root(self):
+        """If /devices listing fails, keep legacy /devices root behavior."""
+
+        devices_calls = 0
+
+        async def mock_get(path):
+            nonlocal devices_calls
+            if path == "/devices":
+                devices_calls += 1
+                # First call is the listing probe, second call is fallback root fetch.
+                if devices_calls == 1:
+                    raise RuntimeError("404")
+                return {"id": "/devices", "value": "stub"}
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+        assert "/devices" in data
+        assert devices_calls == 2
+
 
 # ── Bulk steady state (discovery-then-bulk, fallback, rediscovery) ──────────
 
