@@ -322,9 +322,6 @@
         "name": "Zusätzliches Warmwasser"
       },
       "open_window_detection": {
-      "assigned_program_select": {
-        "name": "Zugewiesenes Programm"
-      },
         "name": "Fenster-offen-Erkennung"
       },
       "thermal_disinfect": {
@@ -338,6 +335,9 @@
           "clock": "Programm",
           "manual": "Manuell"
         }
+      },
+      "assigned_program_select": {
+        "name": "Zugewiesenes Programm"
       },
       "pir_sensitivity": {
         "name": "Empfindlichkeit des Bewegungsmelders",

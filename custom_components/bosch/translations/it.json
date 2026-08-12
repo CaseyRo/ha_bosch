@@ -322,9 +322,6 @@
         "name": "Acqua calda aggiuntiva"
       },
       "open_window_detection": {
-      "assigned_program_select": {
-        "name": "Programma assegnato"
-      },
         "name": "Rilevamento finestra aperta"
       },
       "thermal_disinfect": {
@@ -338,6 +335,9 @@
           "clock": "Programma",
           "manual": "Manuale"
         }
+      },
+      "assigned_program_select": {
+        "name": "Programma assegnato"
       },
       "pir_sensitivity": {
         "name": "Sensibilità del rilevatore di movimento",

@@ -322,9 +322,6 @@
         "name": "Dodatočný ohrev vody"
       },
       "open_window_detection": {
-      "assigned_program_select": {
-        "name": "Priradený program"
-      },
         "name": "Detekcia otvoreného okna"
       },
       "thermal_disinfect": {
@@ -338,6 +335,9 @@
           "clock": "Program",
           "manual": "Manuálny"
         }
+      },
+      "assigned_program_select": {
+        "name": "Priradený program"
       },
       "pir_sensitivity": {
         "name": "Citlivosť detektora pohybu",

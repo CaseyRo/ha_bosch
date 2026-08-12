@@ -322,9 +322,6 @@
         "name": "Extra warm water"
       },
       "open_window_detection": {
-      "assigned_program_select": {
-        "name": "Toegewezen programma"
-      },
         "name": "Open-raamdetectie"
       },
       "thermal_disinfect": {
@@ -338,6 +335,9 @@
           "clock": "Programma",
           "manual": "Handmatig"
         }
+      },
+      "assigned_program_select": {
+        "name": "Toegewezen programma"
       },
       "pir_sensitivity": {
         "name": "Gevoeligheid van de bewegingssensor",

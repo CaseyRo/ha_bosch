@@ -322,9 +322,6 @@
         "name": "Dodatkowa ciepła woda"
       },
       "open_window_detection": {
-      "assigned_program_select": {
-        "name": "Przypisany program"
-      },
         "name": "Wykrywanie otwartego okna"
       },
       "thermal_disinfect": {
@@ -338,6 +335,9 @@
           "clock": "Program",
           "manual": "Ręczny"
         }
+      },
+      "assigned_program_select": {
+        "name": "Przypisany program"
       },
       "pir_sensitivity": {
         "name": "Czułość czujnika ruchu",

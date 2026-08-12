@@ -343,9 +343,6 @@
         "name": "Extra hot water"
       },
       "open_window_detection": {
-      "assigned_program_select": {
-        "name": "Assigned program"
-      },
         "name": "Open window detection"
       },
       "thermal_disinfect": {
@@ -359,6 +356,9 @@
           "clock": "Clock",
           "manual": "Manual"
         }
+      },
+      "assigned_program_select": {
+        "name": "Assigned program"
       },
       "pir_sensitivity": {
         "name": "Motion detector sensitivity",
