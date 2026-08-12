@@ -194,10 +194,24 @@ class TestNotificationsHelpers:
         assert "/energy/electricity/monthAverage" in descs
         assert descs["/energy/electricity/dayAverage"].translation_key == "electricity_day_average"
         assert descs["/energy/electricity/monthAverage"].translation_key == "electricity_month_average"
-        assert descs["/energy/electricity/dayAverage"].native_unit_of_measurement == "kWh"
-        assert descs["/energy/electricity/monthAverage"].native_unit_of_measurement == "kWh"
-        assert descs["/energy/electricity/dayAverage"].device_class == "energy"
-        assert descs["/energy/electricity/monthAverage"].device_class == "energy"
+
+    def test_electricity_averages_carry_no_statistics_metadata(self):
+        """An average is not a TOTAL — keep it out of long-term statistics.
+
+        With state_class=TOTAL, every dip in a rolling average reads as a meter
+        reset and the sensor becomes an Energy Dashboard source. Until someone
+        confirms on hardware that these accumulate, they stay plain sensors.
+        """
+        data = {
+            "/energy/electricity/dayAverage": {"value": 3.21, "available": "true"},
+            "/energy/electricity/monthAverage": {"value": 4.56},
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        for path in ("/energy/electricity/dayAverage", "/energy/electricity/monthAverage"):
+            assert descs[path].device_class is None
+            assert descs[path].state_class is None
+            assert descs[path].last_reset_fn is None
 
     def test_electricity_average_sensors_are_not_added_when_unavailable(self):
         data = {
@@ -452,6 +466,27 @@ class TestComfortControlDescriptions:
         assert desc.available_fn(data) is True
         assert desc.value_fn is not None
         assert desc.value_fn(data) == "locking_fault_code_active"
+
+    def test_ambiguous_cause_alone_does_not_report_a_fault(self):
+        """Causes whose display variants disagree must not guess a fault.
+
+        273 is a 24h safety shutdown under display 3F but normal flame
+        monitoring under 0U; 280 is a restart-time fault under 7L but a normal
+        fan start under 0U. With no display code the cause alone cannot tell
+        them apart, so it must read unknown rather than alarm on a boiler that
+        is only starting up.
+        """
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+        for cause in (273, 280):
+            data = {"/system/appliance/causeCode": {"value": float(cause)}}
+            assert desc.value_fn(data) == "unknown"
+        # Unambiguous causes still resolve without a display code.
+        assert (
+            desc.value_fn({"/system/appliance/causeCode": {"value": 203.0}})
+            == "standby_no_heat_demand"
+        )
 
     def test_appliance_status_sensor_maps_0a_305_to_dhw_lockout(self):
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}

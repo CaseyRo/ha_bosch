@@ -174,14 +174,23 @@ def _build_appliance_status_by_cause(
 ) -> dict[int, str]:
     """Build a cause-only fallback map from the pair table.
 
-    Keep the first seen mapping for a cause code to preserve the intended
-    primary meaning when multiple display codes share the same cause.
+    Only causes whose display variants all mean the same thing get a fallback.
+    Where they disagree the cause alone does not identify the state — cause 273
+    is a 24h safety shutdown under display 3F but normal flame monitoring under
+    0U, and 280 is a restart-time fault under 7L but a normal fan start under
+    0U — so those are left out and read as unknown rather than raising a fault
+    for a boiler that is simply starting up. The raw codes stay on the entity
+    attributes either way.
     """
 
-    by_cause: dict[int, str] = {}
+    candidates: dict[int, set[str]] = {}
     for (_display, cause), status in by_code.items():
-        by_cause.setdefault(cause, status)
-    return by_cause
+        candidates.setdefault(cause, set()).add(status)
+    return {
+        cause: statuses.pop()
+        for cause, statuses in candidates.items()
+        if len(statuses) == 1
+    }
 
 
 _APPLIANCE_STATUS_BY_CAUSE: dict[int, str] = _build_appliance_status_by_cause(
@@ -783,12 +792,6 @@ def _gas_total_today(data: dict[str, Any]) -> float | None:
 def _start_of_today() -> Any:
     """Return start of today in local timezone for last_reset."""
     return dt_util.start_of_local_day()
-
-
-def _start_of_month() -> Any:
-    """Return start of the current month in local timezone for last_reset."""
-    now = dt_util.now()
-    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 # ── Hourly gas usage helper functions ────────────────────────────────────────
@@ -1473,35 +1476,29 @@ def _pointtapi_electricity_average_sensor_descriptions(
 
     Exposes /energy/electricity/dayAverage and /energy/electricity/monthAverage
     only when the appliance reports those resources as available.
+
+    Deliberately carries no device_class/state_class: the paths are named
+    "average", and an average that falls as well as rises is not a TOTAL. Given
+    state_class=TOTAL plus last_reset, HA reads every decrease as a meter reset
+    and the sensor becomes selectable as an Energy Dashboard source — wrong
+    statistics that are painful to unwind. Promote these only once someone has
+    watched the value across a full day on real hardware.
     """
     if not data:
         return ()
 
     candidates = (
-        (
-            "/energy/electricity/dayAverage",
-            "electricity_day_average",
-            _start_of_today,
-        ),
-        (
-            "/energy/electricity/monthAverage",
-            "electricity_month_average",
-            _start_of_month,
-        ),
+        ("/energy/electricity/dayAverage", "electricity_day_average"),
+        ("/energy/electricity/monthAverage", "electricity_month_average"),
     )
 
     descriptions: list[BoschPoinTTAPISensorEntityDescription] = []
-    for path, translation_key, last_reset_fn in candidates:
+    for path, translation_key in candidates:
         if isinstance(data.get(path), dict) and _path_available(data, path):
             descriptions.append(
                 BoschPoinTTAPISensorEntityDescription(
                     key=path,
                     translation_key=translation_key,
-                    device_class=SensorDeviceClass.ENERGY,
-                    native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-                    state_class=SensorStateClass.TOTAL,
-                    value_fn=lambda d, p=path: _val(d, p),
-                    last_reset_fn=last_reset_fn,
                 )
             )
     return tuple(descriptions)
