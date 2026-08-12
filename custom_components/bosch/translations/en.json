@@ -340,6 +340,9 @@
         "name": "Extra hot water"
       },
       "open_window_detection": {
+      "assigned_program_select": {
+        "name": "Assigned program"
+      },
         "name": "Open window detection"
       },
       "thermal_disinfect": {

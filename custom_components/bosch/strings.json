@@ -354,6 +354,9 @@
           "manual": "Manual"
         }
       },
+      "assigned_program_select": {
+        "name": "Assigned program"
+      },
       "pir_sensitivity": {
         "name": "PIR sensitivity",
         "state": {

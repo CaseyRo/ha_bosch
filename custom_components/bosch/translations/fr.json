@@ -319,6 +319,9 @@
         "name": "Eau chaude supplémentaire"
       },
       "open_window_detection": {
+      "assigned_program_select": {
+        "name": "Programme assigné"
+      },
         "name": "Détection fenêtre ouverte"
       },
       "thermal_disinfect": {

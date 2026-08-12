@@ -319,6 +319,9 @@
         "name": "Extra warm water"
       },
       "open_window_detection": {
+      "assigned_program_select": {
+        "name": "Toegewezen programma"
+      },
         "name": "Open-raamdetectie"
       },
       "thermal_disinfect": {

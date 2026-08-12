@@ -319,6 +319,9 @@
         "name": "Dodatkowa ciepła woda"
       },
       "open_window_detection": {
+      "assigned_program_select": {
+        "name": "Przypisany program"
+      },
         "name": "Wykrywanie otwartego okna"
       },
       "thermal_disinfect": {

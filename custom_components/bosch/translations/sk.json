@@ -319,6 +319,9 @@
         "name": "Dodatočný ohrev vody"
       },
       "open_window_detection": {
+      "assigned_program_select": {
+        "name": "Priradený program"
+      },
         "name": "Detekcia otvoreného okna"
       },
       "thermal_disinfect": {

@@ -319,6 +319,9 @@
         "name": "Acqua calda aggiuntiva"
       },
       "open_window_detection": {
+      "assigned_program_select": {
+        "name": "Programma assegnato"
+      },
         "name": "Rilevamento finestra aperta"
       },
       "thermal_disinfect": {

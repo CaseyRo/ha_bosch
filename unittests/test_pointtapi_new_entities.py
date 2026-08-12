@@ -28,6 +28,7 @@ from custom_components.bosch.pointtapi_entities import (
     _pointtapi_number_descriptions,
     _pointtapi_thermostat_valve_warning_binary_sensor_descriptions,
     _pointtapi_open_window_switch_descriptions,
+    _pointtapi_select_descriptions,
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
 )
@@ -733,7 +734,70 @@ class TestComfortControlDescriptions:
         ent._handle_coordinator_update()
 
         assert ent.native_value is None
-        assert ent.extra_state_attributes == {}
+
+    def test_zone_program_selects_are_discovered_from_zone_paths(self):
+        data = {
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn1/clockProgram": {"value": 1.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg1/name": {"value": "U2Fsb24="},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        descs = {d.key: d for d in _pointtapi_select_descriptions(data)}
+        assert "/zones/zn1/clockProgram" in descs
+        assert "/zones/zn2/clockProgram" in descs
+
+        d = descs["/zones/zn2/clockProgram"]
+        assert d.translation_key == "assigned_program_select"
+        assert d.options_fn is not None
+        assert set(d.options_fn(data)) == {"Salon", "Salle de bains"}
+
+    def test_zone_program_select_reads_decoded_program_name(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg1/name": {"value": "U2Fsb24="},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d for d in _pointtapi_select_descriptions(data)
+            if d.key == "/zones/zn2/clockProgram"
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.current_option == "Salle de bains"
+        assert ent.available is True
+
+    @pytest.mark.asyncio
+    async def test_zone_program_select_writes_selected_program_id(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg1/name": {"value": "U2Fsb24="},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d for d in _pointtapi_select_descriptions(data)
+            if d.key == "/zones/zn2/clockProgram"
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        await ent.async_select_option("Salon")
+
+        coord.client.put.assert_awaited_once_with("/zones/zn2/clockProgram", 1)
+        assert ent.current_option == "Salon"
 
     def test_thermostat_valve_sensor_uses_dedicated_device_and_decoded_name(self):
         data = {

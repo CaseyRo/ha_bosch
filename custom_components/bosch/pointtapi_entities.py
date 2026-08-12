@@ -1316,6 +1316,119 @@ def _zone_assigned_program_attributes(
     }
 
 
+def _program_names_by_index(data: dict[str, Any]) -> dict[int, str]:
+    """Return available program names keyed by numeric program index.
+
+    Program metadata can come either from `/programs/list` or from expanded
+    `/programs/pgN/name` resources. Names are base64-decoded when needed.
+    """
+    program_names: dict[int, str] = {}
+
+    listing = _val(data, "/programs/list")
+    if isinstance(listing, list):
+        for item in listing:
+            if not isinstance(item, dict):
+                continue
+            raw_id = item.get("id")
+            if not isinstance(raw_id, str) or not raw_id.startswith("pg"):
+                continue
+            try:
+                index = int(raw_id[2:])
+            except ValueError:
+                continue
+
+            decoded = _decode_zone_name(item.get("name"))
+            if isinstance(decoded, str) and decoded.strip():
+                program_names[index] = decoded
+            else:
+                program_names.setdefault(index, raw_id)
+
+    for path in data:
+        if not (
+            isinstance(path, str)
+            and path.startswith("/programs/pg")
+            and path.endswith("/name")
+        ):
+            continue
+        raw = path[len("/programs/pg") : -len("/name")]
+        try:
+            index = int(raw)
+        except ValueError:
+            continue
+
+        decoded = _decode_zone_name(_val(data, path))
+        if isinstance(decoded, str) and decoded.strip():
+            program_names[index] = decoded
+        else:
+            program_names.setdefault(index, f"pg{index}")
+
+    return program_names
+
+
+def _zone_program_option_map(data: dict[str, Any]) -> dict[str, int]:
+    """Map display labels to clockProgram numeric values.
+
+    Duplicate labels are disambiguated by appending the program id.
+    """
+    names_by_index = _program_names_by_index(data)
+    if not names_by_index:
+        return {}
+
+    option_map: dict[str, int] = {}
+    used_labels: set[str] = set()
+    for index in sorted(names_by_index):
+        base = names_by_index.get(index, f"pg{index}")
+        label = base.strip() if isinstance(base, str) else f"pg{index}"
+        if not label:
+            label = f"pg{index}"
+        if label in used_labels:
+            label = f"{label} (pg{index})"
+        used_labels.add(label)
+        option_map[label] = index
+    return option_map
+
+
+def _zone_program_current_option(data: dict[str, Any], zone_id: str) -> str | None:
+    """Resolve the currently assigned program display label for one zone."""
+    raw = _val(data, f"/zones/{zone_id}/clockProgram")
+    try:
+        current_index = int(float(raw))
+    except (TypeError, ValueError):
+        return None
+
+    for label, index in _zone_program_option_map(data).items():
+        if index == current_index:
+            return label
+    return None
+
+
+def _zone_program_write_value(option: str, data: dict[str, Any]) -> int:
+    """Map a selected display label to the API clockProgram value."""
+    option_map = _zone_program_option_map(data)
+    if option not in option_map:
+        raise HomeAssistantError(f"Unsupported program option: {option}")
+    return option_map[option]
+
+
+def _pointtapi_zone_program_select_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISelectEntityDescription", ...]:
+    """Return one program select per discovered zone."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISelectEntityDescription(
+            key=f"/zones/{zone_id}/clockProgram",
+            translation_key="assigned_program_select",
+            options_fn=lambda d: tuple(_zone_program_option_map(d).keys()),
+            current_option_fn=lambda d, zid=zone_id: _zone_program_current_option(d, zid),
+            option_to_value_fn=lambda option, d: _zone_program_write_value(option, d),
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
 def _pointtapi_zone_assigned_program_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -2508,6 +2621,9 @@ class BoschPoinTTAPISelectEntityDescription(SelectEntityDescription):
     """Select description for POINTTAPI option paths."""
 
     options: tuple[str, ...] = ()
+    options_fn: Callable[[dict[str, Any]], tuple[str, ...]] | None = None
+    current_option_fn: Callable[[dict[str, Any]], str | None] | None = None
+    option_to_value_fn: Callable[[str, dict[str, Any]], Any] | None = None
 
 
 def _select_state_key(value: str) -> str:
@@ -2557,6 +2673,14 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
 )
 
 
+def _pointtapi_select_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISelectEntityDescription, ...]:
+    """Return all POINTTAPI select descriptions, including dynamic per-zone ones."""
+    data = data or {}
+    return POINTTAPI_SELECT_DESCRIPTIONS + _pointtapi_zone_program_select_descriptions(data)
+
+
 class BoschPoinTTAPISelectEntity(
     CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SelectEntity
 ):
@@ -2580,7 +2704,7 @@ class BoschPoinTTAPISelectEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
-        self._attr_options = [_select_state_key(option) for option in description.options]
+        self._attr_options = []
         self._attr_device_info = _resolve_device_info(
             uuid,
             description.key,
@@ -2588,17 +2712,34 @@ class BoschPoinTTAPISelectEntity(
             data=coordinator.data or {},
         )
         self._current_option: str | None = None
+        self._supported_option_keys: set[str] = set()
+        self._refresh_supported_options(coordinator.data or {})
+
+    def _refresh_supported_options(self, data: dict[str, Any]) -> None:
+        """Refresh options for static or dynamic select descriptions."""
+        if self.entity_description.options_fn is not None:
+            options = [opt for opt in self.entity_description.options_fn(data) if isinstance(opt, str)]
+            self._attr_options = options
+            self._supported_option_keys = set(options)
+            return
+
+        self._attr_options = [_select_state_key(option) for option in self.entity_description.options]
         self._supported_option_keys = {
-            _select_state_key(option) for option in description.options
+            _select_state_key(option) for option in self.entity_description.options
         }
 
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        raw_option = _val(data, self._path)
-        self._current_option = _normalize_select_option(
-            raw_option, self._supported_option_keys
-        )
+        self._refresh_supported_options(data)
+        if self.entity_description.current_option_fn is not None:
+            option = self.entity_description.current_option_fn(data)
+            self._current_option = option if option in self._supported_option_keys else None
+        else:
+            raw_option = _val(data, self._path)
+            self._current_option = _normalize_select_option(
+                raw_option, self._supported_option_keys
+            )
         self.async_write_ha_state()
 
     @property
@@ -2618,16 +2759,23 @@ class BoschPoinTTAPISelectEntity(
         if option not in self._supported_option_keys:
             raise HomeAssistantError(f"Unsupported select option: {option}")
         try:
-            api_option = next(
-                (
-                    raw_option
-                    for raw_option in self.entity_description.options
-                    if _select_state_key(raw_option) == option
-                ),
-                option,
-            )
+            data = self.coordinator.data or {}
+            if self.entity_description.option_to_value_fn is not None:
+                api_option = self.entity_description.option_to_value_fn(option, data)
+            else:
+                api_option = next(
+                    (
+                        raw_option
+                        for raw_option in self.entity_description.options
+                        if _select_state_key(raw_option) == option
+                    ),
+                    option,
+                )
             await self.coordinator.client.put(self._path, api_option)
-            self._current_option = _select_state_key(option)
+            if self.entity_description.current_option_fn is not None:
+                self._current_option = option
+            else:
+                self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
