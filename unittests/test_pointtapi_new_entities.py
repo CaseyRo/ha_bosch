@@ -201,6 +201,8 @@ class TestNotificationsHelpers:
         With state_class=TOTAL, every dip in a rolling average reads as a meter
         reset and the sensor becomes an Energy Dashboard source. Until someone
         confirms on hardware that these accumulate, they stay plain sensors.
+
+        They still expose the value in kWh for user-facing information.
         """
         data = {
             "/energy/electricity/dayAverage": {"value": 3.21, "available": "true"},
@@ -209,6 +211,7 @@ class TestNotificationsHelpers:
         descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
 
         for path in ("/energy/electricity/dayAverage", "/energy/electricity/monthAverage"):
+            assert descs[path].native_unit_of_measurement == "kWh"
             assert descs[path].device_class is None
             assert descs[path].state_class is None
             assert descs[path].last_reset_fn is None

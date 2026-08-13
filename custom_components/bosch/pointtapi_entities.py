@@ -1481,8 +1481,10 @@ def _pointtapi_electricity_average_sensor_descriptions(
     "average", and an average that falls as well as rises is not a TOTAL. Given
     state_class=TOTAL plus last_reset, HA reads every decrease as a meter reset
     and the sensor becomes selectable as an Energy Dashboard source — wrong
-    statistics that are painful to unwind. Promote these only once someone has
-    watched the value across a full day on real hardware.
+    statistics that are painful to unwind. We still expose the numeric values
+    with a kWh unit for user visibility, but keep them as plain informational
+    sensors. Promote these only once someone has watched the value across a
+    full day on real hardware.
     """
     if not data:
         return ()
@@ -1499,6 +1501,7 @@ def _pointtapi_electricity_average_sensor_descriptions(
                 BoschPoinTTAPISensorEntityDescription(
                     key=path,
                     translation_key=translation_key,
+                    native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
                 )
             )
     return tuple(descriptions)
