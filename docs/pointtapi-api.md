@@ -118,6 +118,10 @@ All verified on a live CT200. `W` = `writeable: 1`.
 
 ### Known-but-unused (future candidates, all verified present on CT200)
 
+**Present ≠ usable.** Every path below is in the reference walk on a live CT200,
+but presence only means the path resolves. Check the `available` flag before
+building an entity on one — see the electricity note underneath.
+
 ```
 /heatingCircuits/hc1/buildingHeatup        stringValue  W  "normal"
 /heatingCircuits/hc1/seasonOptMode         stringValue  W  allowedValues: [always_heating]
@@ -128,8 +132,30 @@ All verified on a live CT200. `W` = `writeable: 1`.
 /heatingCircuits/hc1/type                  stringValue  W  "convector"
 /heatingCircuits/hc1/typeRoomControl       stringValue  W  "radiator"
 /devices/list                              deviceArray  –  paired RF devices (name base64, zone, battery, signal)
-/energy/electricity/*  /energy/currency  /energy/gas/{price,type,unit}
+/energy/currency  /energy/gas/{price,type,unit}  /energy/oil/annualGoal
 ```
+
+#### `/energy/electricity/*` on a gas-only CT200 (verified 2026-08-17)
+
+Present in the walk, but only partly usable. Diagnostics from a gas boiler with
+no electricity tariff configured:
+
+```
+/energy/electricity/annualGoal    available: "true"   value 0.0    (exposed as a number entity in 1.4.0)
+/energy/electricity/dayAverage    available: "false"  value 0.0    unitOfMeasure "kWh"
+/energy/electricity/monthAverage  available: "false"  value 0.0    unitOfMeasure "kWh"
+/energy/electricity/price         used: "false"       value 0.0
+```
+
+Two consequences. The averages are gated on `available`, so they create no
+entities on this hardware — which also means **this appliance cannot be used to
+settle whether they accumulate or wander**; see the open question in the
+`_pointtapi_electricity_average_sensor_descriptions` docstring. And the
+`unitOfMeasure: "kWh"` is the gateway's own declaration, so the unit on those
+sensors is sourced, not assumed.
+
+`maxValue: 33555.0` with `stepSize: 0.001` is `2^25/1000` — a fixed-point field
+width, not a hint about the semantics. Don't read anything into it.
 
 ## Error semantics
 
