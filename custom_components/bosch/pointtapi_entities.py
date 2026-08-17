@@ -634,6 +634,17 @@ def _thermostat_valve_zone_name(data: dict[str, Any], valve_id: int) -> Any:
     return raw_zone
 
 
+def _thermostat_valve_protocol_name(data: dict[str, Any], valve_id: int) -> Any:
+    """Return a human-friendly protocol label for a thermostat valve."""
+    raw = _thermostat_valve_field(data, valve_id, "protocol")
+    if not isinstance(raw, str):
+        return raw
+    value = raw.strip()
+    if value.lower() == "homematicip":
+        return "Homematic-IP"
+    return value
+
+
 def _thermostat_valve_device_info(
     uuid: str,
     data: dict[str, Any],
@@ -698,7 +709,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     key=f"/devices/list/thermostat_valve/{valve_id}/protocol",
                     translation_key="thermostat_valve_protocol",
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "protocol"),
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_protocol_name(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 ),

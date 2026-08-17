@@ -245,16 +245,16 @@
         "name": "Notifications"
       },
       "thermostat_valve_signal_strength": {
-        "name": "Thermostat valve signal strength"
+        "name": "Signal strength"
       },
       "thermostat_valve_battery": {
-        "name": "Thermostat valve battery"
+        "name": "Battery"
       },
       "thermostat_valve_zone": {
-        "name": "Thermostat valve zone"
+        "name": "Zone"
       },
       "thermostat_valve_protocol": {
-        "name": "Thermostat valve protocol"
+        "name": "Protocol"
       },
       "thermal_disinfect_last_result": {
         "name": "Thermal disinfect last result",
@@ -323,7 +323,7 @@
         "name": "Refill needed"
       },
       "thermostat_valve_warning": {
-        "name": "Thermostat valve warning"
+        "name": "Warnings"
       }
     },
     "switch": {

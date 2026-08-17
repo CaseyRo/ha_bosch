@@ -224,16 +224,16 @@
         "name": "Notifications"
       },
       "thermostat_valve_signal_strength": {
-        "name": "Puissance du signal de la vanne thermostatique"
+        "name": "Puissance du signal"
       },
       "thermostat_valve_battery": {
-        "name": "Batterie de la vanne thermostatique"
+        "name": "Batterie"
       },
       "thermostat_valve_zone": {
-        "name": "Zone de la vanne thermostatique"
+        "name": "Zone"
       },
       "thermostat_valve_protocol": {
-        "name": "Protocole de la vanne thermostatique"
+        "name": "Protocole"
       },
       "thermal_disinfect_last_result": {
         "name": "Dernier résultat de désinfection thermique",
@@ -302,7 +302,7 @@
         "name": "Remplissage nécessaire"
       },
       "thermostat_valve_warning": {
-        "name": "Avertissement de la vanne thermostatique"
+        "name": "Avertissements"
       }
     },
     "switch": {
