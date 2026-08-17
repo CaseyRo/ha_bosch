@@ -324,6 +324,21 @@ class TestComfortControlDescriptions:
         descs = {d.key: d for d in _pointtapi_number_descriptions({})}
         assert "/energy/gas/annualGoal" not in descs
 
+    def test_number_descriptions_are_static_plus_dynamic(self):
+        descs = _pointtapi_number_descriptions({})
+        assert descs[:1][0].key == "/heatingCircuits/hc1/boostTemperature"
+        assert descs[-1].key == "/dhwCircuits/dhw1/thermalDisinfect/time"
+
+        dynamic = _pointtapi_number_descriptions({
+            "/energy/electricity/annualGoal": {"value": 2500},
+            "/energy/gas/annualGoal": {"value": 1800},
+        })
+        assert dynamic[0].key == "/heatingCircuits/hc1/boostTemperature"
+        assert {d.key for d in dynamic if d.key.startswith("/energy/")} == {
+            "/energy/electricity/annualGoal",
+            "/energy/gas/annualGoal",
+        }
+
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/extraDhw"]
