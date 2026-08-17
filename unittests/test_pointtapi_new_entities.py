@@ -934,6 +934,32 @@ class TestComfortControlDescriptions:
         assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
         assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
 
+    def test_thermostat_valve_protocol_value_is_humanized(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "protocol": "homematicip",
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/protocol"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "Homematic-IP"
+
     def test_thermostat_valve_battery_value_is_uppercased(self):
         data = {
             "/devices/list": {
