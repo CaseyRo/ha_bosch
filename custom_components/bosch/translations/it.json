@@ -238,6 +238,12 @@
       "thermostat_valve_protocol": {
         "name": "Protocollo"
       },
+      "thermostat_valve_child_lock": {
+        "name": "Blocco bambini"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Posizione valvola"
+      },
       "thermal_disinfect_last_result": {
         "name": "Ultimo risultato disinfezione termica",
         "state": {
@@ -268,6 +274,9 @@
         "name": "Influenza della temperatura ambientale"
       },
       "temperature_calibration_offset": {
+        "name": "Offset di calibrazione temperatura"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Offset di calibrazione temperatura"
       },
       "extra_hot_water_duration": {
@@ -326,6 +335,12 @@
       },
       "open_window_detection": {
         "name": "Rilevamento finestra aperta"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Blocco bambini"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Posizione valvola"
       },
       "thermal_disinfect": {
         "name": "Disinfezione termica"

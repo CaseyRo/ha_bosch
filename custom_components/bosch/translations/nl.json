@@ -238,6 +238,12 @@
       "thermostat_valve_protocol": {
         "name": "Protocol"
       },
+      "thermostat_valve_child_lock": {
+        "name": "Kinderslot"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Klepstand"
+      },
       "thermal_disinfect_last_result": {
         "name": "Laatste thermische desinfectie",
         "state": {
@@ -268,6 +274,9 @@
         "name": "Invloed van de omgevingstemperatuur"
       },
       "temperature_calibration_offset": {
+        "name": "Kalibratie-offset temperatuur"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Kalibratie-offset temperatuur"
       },
       "extra_hot_water_duration": {
@@ -326,6 +335,12 @@
       },
       "open_window_detection": {
         "name": "Open-raamdetectie"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Kinderslot"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Klepstand"
       },
       "thermal_disinfect": {
         "name": "Thermische desinfectie"

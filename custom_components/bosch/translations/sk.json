@@ -238,6 +238,12 @@
       "thermostat_valve_protocol": {
         "name": "Protokol"
       },
+      "thermostat_valve_child_lock": {
+        "name": "Detský zámok"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Poloha ventilu"
+      },
       "thermal_disinfect_last_result": {
         "name": "Posledný výsledok termickej dezinfekcie",
         "state": {
@@ -268,6 +274,9 @@
         "name": "Vplyv okolitej teploty"
       },
       "temperature_calibration_offset": {
+        "name": "Posun kalibrácie teploty"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Posun kalibrácie teploty"
       },
       "extra_hot_water_duration": {
@@ -326,6 +335,12 @@
       },
       "open_window_detection": {
         "name": "Detekcia otvoreného okna"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Detský zámok"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Poloha ventilu"
       },
       "thermal_disinfect": {
         "name": "Termická dezinfekcia"

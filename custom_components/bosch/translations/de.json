@@ -238,6 +238,12 @@
       "thermostat_valve_protocol": {
         "name": "Protokoll"
       },
+      "thermostat_valve_child_lock": {
+        "name": "Kindersicherung"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Ventilpositionswert"
+      },
       "thermal_disinfect_last_result": {
         "name": "Letzte thermische Desinfektion",
         "state": {
@@ -268,6 +274,9 @@
         "name": "Einfluss der Umgebungstemperatur"
       },
       "temperature_calibration_offset": {
+        "name": "Temperaturkalibrierungsversatz"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Temperaturkalibrierungsversatz"
       },
       "extra_hot_water_duration": {
@@ -326,6 +335,12 @@
       },
       "open_window_detection": {
         "name": "Fenster-offen-Erkennung"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Kindersicherung"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Ventilpositionswert"
       },
       "thermal_disinfect": {
         "name": "Thermische Desinfektion"

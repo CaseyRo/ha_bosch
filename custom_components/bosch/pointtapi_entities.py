@@ -605,12 +605,41 @@ def _thermostat_valve_row_by_id(data: dict[str, Any], valve_id: int) -> dict[str
     return None
 
 
+def _thermostat_valve_id_from_path(path: str) -> int | None:
+    """Extract a thermostat-valve id from either /devices/list or /devices/deviceN paths."""
+    for pattern in (
+        "/devices/list/thermostat_valve/",
+        "/devices/device",
+    ):
+        if pattern not in path:
+            continue
+        suffix = path.split(pattern, 1)[1]
+        digits = "".join(ch for ch in suffix if ch.isdigit())
+        if digits:
+            return int(digits)
+    return None
+
+
 def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> Any:
     """Read one field from a thermostat-valve row in /devices/list."""
     row = _thermostat_valve_row_by_id(data, valve_id)
     if not row:
         return None
     return row.get(field)
+
+
+def _thermostat_valve_device_path_from_data(data: dict[str, Any], valve_id: int, suffix: str) -> str | None:
+    """Resolve the valve path from either /devices/list or /devices/deviceX layouts."""
+    candidates = (
+        f"/devices/list/thermostat_valve/{valve_id}/{suffix}",
+        f"/devices/device{valve_id}/{suffix}",
+        f"/devices/device{valve_id}/etrv/{suffix}",
+        f"/devices/device{valve_id}/thermostat/{suffix}",
+    )
+    for path in candidates:
+        if path in (data or {}):
+            return path
+    return None
 
 
 def _thermostat_valve_battery(data: dict[str, Any], valve_id: int) -> Any:
@@ -680,6 +709,62 @@ def _thermostat_valve_device_info(
     )
 
 
+def _thermostat_valve_child_lock_path(data: dict[str, Any], valve_id: int) -> str | None:
+    """Return the child-lock path exposed for a thermostat valve if any."""
+    candidates = (
+        f"/devices/list/thermostat_valve/{valve_id}/childLock",
+        f"/devices/list/thermostat_valve/{valve_id}/childLock/enabled",
+        f"/devices/list/thermostat_valve/{valve_id}/etrv/childLock/enabled",
+        f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock",
+        f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock/enabled",
+    )
+    for path in candidates:
+        if path in (data or {}):
+            return path
+
+    # Bosch can expose a full device tree under /devices/device{N}/... instead of
+    # the compact /devices/list summary rows. Accept both layouts.
+    device_paths = (
+        f"/devices/device{valve_id}/etrv/childLock",
+        f"/devices/device{valve_id}/etrv/childLock/enabled",
+        f"/devices/device{valve_id}/thermostat/childLock",
+        f"/devices/device{valve_id}/thermostat/childLock/enabled",
+    )
+    for path in device_paths:
+        if path in (data or {}):
+            return path
+
+    # Some real dumps expose a parent refEnum node with a references list pointing
+    # to the enabled leaf; prefer the leaf path when it exists.
+    for key, value in (data or {}).items():
+        if not isinstance(value, dict):
+            continue
+        if key.startswith(f"/devices/device{valve_id}/") and ("/childLock" in key or "/thermostat/childLock" in key or "/etrv/childLock" in key):
+            refs = value.get("references")
+            if isinstance(refs, list):
+                for ref in refs:
+                    if not isinstance(ref, dict):
+                        continue
+                    ref_id = ref.get("id")
+                    if isinstance(ref_id, str) and ref_id.endswith("/enabled"):
+                        return ref_id
+
+    # When only a summary row is present, look for nested childLock dictionaries.
+    row = _thermostat_valve_row_by_id(data, valve_id)
+    if not isinstance(row, dict):
+        return None
+
+    nested = (
+        row.get("childLock"),
+        (row.get("etrv") or {}).get("childLock"),
+        (row.get("thermostat") or {}).get("childLock"),
+    )
+    for value in nested:
+        if isinstance(value, dict) and ("enabled" in value or "value" in value):
+            return f"/devices/list/thermostat_valve/{valve_id}/childLock"
+    return None
+
+
 def _pointtapi_thermostat_valve_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -692,6 +777,10 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
             valve_id = int(row.get("id"))
         except (TypeError, ValueError):
             continue
+
+        value_path = _thermostat_valve_device_path_from_data(data, valve_id, "etrv/valvePosition")
+        if value_path is None:
+            value_path = f"/devices/list/thermostat_valve/{valve_id}/valvePosition"
 
         descriptions.extend(
             (
@@ -731,6 +820,104 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     value_fn=lambda d, vid=valve_id: _thermostat_valve_protocol_name(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=value_path,
+                    translation_key="thermostat_valve_valve_position",
+                    native_unit_of_measurement="%",
+                    icon="mdi:valve",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    device_class=SensorDeviceClass.POWER_FACTOR,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") or f"/devices/list/thermostat_valve/{vid}/valvePosition"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                ),
+            )
+        )
+
+    for key in sorted((data or {}).keys()):
+        if not key.startswith("/devices/device") or "/etrv/valvePosition" not in key:
+            continue
+        valve_id = _thermostat_valve_id_from_path(key)
+        if valve_id is None:
+            continue
+        descriptions.append(
+            BoschPoinTTAPISensorEntityDescription(
+                key=key,
+                translation_key="thermostat_valve_valve_position",
+                native_unit_of_measurement="%",
+                icon="mdi:valve",
+                state_class=SensorStateClass.MEASUREMENT,
+                device_class=SensorDeviceClass.POWER_FACTOR,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, p=key: _val(d, p),
+                available_fn=lambda d, p=key: _path_available(d, p),
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            )
+        )
+
+    return tuple(descriptions)
+
+
+def _pointtapi_thermostat_valve_switch_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
+    """Return child-lock switches for thermostat valves advertised in /devices/list."""
+    data = data or {}
+    descriptions: list[BoschPoinTTAPISwitchEntityDescription] = []
+
+    # Support the compact /devices/list view and the full device tree under
+    # /devices/device{N}/... used by some EasyControl dumps.
+    discovered: set[str] = set()
+
+    for row in _thermostat_valve_rows(data):
+        try:
+            valve_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+
+        path = _thermostat_valve_child_lock_path(data, valve_id)
+        if not path:
+            continue
+        discovered.add(path)
+
+    for key in sorted((data or {}).keys()):
+        if not key.startswith("/devices/device"):
+            continue
+        if "/etrv/childLock" not in key and "/thermostat/childLock" not in key:
+            continue
+        if key.endswith("/enabled"):
+            discovered.add(key)
+            continue
+        if key.endswith("/childLock"):
+            ref_id = None
+            obj = (data or {}).get(key)
+            if isinstance(obj, dict):
+                refs = obj.get("references")
+                if isinstance(refs, list):
+                    for ref in refs:
+                        if isinstance(ref, dict) and isinstance(ref.get("id"), str):
+                            ref_id = ref["id"]
+                            if ref_id.endswith("/enabled"):
+                                discovered.add(ref_id)
+                                break
+            if ref_id is None:
+                discovered.add(key)
+
+    for path in sorted(discovered):
+        valve_id = _thermostat_valve_id_from_path(path)
+        descriptions.append(
+            BoschPoinTTAPISwitchEntityDescription(
+                key=path,
+                translation_key="thermostat_valve_child_lock",
+                on_value="true",
+                off_value="false",
+                entity_category=EntityCategory.CONFIG,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id, p=path: (
+                    _thermostat_valve_device_info(u, d, vid, lang)
+                    if vid is not None
+                    else _resolve_device_info(u, p, language=lang, data=d)
                 ),
             )
         )
@@ -2032,10 +2219,51 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
 )
 
 
+def _float_value(value: Any) -> float | None:
+    """Coerce float-like API values to float without accepting booleans."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return float(text)
+        except ValueError:
+            return None
+    return None
+
+
+def _thermostat_valve_offset_description(
+    data: dict[str, Any],
+    path: str,
+) -> NumberEntityDescription | None:
+    """Return a dynamic thermostat-valve calibration-offset number for a path."""
+    obj = data.get(path) if data else None
+    if not isinstance(obj, dict):
+        return None
+
+    min_value = _float_value(obj.get("minValue"))
+    max_value = _float_value(obj.get("maxValue"))
+    step_value = _float_value(obj.get("stepSize"))
+
+    return NumberEntityDescription(
+        key=path,
+        translation_key="thermostat_valve_temperature_offset",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=min_value if min_value is not None else -5.0,
+        native_max_value=max_value if max_value is not None else 5.0,
+        native_step=step_value if step_value is not None else 0.5,
+        entity_category=EntityCategory.CONFIG,
+    )
+
+
 def _pointtapi_dynamic_number_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[NumberEntityDescription, ...]:
-    """Return optional annual energy-goal number descriptions for POINTTAPI."""
+    """Return dynamic POINTTAPI number descriptions such as valve calibration offsets."""
     data = data or {}
     descriptions: list[NumberEntityDescription] = []
 
@@ -2064,6 +2292,25 @@ def _pointtapi_dynamic_number_descriptions(
                 entity_category=EntityCategory.CONFIG,
             )
         )
+
+    discovered: set[str] = set()
+    for row in _thermostat_valve_rows(data):
+        try:
+            valve_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+        path = _thermostat_valve_device_path_from_data(data, valve_id, "etrv/offset")
+        if path:
+            discovered.add(path)
+
+    for key in sorted((data or {}).keys()):
+        if key.startswith("/devices/device") and key.endswith("/etrv/offset"):
+            discovered.add(key)
+
+    for path in sorted(discovered):
+        description = _thermostat_valve_offset_description(data, path)
+        if description is not None:
+            descriptions.append(description)
 
     return tuple(descriptions)
 
@@ -2105,6 +2352,14 @@ class BoschPoinTTAPINumberEntity(
             language=self._language,
             data=coordinator.data or {},
         )
+        valve_id = _thermostat_valve_id_from_path(description.key)
+        if valve_id is not None and "/etrv/offset" in description.key:
+            self._attr_device_info = _thermostat_valve_device_info(
+                uuid,
+                coordinator.data or {},
+                valve_id,
+                self._language,
+            )
         self._native_value: float | None = None
 
     @callback
@@ -2521,6 +2776,7 @@ class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
     off_value: str = "false"
     device_id_suffix: str | None = None
     device_name_override: str | None = None
+    device_info_fn: Callable[[str, dict[str, Any], str | None], DeviceInfo] | None = None
 
 
 POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
@@ -2592,8 +2848,7 @@ class BoschPoinTTAPIGenericSwitchEntity(
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        val = _val(data, self._path)
-        self._is_on = val == self.entity_description.on_value
+        self._is_on = _resolve_on_off(_val(data, self._path)) == True
         self.async_write_ha_state()
 
     @property
