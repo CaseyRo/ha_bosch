@@ -269,6 +269,153 @@ class TestNotificationsHelpers:
         assert temp_desc.translation_key == "thermostat_valve_temperature_actual"
         assert temp_desc.native_unit_of_measurement == "°C"
 
+    def test_real_dump_like_fragment_exercises_etrv_and_zone_paths(self):
+        data = {
+            "/gateway/ui": {
+                "references": [{"id": "/gateway/ui/eco"}],
+            },
+            "/gateway/ui/eco": {
+                "id": "/gateway/ui/eco",
+                "type": "floatValue",
+                "value": 72,
+                "stepSize": 10.0,
+            },
+            "/devices/device2": {
+                "id": "/devices/device2",
+                "type": "refEnum",
+                "references": [{"id": "/devices/device2/etrv"}, {"id": "/devices/device2/type"}],
+            },
+            "/devices/device2/etrv": {
+                "id": "/devices/device2/etrv",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device2/etrv/childLock"},
+                    {"id": "/devices/device2/etrv/valvePosition"},
+                    {"id": "/devices/device2/etrv/temperatureActual"},
+                    {"id": "/devices/device2/etrv/offset"},
+                ],
+            },
+            "/devices/device2/etrv/childLock": {
+                "id": "/devices/device2/etrv/childLock",
+                "type": "refEnum",
+                "references": [{"id": "/devices/device2/etrv/childLock/enabled"}],
+            },
+            "/devices/device2/etrv/childLock/enabled": {
+                "id": "/devices/device2/etrv/childLock/enabled",
+                "type": "boolValue",
+                "value": True,
+                "writeable": 1,
+            },
+            "/devices/device2/etrv/valvePosition": {
+                "id": "/devices/device2/etrv/valvePosition",
+                "type": "floatValue",
+                "value": 42.0,
+                "unitOfMeasure": "%",
+            },
+            "/devices/device2/etrv/temperatureActual": {
+                "id": "/devices/device2/etrv/temperatureActual",
+                "type": "floatValue",
+                "value": 19.5,
+                "unitOfMeasure": "°C",
+            },
+            "/devices/device2/etrv/offset": {
+                "id": "/devices/device2/etrv/offset",
+                "type": "floatValue",
+                "value": 0.5,
+                "minValue": -6.0,
+                "maxValue": 6.0,
+                "stepSize": 0.5,
+                "unitOfMeasure": "C",
+            },
+            "/devices/device2/type": {
+                "id": "/devices/device2/type",
+                "type": "stringValue",
+                "value": "thermostat_valve",
+            },
+            "/zones/zn1": {
+                "id": "/zones/zn1",
+                "references": [
+                    {"id": "/zones/zn1/actualValvePosition"},
+                    {"id": "/zones/zn1/openWindowDetection"},
+                    {"id": "/zones/zn1/nextSetpoint"},
+                    {"id": "/zones/zn1/manualTemperatureHeating"},
+                    {"id": "/zones/zn1/timeToNextSetpoint"},
+                ],
+            },
+            "/zones/zn1/actualValvePosition": {
+                "id": "/zones/zn1/actualValvePosition",
+                "type": "floatValue",
+                "value": 55.0,
+                "unitOfMeasure": "%",
+            },
+            "/zones/zn1/openWindowDetection": {
+                "id": "/zones/zn1/openWindowDetection",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/zones/zn1/openWindowDetection/enabled"},
+                    {"id": "/zones/zn1/openWindowDetection/status"},
+                ],
+            },
+            "/zones/zn1/openWindowDetection/enabled": {
+                "id": "/zones/zn1/openWindowDetection/enabled",
+                "type": "boolValue",
+                "value": "on",
+                "writeable": 1,
+            },
+            "/zones/zn1/openWindowDetection/status": {
+                "id": "/zones/zn1/openWindowDetection/status",
+                "type": "boolValue",
+                "value": "closed",
+            },
+            "/zones/zn1/nextSetpoint": {
+                "id": "/zones/zn1/nextSetpoint",
+                "type": "floatValue",
+                "value": 20.5,
+                "unitOfMeasure": "C",
+                "stepSize": 0.5,
+            },
+            "/zones/zn1/manualTemperatureHeating": {
+                "id": "/zones/zn1/manualTemperatureHeating",
+                "type": "floatValue",
+                "value": 19.0,
+                "unitOfMeasure": "C",
+                "stepSize": 0.5,
+            },
+            "/zones/zn1/timeToNextSetpoint": {
+                "id": "/zones/zn1/timeToNextSetpoint",
+                "type": "intValue",
+                "value": 1800,
+                "unitOfMeasure": "min",
+                "stepSize": 1.0,
+            },
+        }
+
+        valve_sensors = _pointtapi_thermostat_valve_sensor_descriptions(data)
+        valve_sensor_keys = {desc.key for desc in valve_sensors}
+        assert "/devices/device2/etrv/valvePosition" in valve_sensor_keys
+        assert "/devices/device2/etrv/temperatureActual" in valve_sensor_keys
+
+        valve_switches = _pointtapi_thermostat_valve_switch_descriptions(data)
+        assert any(desc.key == "/devices/device2/etrv/childLock/enabled" for desc in valve_switches)
+
+        zone_valve_sensors = _pointtapi_zone_valve_sensor_descriptions(data)
+        assert any(desc.key == "/zones/zn1/actualValvePosition" for desc in zone_valve_sensors)
+
+        window_switches = _pointtapi_open_window_switch_descriptions(data)
+        window_binary = _pointtapi_open_window_binary_sensor_descriptions(data)
+        assert any(desc.key == "/zones/zn1/openWindowDetection/enabled" for desc in window_switches)
+        assert any(desc.key == "/zones/zn1/openWindowDetection/status" for desc in window_binary)
+
+        eco_sensor = {d.key: d for d in _pointtapi_sensor_descriptions(data)}["/gateway/ui/eco"]
+        assert eco_sensor.translation_key == "energy_efficiency"
+
+        number_descs = {d.key: d for d in _pointtapi_number_descriptions(data)}
+        offset_desc = number_descs["/devices/device2/etrv/offset"]
+        assert offset_desc.translation_key == "thermostat_valve_temperature_offset"
+        assert offset_desc.native_min_value == -6.0
+        assert offset_desc.native_max_value == 6.0
+        assert offset_desc.native_step == 0.5
+
     def test_values_key_also_accepted(self):
         """Cloud route on other device types uses 'values' (homecom_alt)."""
         data = {"/notifications": {"values": [{"dcd": 200}]}}
