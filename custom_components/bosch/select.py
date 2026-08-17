@@ -18,7 +18,7 @@ from .const import (
 )
 from .pointtapi_entities import (
     BoschPoinTTAPISelectEntity,
-    POINTTAPI_SELECT_DESCRIPTIONS,
+    _pointtapi_select_descriptions,
 )
 
 
@@ -29,11 +29,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = rt_data.coordinator
         if coordinator:
             uuid = config_entry.data.get(UUID)
+            descriptions = _pointtapi_select_descriptions(coordinator.data or {})
             async_add_entities([
                 BoschPoinTTAPISelectEntity(
                     coordinator, config_entry.entry_id, uuid, desc
                 )
-                for desc in POINTTAPI_SELECT_DESCRIPTIONS
+                for desc in descriptions
             ])
         else:
             async_add_entities([])

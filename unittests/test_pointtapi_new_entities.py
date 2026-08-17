@@ -11,6 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.bosch.pointtapi_entities import (
+    _APPLIANCE_STATUS_BY_CODE,
     POINTTAPI_BINARY_SENSOR_DESCRIPTIONS,
     POINTTAPI_NUMBER_DESCRIPTIONS,
     POINTTAPI_SELECT_DESCRIPTIONS,
@@ -24,8 +25,10 @@ from custom_components.bosch.pointtapi_entities import (
     _notifications_attributes,
     _notifications_count,
     _pointtapi_open_window_binary_sensor_descriptions,
+    _pointtapi_number_descriptions,
     _pointtapi_thermostat_valve_warning_binary_sensor_descriptions,
     _pointtapi_open_window_switch_descriptions,
+    _pointtapi_select_descriptions,
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
 )
@@ -150,6 +153,25 @@ class TestNotificationsHelpers:
         assert desc.translation_key == "energy_efficiency"
         assert desc.native_unit_of_measurement == "%"
 
+    def test_energy_efficiency_sensor_routes_to_energy_performance_device(self):
+        data = {
+            "/gateway/ui": {
+                "references": [
+                    {"id": "/gateway/ui/eco"},
+                ]
+            },
+            "/gateway/ui/eco": {"value": 70},
+        }
+        coord = _mock_coordinator(data, language="fr")
+        desc = {d.key: d for d in _pointtapi_sensor_descriptions(data)}["/gateway/ui/eco"]
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.device_info["name"] == "Performance énergétique"
+        assert (("bosch", "uuid1_energy") in ent.device_info["identifiers"])
+
     def test_energy_efficiency_sensor_is_not_added_without_reference(self):
         data = {
             "/gateway/ui": {
@@ -172,6 +194,27 @@ class TestNotificationsHelpers:
         assert "/energy/electricity/monthAverage" in descs
         assert descs["/energy/electricity/dayAverage"].translation_key == "electricity_day_average"
         assert descs["/energy/electricity/monthAverage"].translation_key == "electricity_month_average"
+
+    def test_electricity_averages_carry_no_statistics_metadata(self):
+        """An average is not a TOTAL — keep it out of long-term statistics.
+
+        With state_class=TOTAL, every dip in a rolling average reads as a meter
+        reset and the sensor becomes an Energy Dashboard source. Until someone
+        confirms on hardware that these accumulate, they stay plain sensors.
+
+        They still expose the value in kWh for user-facing information.
+        """
+        data = {
+            "/energy/electricity/dayAverage": {"value": 3.21, "available": "true"},
+            "/energy/electricity/monthAverage": {"value": 4.56},
+        }
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+
+        for path in ("/energy/electricity/dayAverage", "/energy/electricity/monthAverage"):
+            assert descs[path].native_unit_of_measurement == "kWh"
+            assert descs[path].device_class is None
+            assert descs[path].state_class is None
+            assert descs[path].last_reset_fn is None
 
     def test_electricity_average_sensors_are_not_added_when_unavailable(self):
         data = {
@@ -201,15 +244,85 @@ class TestTranslationCatalog:
 
 
 class TestComfortControlDescriptions:
+    def test_appliance_pair_table_contains_requested_combinations(self):
+        required_pairs = {
+            ("8Y", 232),
+            ("EL", 290),
+            ("3C", 217),
+            ("3L", 214),
+            ("3P", 216),
+            ("3Y", 215),
+            ("4C", 224),
+            ("4U", 222),
+            ("4Y", 223),
+            ("6A", 227),
+            ("6C", 228),
+            ("6C", 306),
+            ("7L", 261),
+            ("7L", 280),
+            ("9L", 234),
+            ("9L", 238),
+            ("9P", 239),
+            ("EL", 259),
+            ("0Y", 276),
+            ("0Y", 359),
+            ("2P", 341),
+            ("2Y", 281),
+            ("3A", 264),
+            ("3F", 273),
+            ("4U", 350),
+            ("4Y", 351),
+            ("6L", 229),
+        }
+        missing = sorted(required_pairs - set(_APPLIANCE_STATUS_BY_CODE))
+        assert not missing, f"Missing appliance status pairs: {missing}"
+
     def test_wifi_firmware_sensor_is_described(self):
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         d = descs["/gateway/wifi/versionFirmware"]
         assert d.translation_key == "wifi_firmware_version"
 
+    def test_zigbee_firmware_sensor_is_described_when_present(self):
+        descs = {
+            d.key: d
+            for d in _pointtapi_sensor_descriptions(
+                {"/gateway/zigbee/versionFirmware": {"value": "00.00.01"}}
+            )
+        }
+        d = descs["/gateway/zigbee/versionFirmware"]
+        assert d.translation_key == "zigbee_firmware_version"
+        assert d.entity_category == EntityCategory.DIAGNOSTIC
+
     def test_return_temperature_sensor_is_described(self):
         descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
         d = descs["/heatSources/returnTemperature"]
         assert d.translation_key == "return_temperature"
+
+    def test_annual_electricity_goal_number_is_described_when_present(self):
+        descs = {
+            d.key: d
+            for d in _pointtapi_number_descriptions(
+                {"/energy/electricity/annualGoal": {"value": 2500}}
+            )
+        }
+        d = descs["/energy/electricity/annualGoal"]
+        assert d.translation_key == "annual_electricity_goal"
+        assert d.native_unit_of_measurement == "kWh"
+        assert d.entity_category == EntityCategory.CONFIG
+
+    def test_annual_gas_goal_number_is_described_when_present(self):
+        descs = {
+            d.key: d
+            for d in _pointtapi_number_descriptions({"/energy/gas/annualGoal": {"value": 2500}})
+        }
+        d = descs["/energy/gas/annualGoal"]
+        assert d.translation_key == "annual_gas_goal"
+        assert d.native_unit_of_measurement == "kWh"
+        assert d.entity_category == EntityCategory.CONFIG
+
+    def test_annual_gas_goal_number_is_not_described_when_missing(self):
+        descs = {d.key: d for d in _pointtapi_number_descriptions({})}
+        assert "/energy/gas/annualGoal" not in descs
 
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
@@ -220,6 +333,12 @@ class TestComfortControlDescriptions:
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/thermalDisinfect/state"]
         assert d.translation_key == "thermal_disinfect"
+
+    def test_thermal_disinfect_switch_uses_on_off(self):
+        descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
+        d = descs["/dhwCircuits/dhw1/thermalDisinfect/state"]
+        assert d.on_value == "on"
+        assert d.off_value == "off"
 
     def test_away_mode_switch_described(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
@@ -263,6 +382,277 @@ class TestComfortControlDescriptions:
         desc = descs["/dhwCircuits/dhw1/thermalDisinfect/lastResult"]
         assert desc.translation_key == "thermal_disinfect_last_result"
         assert desc.value_fn is None
+
+    def test_appliance_status_sensor_maps_0h_203_to_standby(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+        }
+        assert desc.translation_key == "appliance_status"
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "standby_no_heat_demand"
+        assert desc.attributes_fn is not None
+        assert desc.attributes_fn(data) == {"display_code": "0H", "cause_code": 203}
+
+    def test_appliance_status_sensor_prioritizes_locking_error_over_running_state(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/lockingError": {"value": "true"},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "locking_fault_code_active"
+
+    def test_appliance_status_sensor_prioritizes_blocking_error_over_running_state(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/blockingError": {"value": True},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "blocking_fault_code_active"
+
+    def test_appliance_status_sensor_uses_display_and_locking_code_pair_when_present(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "2H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/lockingError": {"value": 358.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "pump_or_three_way_valve_anti_seizure"
+
+    def test_appliance_status_sensor_uses_display_and_blocking_code_pair_when_present(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "2E"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/blockingError": {"value": 357.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "purge_function_active"
+
+    def test_appliance_status_sensor_sets_fault_attributes_when_present(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0H"},
+            "/system/appliance/causeCode": {"value": 203.0},
+            "/system/appliance/blockingError": {"value": "1"},
+            "/system/appliance/lockingError": {"value": "0"},
+        }
+        assert desc.attributes_fn is not None
+        assert desc.attributes_fn(data) == {
+            "display_code": "0H",
+            "cause_code": 203,
+            "blocking_error": True,
+            "blocking_code": 1,
+            "locking_error": False,
+            "locking_code": 0,
+        }
+
+    def test_appliance_status_sensor_available_with_only_fault_flags(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/lockingError": {"value": True},
+        }
+        assert desc.available_fn is not None
+        assert desc.available_fn(data) is True
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "locking_fault_code_active"
+
+    def test_ambiguous_cause_alone_does_not_report_a_fault(self):
+        """Causes whose display variants disagree must not guess a fault.
+
+        273 is a 24h safety shutdown under display 3F but normal flame
+        monitoring under 0U; 280 is a restart-time fault under 7L but a normal
+        fan start under 0U. With no display code the cause alone cannot tell
+        them apart, so it must read unknown rather than alarm on a boiler that
+        is only starting up.
+        """
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+        for cause in (273, 280):
+            data = {"/system/appliance/causeCode": {"value": float(cause)}}
+            assert desc.value_fn(data) == "unknown"
+        # Unambiguous causes still resolve without a display code.
+        assert (
+            desc.value_fn({"/system/appliance/causeCode": {"value": 203.0}})
+            == "standby_no_heat_demand"
+        )
+
+    def test_appliance_status_sensor_maps_0a_305_to_dhw_lockout(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "0A"},
+            "/system/appliance/causeCode": {"value": 305.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "dhw_post_heating_lockout"
+
+    def test_appliance_status_sensor_maps_additional_documented_pairs(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        assert (
+            desc.value_fn(
+                {
+                    "/system/appliance/displayCode": {"value": "2P"},
+                    "/system/appliance/causeCode": {"value": 342.0},
+                }
+            )
+            == "dhw_gradient_limitation"
+        )
+        assert (
+            desc.value_fn(
+                {
+                    "/system/appliance/displayCode": {"value": "2E"},
+                    "/system/appliance/causeCode": {"value": 357.0},
+                }
+            )
+            == "purge_function_active"
+        )
+        assert (
+            desc.value_fn(
+                {
+                    "/system/appliance/displayCode": {"value": "2H"},
+                    "/system/appliance/causeCode": {"value": 358.0},
+                }
+            )
+            == "pump_or_three_way_valve_anti_seizure"
+        )
+
+    def test_cause_code_sensor_normalizes_float_to_int(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/causeCode"]
+        data = {"/system/appliance/causeCode": {"value": 201.0}}
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == 201
+
+    def test_heat_demand_type_sensor_is_described(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/heatSources/flameIndication"]
+        assert desc.translation_key == "heat_demand_type"
+        assert desc.value_fn is not None
+
+    def test_heat_demand_type_sensor_maps_known_values(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/heatSources/flameIndication"]
+        assert desc.value_fn is not None
+
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "off"}}) == "off"
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "ch"}}) == "ch"
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "dhw"}}) == "dhw"
+
+    def test_heat_demand_type_sensor_returns_none_for_unknown(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/heatSources/flameIndication"]
+        assert desc.value_fn is not None
+        assert desc.value_fn({"/heatSources/flameIndication": {"value": "unexpected"}}) is None
+
+    def test_appliance_status_sensor_maps_unknown_pair_to_unknown(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        data = {
+            "/system/appliance/displayCode": {"value": "ZZ"},
+            "/system/appliance/causeCode": {"value": 999.0},
+        }
+        assert desc.value_fn is not None
+        assert desc.value_fn(data) == "unknown"
+
+    def test_appliance_status_sensor_maps_flue_gas_test_variants(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data_a = {
+            "/system/appliance/displayCode": {"value": "A"},
+            "/system/appliance/causeCode": {"value": 208.0},
+        }
+        assert desc.value_fn(data_a) == "flue_gas_test_heat_demand"
+
+        data_dash_a = {
+            "/system/appliance/displayCode": {"value": "-A"},
+            "/system/appliance/causeCode": {"value": 208.0},
+        }
+        assert desc.value_fn(data_dash_a) == "flue_gas_test_heat_demand"
+
+    def test_appliance_status_sensor_maps_internal_error_cause_range(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "EA"},
+            "/system/appliance/causeCode": {"value": 250.0},
+        }
+        assert desc.value_fn(data) == "internal_error_service_required"
+
+    def test_appliance_status_sensor_falls_back_to_cause_when_display_missing(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/causeCode": {"value": 200.0},
+        }
+        assert desc.value_fn(data) == "heating_operation"
+
+    def test_appliance_status_sensor_maps_no_flame_after_ignition(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "6A"},
+            "/system/appliance/causeCode": {"value": 227.0},
+        }
+        assert desc.value_fn(data) == "no_flame_after_ignition"
+
+    def test_appliance_status_sensor_maps_return_sensor_disconnected(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "CY"},
+            "/system/appliance/causeCode": {"value": 242.0},
+        }
+        assert desc.value_fn(data) == "return_sensor_disconnected"
+
+    def test_appliance_status_sensor_maps_regulation_system_test(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "5H"},
+            "/system/appliance/causeCode": {"value": 268.0},
+        }
+        assert desc.value_fn(data) == "regulation_system_test"
+
+    def test_appliance_status_sensor_maps_0y_359_to_dhw_sensor_overtemp(self):
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions()}
+        desc = descs["/system/appliance/status"]
+        assert desc.value_fn is not None
+
+        data = {
+            "/system/appliance/displayCode": {"value": "0Y"},
+            "/system/appliance/causeCode": {"value": 359.0},
+        }
+        assert desc.value_fn(data) == "dhw_sensor_temp_too_high"
 
     def test_thermostat_valve_diagnostics_are_discovered_from_devices_list(self):
         data = {
@@ -319,6 +709,54 @@ class TestComfortControlDescriptions:
         assert "/zones/zn2/assignedProgramName" in descs
         assert "/zones/zn10/assignedProgramName" in descs
         assert descs["/zones/zn2/assignedProgramName"].translation_key == "assigned_program"
+
+    def test_zone_optimum_start_state_sensors_are_discovered_from_zone_references(self):
+        data = {
+            "/zones/zn2": {
+                "references": [
+                    {"id": "/zones/zn2/optimumStartState"},
+                ]
+            },
+            "/zones/zn1": {
+                "references": [
+                    {"id": "/zones/zn1/optimumStartState"},
+                ]
+            },
+            "/zones/zn3": {
+                "references": [
+                    {"id": "/zones/zn3/status"},
+                ]
+            },
+        }
+
+        descs = {d.key: d for d in _pointtapi_sensor_descriptions(data)}
+        assert "/zones/zn1/optimumStartState" in descs
+        assert "/zones/zn2/optimumStartState" in descs
+        assert "/zones/zn3/optimumStartState" not in descs
+        assert descs["/zones/zn1/optimumStartState"].translation_key == "optimum_start_state"
+
+    def test_zone_optimum_start_state_sensor_keeps_raw_value(self):
+        data = {
+            "/zones/zn2": {
+                "id": "/zones/zn2",
+                "references": [{"id": "/zones/zn2/optimumStartState"}],
+            },
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/optimumStartState": {"value": "idle"},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/zones/zn2/optimumStartState"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "idle"
 
     def test_zone_assigned_program_sensor_resolves_base64_program_name(self):
         data = {
@@ -382,7 +820,70 @@ class TestComfortControlDescriptions:
         ent._handle_coordinator_update()
 
         assert ent.native_value is None
-        assert ent.extra_state_attributes == {}
+
+    def test_zone_program_selects_are_discovered_from_zone_paths(self):
+        data = {
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn1/clockProgram": {"value": 1.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg1/name": {"value": "U2Fsb24="},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        descs = {d.key: d for d in _pointtapi_select_descriptions(data)}
+        assert "/zones/zn1/clockProgram" in descs
+        assert "/zones/zn2/clockProgram" in descs
+
+        d = descs["/zones/zn2/clockProgram"]
+        assert d.translation_key == "assigned_program_select"
+        assert d.options_fn is not None
+        assert set(d.options_fn(data)) == {"Salon", "Salle de bains"}
+
+    def test_zone_program_select_reads_decoded_program_name(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg1/name": {"value": "U2Fsb24="},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d for d in _pointtapi_select_descriptions(data)
+            if d.key == "/zones/zn2/clockProgram"
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.current_option == "Salle de bains"
+        assert ent.available is True
+
+    @pytest.mark.asyncio
+    async def test_zone_program_select_writes_selected_program_id(self):
+        data = {
+            "/zones/zn2": {"id": "/zones/zn2"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/clockProgram": {"value": 3.0},
+            "/programs/pg1/name": {"value": "U2Fsb24="},
+            "/programs/pg3/name": {"value": "U2FsbGUgZGUgYmFpbnM="},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d for d in _pointtapi_select_descriptions(data)
+            if d.key == "/zones/zn2/clockProgram"
+        )
+        ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        await ent.async_select_option("Salon")
+
+        coord.client.put.assert_awaited_once_with("/zones/zn2/clockProgram", 1)
+        assert ent.current_option == "Salon"
 
     def test_thermostat_valve_sensor_uses_dedicated_device_and_decoded_name(self):
         data = {
@@ -414,8 +915,88 @@ class TestComfortControlDescriptions:
         assert ent.native_value == 71
         assert ent.entity_category == EntityCategory.DIAGNOSTIC
         assert ent.native_unit_of_measurement == "%"
+        assert ent.icon == "mdi:signal"
         assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
         assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
+
+    def test_thermostat_valve_battery_value_is_uppercased(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "battery": "ok",
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/battery"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "OK"
+
+    def test_thermostat_valve_zone_value_uses_zone_name_when_available(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "zone": 2,
+                    }
+                ]
+            },
+            "/zones/zn2/name": {"value": "Saal"},
+        }
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/zone"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == "Saal"
+
+    def test_thermostat_valve_zone_value_falls_back_to_raw_zone_id(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 2,
+                        "name": "U2FsbGUgZGUgYmFpbnMtMQ==",
+                        "type": "thermostat_valve",
+                        "zone": 2,
+                    }
+                ]
+            }
+        }
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/devices/list/thermostat_valve/2/zone"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == 2
 
     def test_thermostat_valve_sensor_device_name_is_localized(self):
         data = {
@@ -570,6 +1151,34 @@ class TestEntityBehavior:
         ent = _binary_sensor(coord, "/dhwCircuits/dhw1/state")
         ent._handle_coordinator_update()
         assert ent.is_on is False
+
+    def test_burner_flame_uses_actual_modulation_positive_as_on(self):
+        coord = _mock_coordinator(
+            {
+                "/heatSources/flameIndication": {"value": "dhw"},
+                "/heatSources/actualModulation": {"value": 12.0},
+            }
+        )
+        ent = _binary_sensor(coord, "/heatSources/flameIndication")
+        ent._handle_coordinator_update()
+        assert ent.is_on is True
+
+    def test_burner_flame_uses_actual_modulation_zero_as_off(self):
+        coord = _mock_coordinator(
+            {
+                "/heatSources/flameIndication": {"value": "ch"},
+                "/heatSources/actualModulation": {"value": 0.0},
+            }
+        )
+        ent = _binary_sensor(coord, "/heatSources/flameIndication")
+        ent._handle_coordinator_update()
+        assert ent.is_on is False
+
+    def test_burner_flame_unknown_when_actual_modulation_missing(self):
+        coord = _mock_coordinator({"/heatSources/flameIndication": {"value": "dhw"}})
+        ent = _binary_sensor(coord, "/heatSources/flameIndication")
+        ent._handle_coordinator_update()
+        assert ent.is_on is None
 
     def test_switch_unavailable_when_path_absent(self):
         coord = _mock_coordinator({})

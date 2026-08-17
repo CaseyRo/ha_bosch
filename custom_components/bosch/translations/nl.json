@@ -19,6 +19,9 @@
       "wifi_firmware_version": {
         "name": "WiFi-firmwareversie"
       },
+      "zigbee_firmware_version": {
+        "name": "Zigbee-firmwareversie"
+      },
       "energy_efficiency": {
         "name": "Energie-efficiëntie"
       },
@@ -35,14 +38,14 @@
         "name": "Ketelvermogen"
       },
       "blocking_error": {
-        "name": "Blokkerende fout",
+        "name": "Blokkerende foutcode",
         "state": {
           "false": "Geen fout",
           "true": "Fout"
         }
       },
       "locking_error": {
-        "name": "Vergrendelingsfout",
+        "name": "Vergrendelende foutcode",
         "state": {
           "false": "Geen fout",
           "true": "Fout"
@@ -59,7 +62,92 @@
         "name": "Weergavecode"
       },
       "cause_code": {
-        "name": "Oorzaakcode"
+        "name": "Servicecode"
+      },
+      "appliance_status": {
+        "name": "Ketelstatus",
+        "state": {
+          "unknown": "Onbekend",
+          "locking_fault_code_active": "Vergrendelende foutcode actief",
+          "blocking_fault_code_active": "Blokkerende foutcode actief",
+          "standby_no_heat_demand": "Stand-by - geen warmtevraag",
+          "heating_operation": "Verwarming actief",
+          "hot_water_operation": "Warmwaterbereiding actief",
+          "anti_cycle_delay": "Anti-cyclusvertraging",
+          "dhw_post_heating_lockout": "Nawarmvertraging voor warm tapwater actief",
+          "system_pressure_too_low": "Systeemdruk te laag",
+          "flue_gas_test_heat_demand": "Warmtevraag door rookgastest",
+          "flue_gas_thermostat_or_air_pressure_active": "Rookgasthermostaat of luchtdrukregelaar actief",
+          "safety_supply_temp_rising_too_fast": "Veiligheids-/aanvoertemperatuur stijgt te snel",
+          "heating_gradient_limitation": "Gradiëntbegrenzing in verwarmingsmodus",
+          "supply_return_temp_difference_too_high": "Verschil tussen aanvoer- en retourtemperatuur te groot",
+           "dhw_gradient_limitation": "Gradiëntbegrenzing bij warm tapwater",
+          "pump_no_pressure_difference": "De circulatiepomp genereert geen drukverschil",
+          "fan_stopped_during_safety_time": "Ventilator gestopt tijdens veiligheidstijd",
+          "fan_stopped_during_operation": "Ventilator gestopt tijdens bedrijf",
+          "fan_speed_too_low": "Ventilatorsnelheid te laag",
+          "fan_speed_too_high": "Ventilatorsnelheid te hoog",
+          "fan_malfunction": "Ventilator werkt niet correct",
+          "air_pressure_monitor_fault": "Luchtdrukbewaking of pressostaatfout",
+          "supply_temp_too_high": "Aanvoertemperatuur te hoog",
+          "safety_sensor_temp_too_high": "Temperatuur van veiligheidssensor te hoog",
+          "safety_sensor_short_circuit": "Kortsluiting in veiligheidssensor",
+          "safety_sensor_disconnected": "Veiligheidssensor losgekoppeld",
+          "supply_sensor_short_circuit": "Kortsluiting in aanvoersensor",
+          "supply_sensor_disconnected": "Aanvoersensor losgekoppeld",
+          "safety_limiter_active": "Veiligheidsthermostaat/temperatuurbegrenzer actief",
+          "communication_or_internal_signal_fault": "Communicatie- of intern signaalfout",
+          "internal_monitoring_fault": "Interne bewakingsfout",
+          "no_flame_after_ignition": "Geen vlam gedetecteerd na ontsteking",
+          "unexpected_flame_signal": "Vlamsignaal aanwezig terwijl geen vlam wordt verwacht",
+          "flame_detected_after_gas_shutdown": "Vlam gedetecteerd na gasafsluiting",
+          "ionization_signal_lost": "Ionisatiesignaal verloren tijdens werking",
+          "invalid_ionization_signal": "Ongeldig ionisatiesignaal",
+          "mains_voltage_fault_or_power_loss": "Netspanningsfout of stroomuitval",
+          "first_safety_time_fault": "Tijdfout bij eerste veiligheidstijd",
+          "restart_attempt_time_fault": "Tijdfout bij herstartpoging",
+          "external_cutoff_switch_active": "Externe uitschakelaar actief",
+          "external_controller_fault": "Fout van externe regelaar",
+          "gas_valve_communication_fault": "Communicatiefout met gasklep",
+          "gas_valve_not_recognized": "Gasklep niet herkend",
+          "kim_not_recognized": "KIM niet herkend",
+          "internal_electronics_fault": "Interne elektronicafout",
+          "equipment_fault_relay_error": "Fout in storingsrelais van apparatuur",
+          "device_internal_fault": "Interne apparaatfout",
+          "return_sensor_short_circuit": "Kortsluiting in retoursensor",
+          "return_sensor_disconnected": "Retoursensor losgekoppeld",
+          "internal_communication_fault": "Interne communicatiefout",
+          "sensor_or_electronics_fault": "Sensor- of elektronicafout",
+          "communication_fault": "Communicatiefout",
+          "internal_controller_fault": "Interne regelaardoorstoring",
+          "regulation_system_internal_fault": "Interne fout van regelsysteem",
+          "ignition_or_flame_fault": "Ontstekings- of vlamfout",
+          "flame_fault": "Vlamfout",
+          "regulation_system_test": "Test van het regelsysteem",
+          "boiler_startup_preventilation": "Ketelstart of voorventilatie",
+          "burner_operation_monitoring": "Bewaking van branderwerking",
+          "flame_monitoring": "Vlamcontrole",
+          "safety_shutdown_after_24h_continuous_operation": "Veiligheidsuitschakeling na 24 uur continue brander-/ventilatorwerking",
+          "burner_startup_phase": "Brander in opstartfase",
+          "fan_starting": "Ventilatorstart",
+          "startup_delay": "Opstartvertraging",
+          "pump_or_flow_insufficient": "Pomp of doorstroming onvoldoende",
+           "purge_function_active": "Ontluchtingsfunctie actief",
+           "pump_or_three_way_valve_anti_seizure": "Blokkeerbeveiliging pomp/3-wegklep actief",
+          "internal_error_service_required": "Interne fout - service vereist",
+          "burner_starting": "Brander start op",
+          "heat_demand_below_min_power": "Warmtevraag onder minimumvermogen",
+          "gas_valve_opening": "Gasklep wordt geopend",
+          "gas_valve_open_burner_startup": "Gasklep open of branderstart",
+          "boiler_starting": "Ketel start op",
+          "supply_temp_above_setpoint": "Aanvoertemperatuur boven setpoint",
+          "main_controller_fault": "Fout van hoofdregelaar",
+          "regulation_system_fault": "Fout van regelsysteem",
+           "dhw_sensor_temp_too_high": "Temperatuur van de warmtapwatersensor te hoog",
+          "internal_fault": "Interne fout",
+          "electronic_fault": "Elektronische fout",
+          "internal_system_fault": "Interne systeemfout"
+        }
       },
       "actual_supply_temperature": {
         "name": "Aanvoertemperatuur"
@@ -70,6 +158,9 @@
       "assigned_program": {
         "name": "Toegewezen programma"
       },
+      "optimum_start_state": {
+        "name": "Status optimaal starten"
+      },
       "electricity_day_average": {
         "name": "Daggemiddelde elektriciteit"
       },
@@ -78,6 +169,14 @@
       },
       "actual_modulation": {
         "name": "Huidige modulatiedruk"
+      },
+      "heat_demand_type": {
+        "name": "Vraagtype",
+        "state": {
+          "off": "Geen vraag",
+          "ch": "Verwarming",
+          "dhw": "Warm tapwater"
+        }
       },
       "gas_heating_today": {
         "name": "Gas verwarming vandaag"
@@ -176,6 +275,9 @@
       },
       "annual_gas_goal": {
         "name": "Jaarlijks gasdoel"
+      },
+      "annual_electricity_goal": {
+        "name": "Jaarlijks elektriciteitsdoel"
       }
     },
     "binary_sensor": {
@@ -233,6 +335,9 @@
           "clock": "Programma",
           "manual": "Handmatig"
         }
+      },
+      "assigned_program_select": {
+        "name": "Toegewezen programma"
       },
       "pir_sensitivity": {
         "name": "Gevoeligheid van de bewegingssensor",

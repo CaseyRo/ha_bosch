@@ -19,6 +19,9 @@
       "wifi_firmware_version": {
         "name": "Versione firmware Wi-Fi"
       },
+      "zigbee_firmware_version": {
+        "name": "Versione firmware Zigbee"
+      },
       "energy_efficiency": {
         "name": "Efficienza energetica"
       },
@@ -35,14 +38,14 @@
         "name": "Potenza della caldaia"
       },
       "blocking_error": {
-        "name": "Errore bloccante",
+        "name": "Codice di errore bloccante",
         "state": {
           "false": "Nessun errore",
           "true": "Errore"
         }
       },
       "locking_error": {
-        "name": "Errore di blocco",
+        "name": "Codice di errore di blocco",
         "state": {
           "false": "Nessun errore",
           "true": "Errore"
@@ -56,10 +59,95 @@
         }
       },
       "display_code": {
-        "name": "Codice visualizzato"
+        "name": "Codice display"
       },
       "cause_code": {
-        "name": "Codice causa"
+        "name": "Codice di servizio"
+      },
+      "appliance_status": {
+        "name": "Stato caldaia",
+        "state": {
+          "unknown": "Sconosciuto",
+          "locking_fault_code_active": "Codice di errore di blocco attivo",
+          "blocking_fault_code_active": "Codice di errore bloccante attivo",
+          "standby_no_heat_demand": "Standby - nessuna richiesta di calore",
+          "heating_operation": "Riscaldamento in funzione",
+          "hot_water_operation": "Produzione acqua calda sanitaria",
+          "anti_cycle_delay": "Ritardo anti-ciclo",
+          "dhw_post_heating_lockout": "Temporizzazione post-riscaldamento ACS attiva",
+          "system_pressure_too_low": "Pressione del sistema troppo bassa",
+          "flue_gas_test_heat_demand": "Richiesta termica dovuta al test fumi",
+          "flue_gas_thermostat_or_air_pressure_active": "Termostato fumi o controllo pressione aria attivo",
+          "safety_supply_temp_rising_too_fast": "Temperatura di sicurezza/mandata in aumento troppo rapido",
+          "heating_gradient_limitation": "Limitazione del gradiente in riscaldamento",
+          "dhw_gradient_limitation": "Limitazione del gradiente in ACS",
+          "supply_return_temp_difference_too_high": "Differenza tra temperatura di mandata e ritorno troppo alta",
+          "pump_no_pressure_difference": "La pompa di circolazione non genera differenza di pressione",
+          "fan_stopped_during_safety_time": "Ventilatore fermo durante il tempo di sicurezza",
+          "fan_stopped_during_operation": "Ventilatore fermo durante il funzionamento",
+          "fan_speed_too_low": "Velocità ventilatore troppo bassa",
+          "fan_speed_too_high": "Velocità del ventilatore troppo alta",
+          "fan_malfunction": "Il ventilatore non funziona correttamente",
+          "air_pressure_monitor_fault": "Pressostato o controllo pressione aria",
+          "supply_temp_too_high": "Temperatura di mandata troppo alta",
+          "safety_sensor_temp_too_high": "Temperatura della sonda di sicurezza troppo alta",
+          "safety_sensor_short_circuit": "Cortocircuito della sonda di sicurezza",
+          "safety_sensor_disconnected": "Sonda di sicurezza scollegata",
+          "supply_sensor_short_circuit": "Cortocircuito della sonda di mandata",
+          "supply_sensor_disconnected": "Sonda di mandata scollegata",
+          "safety_limiter_active": "Termostato di sicurezza/limitatore temperatura attivo",
+          "communication_or_internal_signal_fault": "Guasto di comunicazione o segnale interno",
+          "internal_monitoring_fault": "Guasto interno di monitoraggio",
+          "no_flame_after_ignition": "Nessuna fiamma rilevata dopo l'accensione",
+          "unexpected_flame_signal": "Segnale di fiamma presente quando non atteso",
+          "flame_detected_after_gas_shutdown": "Fiamma rilevata dopo l'interruzione del gas",
+          "ionization_signal_lost": "Perdita del segnale di ionizzazione durante il funzionamento",
+          "invalid_ionization_signal": "Segnale di ionizzazione non corretto",
+          "mains_voltage_fault_or_power_loss": "Anomalia tensione di rete o interruzione di corrente",
+          "first_safety_time_fault": "Errore di temporizzazione del primo tempo di sicurezza",
+          "restart_attempt_time_fault": "Errore di temporizzazione del tentativo di riavvio",
+          "external_cutoff_switch_active": "Interruttore di arresto esterno attivo",
+          "external_controller_fault": "Guasto del controllore esterno",
+          "gas_valve_communication_fault": "Guasto di comunicazione con la valvola gas",
+          "gas_valve_not_recognized": "Valvola gas non riconosciuta",
+          "kim_not_recognized": "KIM non riconosciuto",
+          "internal_electronics_fault": "Guasto elettronico interno",
+          "equipment_fault_relay_error": "Errore relè di guasto apparecchiatura",
+          "device_internal_fault": "Guasto interno dell'apparecchio",
+          "return_sensor_short_circuit": "Cortocircuito della sonda di ritorno",
+          "return_sensor_disconnected": "Sonda di ritorno scollegata",
+          "internal_communication_fault": "Guasto di comunicazione interna",
+          "sensor_or_electronics_fault": "Guasto sensore o elettronica",
+          "communication_fault": "Guasto di comunicazione",
+          "internal_controller_fault": "Guasto interno del controllore",
+          "regulation_system_internal_fault": "Guasto interno del sistema di regolazione",
+          "ignition_or_flame_fault": "Guasto di accensione o fiamma",
+          "flame_fault": "Guasto di fiamma",
+          "regulation_system_test": "Test del sistema di regolazione",
+          "boiler_startup_preventilation": "Avvio caldaia o preventilazione",
+          "burner_operation_monitoring": "Monitoraggio funzionamento bruciatore",
+          "flame_monitoring": "Monitoraggio fiamma",
+          "safety_shutdown_after_24h_continuous_operation": "Arresto di sicurezza dopo 24 h di funzionamento continuo bruciatore/ventilatore",
+          "burner_startup_phase": "Bruciatore in fase di avviamento",
+          "fan_starting": "Avvio ventilatore",
+          "startup_delay": "Ritardo di avvio",
+          "pump_or_flow_insufficient": "Pompa o portata insufficiente",
+          "purge_function_active": "Funzione di spurgo attiva",
+          "pump_or_three_way_valve_anti_seizure": "Protezione antibloccaggio pompa/valvola a 3 vie attiva",
+          "internal_error_service_required": "Errore interno - assistenza richiesta",
+          "burner_starting": "Bruciatore in avviamento",
+          "heat_demand_below_min_power": "Richiesta di calore sotto la potenza minima",
+          "gas_valve_opening": "Apertura della valvola gas",
+          "gas_valve_open_burner_startup": "Valvola gas aperta o avvio bruciatore",
+          "boiler_starting": "Caldaia in avviamento",
+          "supply_temp_above_setpoint": "Temperatura di mandata sopra il setpoint",
+          "dhw_sensor_temp_too_high": "Temperatura della sonda ACS troppo alta",
+          "main_controller_fault": "Guasto del controllore principale",
+          "regulation_system_fault": "Guasto del sistema di regolazione",
+          "internal_fault": "Guasto interno",
+          "electronic_fault": "Guasto elettronico",
+          "internal_system_fault": "Guasto interno del sistema"
+        }
       },
       "actual_supply_temperature": {
         "name": "Temperatura di mandata"
@@ -70,6 +158,9 @@
       "assigned_program": {
         "name": "Programma assegnato"
       },
+      "optimum_start_state": {
+        "name": "Stato avvio ottimale"
+      },
       "electricity_day_average": {
         "name": "Media giornaliera elettricità"
       },
@@ -78,6 +169,14 @@
       },
       "actual_modulation": {
         "name": "Potenza di modulazione attuale"
+      },
+      "heat_demand_type": {
+        "name": "Tipo di richiesta",
+        "state": {
+          "off": "Nessuna richiesta",
+          "ch": "Riscaldamento",
+          "dhw": "Acqua calda sanitaria"
+        }
       },
       "gas_heating_today": {
         "name": "Gas riscaldamento oggi"
@@ -176,6 +275,9 @@
       },
       "annual_gas_goal": {
         "name": "Obiettivo annuale del gas"
+      },
+      "annual_electricity_goal": {
+        "name": "Obiettivo annuale dell'energia elettrica"
       }
     },
     "binary_sensor": {
@@ -233,6 +335,9 @@
           "clock": "Programma",
           "manual": "Manuale"
         }
+      },
+      "assigned_program_select": {
+        "name": "Programma assegnato"
       },
       "pir_sensitivity": {
         "name": "Sensibilità del rilevatore di movimento",

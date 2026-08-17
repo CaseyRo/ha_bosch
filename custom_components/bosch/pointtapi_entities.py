@@ -37,7 +37,12 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfPressure, UnitOfTemperature, UnitOfTime
+from homeassistant.const import (
+    UnitOfEnergy,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -63,6 +68,134 @@ SOLAR_CIRCUIT_PATHS = (
 # API accepts: "ownprogram" (auto/schedule), "Off", "high" (always on at high temp)
 _API_TO_OP = {"ownprogram": "Auto", "Off": "Off", "high": "On"}
 _OP_TO_API = {v: k for k, v in _API_TO_OP.items()}
+
+
+# Bosch/Buderus boiler status mapping:
+# displayCode + causeCode -> translation key.
+_APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
+    ("-H", 200): "heating_operation",
+    ("=H", 201): "hot_water_operation",
+    ("0A", 202): "anti_cycle_delay",
+    ("0A", 305): "dhw_post_heating_lockout",
+    ("0H", 203): "standby_no_heat_demand",
+    ("0Y", 204): "supply_temp_above_setpoint",
+    ("0Y", 359): "dhw_sensor_temp_too_high",
+    ("", 207): "system_pressure_too_low",
+    ("A", 208): "flue_gas_test_heat_demand",
+    ("-A", 208): "flue_gas_test_heat_demand",
+    ("1C", 210): "flue_gas_thermostat_or_air_pressure_active",
+    ("2E", 212): "safety_supply_temp_rising_too_fast",
+    ("2P", 212): "safety_supply_temp_rising_too_fast",
+    ("2P", 341): "heating_gradient_limitation",
+    ("2P", 342): "dhw_gradient_limitation",
+    ("2U", 213): "supply_return_temp_difference_too_high",
+    ("3L", 214): "fan_stopped_during_safety_time",
+    ("3Y", 214): "fan_stopped_during_safety_time",
+    ("3Y", 215): "fan_speed_too_high",
+    ("3P", 216): "fan_speed_too_low",
+    ("3Y", 216): "fan_malfunction",
+    ("3A", 264): "fan_stopped_during_operation",
+    ("3F", 273): "safety_shutdown_after_24h_continuous_operation",
+    ("3C", 217): "fan_malfunction",
+    ("4A", 218): "supply_temp_too_high",
+    ("4F", 219): "safety_sensor_temp_too_high",
+    ("4U", 220): "supply_sensor_short_circuit",
+    ("4U", 222): "supply_sensor_short_circuit",
+    ("4U", 350): "supply_sensor_short_circuit",
+    ("4Y", 221): "supply_sensor_disconnected",
+    ("4Y", 223): "supply_sensor_disconnected",
+    ("4Y", 351): "supply_sensor_disconnected",
+    ("4C", 222): "safety_sensor_short_circuit",
+    ("4C", 223): "safety_sensor_disconnected",
+    ("4C", 224): "safety_limiter_active",
+    ("4L", 225): "communication_or_internal_signal_fault",
+    ("4L", 226): "internal_monitoring_fault",
+    ("6A", 227): "no_flame_after_ignition",
+    ("6C", 228): "unexpected_flame_signal",
+    ("6C", 306): "flame_detected_after_gas_shutdown",
+    ("6L", 229): "ionization_signal_lost",
+    ("6L", 230): "invalid_ionization_signal",
+    ("7C", 231): "mains_voltage_fault_or_power_loss",
+    ("8Y", 232): "external_cutoff_switch_active",
+    ("8Y", 233): "external_controller_fault",
+    ("7L", 261): "first_safety_time_fault",
+    ("7L", 280): "restart_attempt_time_fault",
+    ("9A", 234): "gas_valve_communication_fault",
+    ("9L", 234): "gas_valve_communication_fault",
+    ("9A", 235): "gas_valve_not_recognized",
+    ("9A", 238): "internal_electronics_fault",
+    ("9L", 238): "internal_electronics_fault",
+    ("9P", 239): "kim_not_recognized",
+    ("9U", 239): "equipment_fault_relay_error",
+    ("9U", 240): "device_internal_fault",
+    ("CU", 240): "return_sensor_short_circuit",
+    ("CY", 241): "return_sensor_short_circuit",
+    ("CY", 242): "return_sensor_disconnected",
+    ("9Y", 243): "internal_communication_fault",
+    ("9Y", 244): "sensor_or_electronics_fault",
+    ("9Y", 245): "communication_fault",
+    ("9Y", 246): "internal_controller_fault",
+    ("EC", 257): "regulation_system_internal_fault",
+    ("EC", 258): "regulation_system_internal_fault",
+    ("EC", 259): "regulation_system_internal_fault",
+    ("EL", 259): "regulation_system_internal_fault",
+    ("EA", 260): "ignition_or_flame_fault",
+    ("EA", 261): "flame_fault",
+    ("0E", 265): "heat_demand_below_min_power",
+    ("5H", 268): "regulation_system_test",
+    ("0U", 270): "boiler_starting",
+    ("0U", 271): "boiler_startup_preventilation",
+    ("0U", 272): "burner_operation_monitoring",
+    ("0U", 273): "flame_monitoring",
+    ("0U", 274): "burner_startup_phase",
+    ("0Y", 276): "supply_temp_above_setpoint",
+    ("0U", 280): "fan_starting",
+    ("0U", 281): "startup_delay",
+    ("2Y", 281): "pump_no_pressure_difference",
+    ("2Y", 282): "pump_or_flow_insufficient",
+    ("2E", 357): "purge_function_active",
+    ("2H", 358): "pump_or_three_way_valve_anti_seizure",
+    ("0C", 283): "burner_starting",
+    ("0L", 284): "gas_valve_opening",
+    ("0L", 285): "gas_valve_open_burner_startup",
+    ("EL", 290): "main_controller_fault",
+    ("EL", 291): "internal_electronics_fault",
+    ("EL", 292): "regulation_system_fault",
+    ("EL", 293): "internal_fault",
+    ("EL", 294): "electronic_fault",
+    ("EL", 296): "internal_controller_fault",
+    ("EL", 297): "internal_fault",
+    ("EL", 298): "electronic_fault",
+    ("EL", 299): "internal_system_fault",
+}
+
+def _build_appliance_status_by_cause(
+    by_code: dict[tuple[str, int], str],
+) -> dict[int, str]:
+    """Build a cause-only fallback map from the pair table.
+
+    Only causes whose display variants all mean the same thing get a fallback.
+    Where they disagree the cause alone does not identify the state — cause 273
+    is a 24h safety shutdown under display 3F but normal flame monitoring under
+    0U, and 280 is a restart-time fault under 7L but a normal fan start under
+    0U — so those are left out and read as unknown rather than raising a fault
+    for a boiler that is simply starting up. The raw codes stay on the entity
+    attributes either way.
+    """
+
+    candidates: dict[int, set[str]] = {}
+    for (_display, cause), status in by_code.items():
+        candidates.setdefault(cause, set()).add(status)
+    return {
+        cause: statuses.pop()
+        for cause, statuses in candidates.items()
+        if len(statuses) == 1
+    }
+
+
+_APPLIANCE_STATUS_BY_CAUSE: dict[int, str] = _build_appliance_status_by_cause(
+    _APPLIANCE_STATUS_BY_CODE
+)
 
 
 def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
@@ -137,6 +270,7 @@ _DHW_KINDS = {
 }
 _ENERGY_KINDS = {
     "annual_gas_goal",
+    "energy_efficiency",
 }
 
 _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
@@ -479,6 +613,27 @@ def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> 
     return row.get(field)
 
 
+def _thermostat_valve_battery(data: dict[str, Any], valve_id: int) -> Any:
+    """Return a normalized battery state for a thermostat valve."""
+    raw = _thermostat_valve_field(data, valve_id, "battery")
+    if isinstance(raw, str) and raw.strip().lower() == "ok":
+        return "OK"
+    return raw
+
+
+def _thermostat_valve_zone_name(data: dict[str, Any], valve_id: int) -> Any:
+    """Return a zone display name for a thermostat valve when available."""
+    raw_zone = _thermostat_valve_field(data, valve_id, "zone")
+    if raw_zone is None:
+        return None
+
+    zone_id = f"zn{raw_zone}"
+    zone_name = _decode_zone_name(_val(data, f"/zones/{zone_id}/name"))
+    if isinstance(zone_name, str) and zone_name.strip():
+        return zone_name
+    return raw_zone
+
+
 def _thermostat_valve_device_info(
     uuid: str,
     data: dict[str, Any],
@@ -516,6 +671,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     # No SIGNAL_STRENGTH device class: HA only accepts dB/dBm for
                     # it, and /devices/list reports link quality as a percentage.
                     native_unit_of_measurement="%",
+                    icon="mdi:signal",
                     entity_category=EntityCategory.DIAGNOSTIC,
                     value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "signal"),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
@@ -524,8 +680,9 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                 BoschPoinTTAPISensorEntityDescription(
                     key=f"/devices/list/thermostat_valve/{valve_id}/battery",
                     translation_key="thermostat_valve_battery",
+                    icon="mdi:battery",
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "battery"),
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_battery(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 ),
@@ -533,7 +690,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     key=f"/devices/list/thermostat_valve/{valve_id}/zone",
                     translation_key="thermostat_valve_zone",
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "zone"),
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_zone_name(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 ),
@@ -673,6 +830,142 @@ def _gas_total_hourly(data: dict[str, Any]) -> float | None:
     return round((e.get("gCh") or 0.0) + (e.get("gHw") or 0.0), 2)
 
 
+def _appliance_display_code(data: dict[str, Any]) -> str | None:
+    raw = _val(data, "/system/appliance/displayCode")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
+
+
+def _appliance_cause_code(data: dict[str, Any]) -> int | None:
+    raw = _val(data, "/system/appliance/causeCode")
+    if raw is None:
+        return None
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def _appliance_error_flag(data: dict[str, Any], path: str) -> bool | None:
+    """Parse appliance error flags that may be bool, numeric or string values."""
+    raw = _val(data, path)
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        return raw != 0
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"true", "1", "on", "yes"}:
+            return True
+        if value in {"false", "0", "off", "no"}:
+            return False
+    return None
+
+
+def _appliance_optional_code(data: dict[str, Any], path: str) -> int | None:
+    """Parse optional diagnostic codes (service/blocking/locking) when numeric."""
+    raw = _val(data, path)
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return int(raw)
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"", "true", "false", "on", "off", "yes", "no"}:
+            return None
+        try:
+            return int(float(value))
+        except ValueError:
+            return None
+    return None
+
+
+def _appliance_status_state(data: dict[str, Any]) -> str | None:
+    display = _appliance_display_code(data)
+    cause = _appliance_cause_code(data)
+    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
+    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
+    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
+    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+
+    # Single mapping table, context-aware lookup order:
+    # locking pair -> blocking pair -> service pair.
+    if locking is True:
+        if display is not None and locking_code is not None:
+            status = _APPLIANCE_STATUS_BY_CODE.get((display, locking_code))
+            if status is not None:
+                return status
+        return "locking_fault_code_active"
+
+    if blocking is True:
+        if display is not None and blocking_code is not None:
+            status = _APPLIANCE_STATUS_BY_CODE.get((display, blocking_code))
+            if status is not None:
+                return status
+        return "blocking_fault_code_active"
+
+    if display is not None and cause is not None:
+        status = _APPLIANCE_STATUS_BY_CODE.get((display, cause))
+        if status is not None:
+            return status
+
+    if display is None and cause is None and blocking is None and locking is None:
+        return None
+
+    if cause is not None:
+        status = _APPLIANCE_STATUS_BY_CAUSE.get(cause)
+        if status is not None:
+            return status
+        if 242 <= cause <= 259:
+            return "internal_error_service_required"
+    return "unknown"
+
+
+def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
+    display = _appliance_display_code(data)
+    cause = _appliance_cause_code(data)
+    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
+    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
+    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
+    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    if display is None and cause is None and blocking is None and locking is None:
+        return None
+    attrs: dict[str, Any] = {
+        "display_code": display,
+        "cause_code": cause,
+    }
+    if blocking is not None:
+        attrs["blocking_error"] = blocking
+    if blocking_code is not None:
+        attrs["blocking_code"] = blocking_code
+    if locking is not None:
+        attrs["locking_error"] = locking
+    if locking_code is not None:
+        attrs["locking_code"] = locking_code
+    return attrs
+
+
+def _appliance_status_available(data: dict[str, Any]) -> bool:
+    return _val(data, "/system/appliance/displayCode") is not None or _val(
+        data, "/system/appliance/causeCode"
+    ) is not None or _val(data, "/system/appliance/blockingError") is not None or _val(
+        data, "/system/appliance/lockingError"
+    ) is not None
+
+
+def _heat_demand_type_state(data: dict[str, Any]) -> str | None:
+    """Map /heatSources/flameIndication to a stable demand-type state key."""
+    raw = _val(data, "/heatSources/flameIndication")
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip().lower()
+    if value in {"off", "ch", "dhw"}:
+        return value
+    return None
+
+
 # Zone /status -> HVAC action. Unknown values map to None (unknown), never to
 # COOLING — these appliances are heating-only.
 _ZONE_STATUS_ACTIONS = {
@@ -690,7 +983,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     _attr_hvac_modes = [HVACMode.AUTO, HVACMode.HEAT, HVACMode.OFF]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
-        | ClimateEntityFeature.PRESET_MODE
         | ClimateEntityFeature.TURN_OFF
         | ClimateEntityFeature.TURN_ON
     )
@@ -714,10 +1006,8 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             language=self._language,
             data=coordinator.data or {},
         )
-        self._attr_preset_modes = ["program", "manual"]
         self._current: float | None = None
         self._target: float | None = None
-        self._preset_mode: str | None = None
         self._hvac_mode = HVACMode.HEAT
         self._hvac_action: HVACAction | None = None
 
@@ -738,7 +1028,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         user_mode = _val(data, f"/zones/{self._zone_id}/userMode")
         manual_temp = _val(data, f"/zones/{self._zone_id}/manualTemperatureHeating")
         zone_status = _val(data, f"/zones/{self._zone_id}/status")
-        self._preset_mode = "program" if user_mode == "clock" else "manual"
         # OFF = manual mode with temp at or below minimum
         try:
             is_off = (
@@ -776,10 +1065,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
     @property
     def hvac_action(self) -> HVACAction | None:
         return self._hvac_action
-
-    @property
-    def preset_mode(self) -> str | None:
-        return self._preset_mode
 
     @property
     def min_temp(self) -> float:
@@ -826,7 +1111,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/manualTemperatureHeating", self.min_temp)
                 self._hvac_mode = hvac_mode
-                self._preset_mode = "manual"
                 self.async_write_ha_state()
                 await self.coordinator.async_request_refresh()
             except ConfigEntryAuthFailed:
@@ -841,15 +1125,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         if hvac_mode == HVACMode.AUTO:
             path = f"/zones/{self._zone_id}/userMode"
             value = "clock"
-            next_preset = "program"
         else:
             path = f"/zones/{self._zone_id}/userMode"
             value = "manual"
-            next_preset = "manual"
         try:
             await self.coordinator.client.put(path, value)
             self._hvac_mode = hvac_mode
-            self._preset_mode = next_preset
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
@@ -858,26 +1139,6 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError(
                 f"POINTTAPI set hvac_mode failed: {err}"
-            ) from err
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set zone scheduling mode directly: program (clock) or manual."""
-        if preset_mode not in {"program", "manual"}:
-            raise HomeAssistantError(f"Unsupported preset mode: {preset_mode}")
-        value = "clock" if preset_mode == "program" else "manual"
-        try:
-            await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", value)
-            self._preset_mode = preset_mode
-            if self._hvac_mode != HVACMode.OFF:
-                self._hvac_mode = HVACMode.AUTO if preset_mode == "program" else HVACMode.HEAT
-            self.async_write_ha_state()
-            await self.coordinator.async_request_refresh()
-        except ConfigEntryAuthFailed:
-            raise
-        except Exception as err:
-            await self.coordinator.async_request_refresh()
-            raise HomeAssistantError(
-                f"POINTTAPI set preset_mode failed: {err}"
             ) from err
 
 
@@ -1058,6 +1319,119 @@ def _zone_assigned_program_attributes(
     }
 
 
+def _program_names_by_index(data: dict[str, Any]) -> dict[int, str]:
+    """Return available program names keyed by numeric program index.
+
+    Program metadata can come either from `/programs/list` or from expanded
+    `/programs/pgN/name` resources. Names are base64-decoded when needed.
+    """
+    program_names: dict[int, str] = {}
+
+    listing = _val(data, "/programs/list")
+    if isinstance(listing, list):
+        for item in listing:
+            if not isinstance(item, dict):
+                continue
+            raw_id = item.get("id")
+            if not isinstance(raw_id, str) or not raw_id.startswith("pg"):
+                continue
+            try:
+                index = int(raw_id[2:])
+            except ValueError:
+                continue
+
+            decoded = _decode_zone_name(item.get("name"))
+            if isinstance(decoded, str) and decoded.strip():
+                program_names[index] = decoded
+            else:
+                program_names.setdefault(index, raw_id)
+
+    for path in data:
+        if not (
+            isinstance(path, str)
+            and path.startswith("/programs/pg")
+            and path.endswith("/name")
+        ):
+            continue
+        raw = path[len("/programs/pg") : -len("/name")]
+        try:
+            index = int(raw)
+        except ValueError:
+            continue
+
+        decoded = _decode_zone_name(_val(data, path))
+        if isinstance(decoded, str) and decoded.strip():
+            program_names[index] = decoded
+        else:
+            program_names.setdefault(index, f"pg{index}")
+
+    return program_names
+
+
+def _zone_program_option_map(data: dict[str, Any]) -> dict[str, int]:
+    """Map display labels to clockProgram numeric values.
+
+    Duplicate labels are disambiguated by appending the program id.
+    """
+    names_by_index = _program_names_by_index(data)
+    if not names_by_index:
+        return {}
+
+    option_map: dict[str, int] = {}
+    used_labels: set[str] = set()
+    for index in sorted(names_by_index):
+        base = names_by_index.get(index, f"pg{index}")
+        label = base.strip() if isinstance(base, str) else f"pg{index}"
+        if not label:
+            label = f"pg{index}"
+        if label in used_labels:
+            label = f"{label} (pg{index})"
+        used_labels.add(label)
+        option_map[label] = index
+    return option_map
+
+
+def _zone_program_current_option(data: dict[str, Any], zone_id: str) -> str | None:
+    """Resolve the currently assigned program display label for one zone."""
+    raw = _val(data, f"/zones/{zone_id}/clockProgram")
+    try:
+        current_index = int(float(raw))
+    except (TypeError, ValueError):
+        return None
+
+    for label, index in _zone_program_option_map(data).items():
+        if index == current_index:
+            return label
+    return None
+
+
+def _zone_program_write_value(option: str, data: dict[str, Any]) -> int:
+    """Map a selected display label to the API clockProgram value."""
+    option_map = _zone_program_option_map(data)
+    if option not in option_map:
+        raise HomeAssistantError(f"Unsupported program option: {option}")
+    return option_map[option]
+
+
+def _pointtapi_zone_program_select_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISelectEntityDescription", ...]:
+    """Return one program select per discovered zone."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISelectEntityDescription(
+            key=f"/zones/{zone_id}/clockProgram",
+            translation_key="assigned_program_select",
+            options_fn=lambda d: tuple(_zone_program_option_map(d).keys()),
+            current_option_fn=lambda d, zid=zone_id: _zone_program_current_option(d, zid),
+            option_to_value_fn=lambda option, d: _zone_program_write_value(option, d),
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
 def _pointtapi_zone_assigned_program_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -1077,6 +1451,24 @@ def _pointtapi_zone_assigned_program_sensor_descriptions(
     )
 
 
+def _pointtapi_zone_optimum_start_state_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return one raw optimum-start-state sensor per zone when advertised."""
+    if not data:
+        return ()
+
+    zone_ids = _zone_ids_with_reference(data, "optimumStartState")
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/optimumStartState",
+            translation_key="optimum_start_state",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        )
+        for zone_id in zone_ids
+    )
+
+
 def _pointtapi_electricity_average_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -1084,6 +1476,15 @@ def _pointtapi_electricity_average_sensor_descriptions(
 
     Exposes /energy/electricity/dayAverage and /energy/electricity/monthAverage
     only when the appliance reports those resources as available.
+
+    Deliberately carries no device_class/state_class: the paths are named
+    "average", and an average that falls as well as rises is not a TOTAL. Given
+    state_class=TOTAL plus last_reset, HA reads every decrease as a meter reset
+    and the sensor becomes selectable as an Energy Dashboard source — wrong
+    statistics that are painful to unwind. We still expose the numeric values
+    with a kWh unit for user visibility, but keep them as plain informational
+    sensors. Promote these only once someone has watched the value across a
+    full day on real hardware.
     """
     if not data:
         return ()
@@ -1100,6 +1501,7 @@ def _pointtapi_electricity_average_sensor_descriptions(
                 BoschPoinTTAPISensorEntityDescription(
                     key=path,
                     translation_key=translation_key,
+                    native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
                 )
             )
     return tuple(descriptions)
@@ -1300,6 +1702,15 @@ def _pointtapi_sensor_descriptions(
             key="/system/appliance/causeCode",
             translation_key="cause_code",
             entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=_appliance_cause_code,
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/system/appliance/status",
+            translation_key="appliance_status",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=_appliance_status_state,
+            attributes_fn=_appliance_status_attributes,
+            available_fn=_appliance_status_available,
         ),
         # ── Firmware & circuit info (1c) ──────────────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
@@ -1330,6 +1741,12 @@ def _pointtapi_sensor_descriptions(
             key="/heatSources/actualModulation",
             translation_key="actual_modulation",
             native_unit_of_measurement="%",
+            icon="mdi:signal-cellular-2",
+        ),
+        BoschPoinTTAPISensorEntityDescription(
+            key="/heatSources/flameIndication",
+            translation_key="heat_demand_type",
+            value_fn=_heat_demand_type_state,
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/heatSources/returnTemperature",
@@ -1376,6 +1793,7 @@ def _pointtapi_sensor_descriptions(
             key="/heatSources/numberOfStarts",
             translation_key="boiler_ignition_starts",
             state_class=SensorStateClass.TOTAL_INCREASING,
+            icon="mdi:reload",
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         # ── Firmware update diagnostic timestamps (v0.32.0) ──────────────────
@@ -1410,6 +1828,15 @@ def _pointtapi_sensor_descriptions(
         ),
     ]
 
+    if isinstance(data.get("/gateway/zigbee/versionFirmware"), dict):
+        descriptions.append(
+            BoschPoinTTAPISensorEntityDescription(
+                key="/gateway/zigbee/versionFirmware",
+                translation_key="zigbee_firmware_version",
+                entity_category=EntityCategory.DIAGNOSTIC,
+            )
+        )
+
     if _gateway_ui_has_eco_reference(data):
         descriptions.append(
             BoschPoinTTAPISensorEntityDescription(
@@ -1417,11 +1844,18 @@ def _pointtapi_sensor_descriptions(
                 translation_key="energy_efficiency",
                 native_unit_of_measurement="%",
                 state_class=SensorStateClass.MEASUREMENT,
+                device_info_fn=lambda u, d, lang=None: _resolve_device_info(
+                    u,
+                    kind="energy_efficiency",
+                    language=lang,
+                    data=d,
+                ),
             )
         )
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_assigned_program_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_zone_optimum_start_state_sensor_descriptions(data))
     descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))
     descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
     return tuple(descriptions)
@@ -1510,105 +1944,131 @@ class BoschPoinTTAPISensorEntity(
 # ── Number entities (boost settings) ─────────────────────────────────────────
 
 
-POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/boostTemperature",
-        translation_key="boost_temperature",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=5.0,
-        native_max_value=30.0,
-        native_step=0.5,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/boostDuration",
-        translation_key="boost_duration",
-        native_unit_of_measurement=UnitOfTime.HOURS,
-        native_min_value=0.5,
-        native_max_value=24.0,
-        native_step=0.5,
-    ),
-    # ── Heating circuit configuration (2b) ───────────────────────────────────
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/maxSupply",
-        translation_key="max_supply_temperature",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=25.0,
-        native_max_value=90.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/minSupply",
-        translation_key="min_supply_temperature",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=10.0,
-        native_max_value=90.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/nightThreshold",
-        translation_key="night_setback_threshold",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=5.0,
-        native_max_value=30.0,
-        native_step=0.5,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/suWiThreshold",
-        translation_key="summer_winter_threshold",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=10.0,
-        native_max_value=30.0,
-        native_step=0.5,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/heatingCircuits/hc1/roomInfluence",
-        translation_key="room_influence",
-        native_min_value=0.0,
-        native_max_value=3.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/system/sensors/temperatures/offset",
-        translation_key="temperature_calibration_offset",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=-5.0,
-        native_max_value=5.0,
-        native_step=0.5,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    NumberEntityDescription(
-        key="/energy/gas/annualGoal",
-        translation_key="annual_gas_goal",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        native_min_value=0.0,
-        native_max_value=1000000.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-    # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
-    NumberEntityDescription(
-        key="/dhwCircuits/dhw1/extraDhwDuration",
-        translation_key="extra_hot_water_duration",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        native_min_value=15.0,
-        native_max_value=2880.0,
-        native_step=15.0,
-    ),
-    NumberEntityDescription(
-        key="/dhwCircuits/dhw1/thermalDisinfect/time",
-        translation_key="thermal_disinfect_time",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        native_min_value=0.0,
-        native_max_value=1439.0,
-        native_step=1.0,
-        entity_category=EntityCategory.CONFIG,
-    ),
-)
+def _pointtapi_number_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[NumberEntityDescription, ...]:
+    """Return POINTTAPI number descriptions, plus optional yearly energy goals."""
+    descriptions: list[NumberEntityDescription] = [
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/boostTemperature",
+            translation_key="boost_temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=5.0,
+            native_max_value=30.0,
+            native_step=0.5,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/boostDuration",
+            translation_key="boost_duration",
+            native_unit_of_measurement=UnitOfTime.HOURS,
+            native_min_value=0.5,
+            native_max_value=24.0,
+            native_step=0.5,
+        ),
+        # ── Heating circuit configuration (2b) ───────────────────────────────────
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/maxSupply",
+            translation_key="max_supply_temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=25.0,
+            native_max_value=90.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/minSupply",
+            translation_key="min_supply_temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=10.0,
+            native_max_value=90.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/nightThreshold",
+            translation_key="night_setback_threshold",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=5.0,
+            native_max_value=30.0,
+            native_step=0.5,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/suWiThreshold",
+            translation_key="summer_winter_threshold",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=10.0,
+            native_max_value=30.0,
+            native_step=0.5,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/heatingCircuits/hc1/roomInfluence",
+            translation_key="room_influence",
+            native_min_value=0.0,
+            native_max_value=3.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        NumberEntityDescription(
+            key="/system/sensors/temperatures/offset",
+            translation_key="temperature_calibration_offset",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            native_min_value=-5.0,
+            native_max_value=5.0,
+            native_step=0.5,
+            entity_category=EntityCategory.CONFIG,
+        ),
+        # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
+        NumberEntityDescription(
+            key="/dhwCircuits/dhw1/extraDhwDuration",
+            translation_key="extra_hot_water_duration",
+            native_unit_of_measurement=UnitOfTime.MINUTES,
+            native_min_value=15.0,
+            native_max_value=2880.0,
+            native_step=15.0,
+        ),
+        NumberEntityDescription(
+            key="/dhwCircuits/dhw1/thermalDisinfect/time",
+            translation_key="thermal_disinfect_time",
+            native_unit_of_measurement=UnitOfTime.MINUTES,
+            native_min_value=0.0,
+            native_max_value=1439.0,
+            native_step=1.0,
+            entity_category=EntityCategory.CONFIG,
+        ),
+    ]
+
+    if isinstance((data or {}).get("/energy/gas/annualGoal"), dict):
+        descriptions.append(
+            NumberEntityDescription(
+                key="/energy/gas/annualGoal",
+                translation_key="annual_gas_goal",
+                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                native_min_value=0.0,
+                native_max_value=1000000.0,
+                native_step=1.0,
+                entity_category=EntityCategory.CONFIG,
+            )
+        )
+
+    if isinstance((data or {}).get("/energy/electricity/annualGoal"), dict):
+        descriptions.append(
+            NumberEntityDescription(
+                key="/energy/electricity/annualGoal",
+                translation_key="annual_electricity_goal",
+                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                native_min_value=0.0,
+                native_max_value=1000000.0,
+                native_step=1.0,
+                entity_category=EntityCategory.CONFIG,
+            )
+        )
+
+    return tuple(descriptions)
+
+
+POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = _pointtapi_number_descriptions()
 
 
 class BoschPoinTTAPINumberEntity(
@@ -2073,6 +2533,8 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
     BoschPoinTTAPISwitchEntityDescription(
         key="/dhwCircuits/dhw1/thermalDisinfect/state",
         translation_key="thermal_disinfect",
+        on_value="on",
+        off_value="off",
         device_id_suffix="dhw1",
         device_name_override="Water heater",
     ),
@@ -2178,6 +2640,9 @@ class BoschPoinTTAPISelectEntityDescription(SelectEntityDescription):
     """Select description for POINTTAPI option paths."""
 
     options: tuple[str, ...] = ()
+    options_fn: Callable[[dict[str, Any]], tuple[str, ...]] | None = None
+    current_option_fn: Callable[[dict[str, Any]], str | None] | None = None
+    option_to_value_fn: Callable[[str, dict[str, Any]], Any] | None = None
 
 
 def _select_state_key(value: str) -> str:
@@ -2227,6 +2692,14 @@ POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...]
 )
 
 
+def _pointtapi_select_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISelectEntityDescription, ...]:
+    """Return all POINTTAPI select descriptions, including dynamic per-zone ones."""
+    data = data or {}
+    return POINTTAPI_SELECT_DESCRIPTIONS + _pointtapi_zone_program_select_descriptions(data)
+
+
 class BoschPoinTTAPISelectEntity(
     CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SelectEntity
 ):
@@ -2250,7 +2723,7 @@ class BoschPoinTTAPISelectEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
-        self._attr_options = [_select_state_key(option) for option in description.options]
+        self._attr_options = []
         self._attr_device_info = _resolve_device_info(
             uuid,
             description.key,
@@ -2258,17 +2731,34 @@ class BoschPoinTTAPISelectEntity(
             data=coordinator.data or {},
         )
         self._current_option: str | None = None
+        self._supported_option_keys: set[str] = set()
+        self._refresh_supported_options(coordinator.data or {})
+
+    def _refresh_supported_options(self, data: dict[str, Any]) -> None:
+        """Refresh options for static or dynamic select descriptions."""
+        if self.entity_description.options_fn is not None:
+            options = [opt for opt in self.entity_description.options_fn(data) if isinstance(opt, str)]
+            self._attr_options = options
+            self._supported_option_keys = set(options)
+            return
+
+        self._attr_options = [_select_state_key(option) for option in self.entity_description.options]
         self._supported_option_keys = {
-            _select_state_key(option) for option in description.options
+            _select_state_key(option) for option in self.entity_description.options
         }
 
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        raw_option = _val(data, self._path)
-        self._current_option = _normalize_select_option(
-            raw_option, self._supported_option_keys
-        )
+        self._refresh_supported_options(data)
+        if self.entity_description.current_option_fn is not None:
+            option = self.entity_description.current_option_fn(data)
+            self._current_option = option if option in self._supported_option_keys else None
+        else:
+            raw_option = _val(data, self._path)
+            self._current_option = _normalize_select_option(
+                raw_option, self._supported_option_keys
+            )
         self.async_write_ha_state()
 
     @property
@@ -2288,16 +2778,23 @@ class BoschPoinTTAPISelectEntity(
         if option not in self._supported_option_keys:
             raise HomeAssistantError(f"Unsupported select option: {option}")
         try:
-            api_option = next(
-                (
-                    raw_option
-                    for raw_option in self.entity_description.options
-                    if _select_state_key(raw_option) == option
-                ),
-                option,
-            )
+            data = self.coordinator.data or {}
+            if self.entity_description.option_to_value_fn is not None:
+                api_option = self.entity_description.option_to_value_fn(option, data)
+            else:
+                api_option = next(
+                    (
+                        raw_option
+                        for raw_option in self.entity_description.options
+                        if _select_state_key(raw_option) == option
+                    ),
+                    option,
+                )
             await self.coordinator.client.put(self._path, api_option)
-            self._current_option = _select_state_key(option)
+            if self.entity_description.current_option_fn is not None:
+                self._current_option = option
+            else:
+                self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
         except ConfigEntryAuthFailed:
@@ -2386,6 +2883,20 @@ def _resolve_on_off(raw: Any) -> bool | None:
         if v in ("off", "false"):
             return False
     return None
+
+
+def _burner_flame_state(data: dict[str, Any]) -> bool | None:
+    """Resolve burner flame state from current burner modulation.
+
+    POINTTAPI flameIndication can return multiple string dialects (off/ch/dhw),
+    which is not stable enough for a strict on/off parser. actualModulation is
+    a numeric signal and better reflects whether the burner is actively firing.
+    """
+    raw = _val(data, "/heatSources/actualModulation")
+    try:
+        return float(raw) > 0.0
+    except (TypeError, ValueError):
+        return None
 
 
 # ── Boost session: in-memory tracking of HA-triggered boost (v0.33.0) ──────
@@ -2508,6 +3019,7 @@ POINTTAPI_BINARY_SENSOR_DESCRIPTIONS: tuple[BoschPoinTTAPIBinarySensorEntityDesc
         key="/heatSources/flameIndication",
         translation_key="burner_flame",
         device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_burner_flame_state,
     ),
     BoschPoinTTAPIBinarySensorEntityDescription(
         key="/heatSources/refillNeeded",
