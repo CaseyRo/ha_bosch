@@ -331,7 +331,7 @@
     },
     "switch": {
       "boost": {
-        "name": "Boost"
+        "name": "Heating boost"
       },
       "auto_firmware_update": {
         "name": "Auto firmware update"

@@ -310,7 +310,7 @@
     },
     "switch": {
       "boost": {
-        "name": "Boost"
+        "name": "Boost de chauffage"
       },
       "auto_firmware_update": {
         "name": "Mise à jour automatique du firmware"
