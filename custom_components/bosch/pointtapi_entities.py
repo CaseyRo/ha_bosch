@@ -1322,29 +1322,13 @@ def _zone_assigned_program_attributes(
 def _program_names_by_index(data: dict[str, Any]) -> dict[int, str]:
     """Return available program names keyed by numeric program index.
 
-    Program metadata can come either from `/programs/list` or from expanded
-    `/programs/pgN/name` resources. Names are base64-decoded when needed.
+    Built from the expanded `/programs/pgN/name` resources the coordinator
+    walks; names are base64-decoded when needed. There is no `/programs/list`
+    to read — unlike `/devices`, the `/programs` root advertises its programs
+    as `pgN` references, and `_program_roots` consumes that listing to pick
+    walk roots without storing it.
     """
     program_names: dict[int, str] = {}
-
-    listing = _val(data, "/programs/list")
-    if isinstance(listing, list):
-        for item in listing:
-            if not isinstance(item, dict):
-                continue
-            raw_id = item.get("id")
-            if not isinstance(raw_id, str) or not raw_id.startswith("pg"):
-                continue
-            try:
-                index = int(raw_id[2:])
-            except ValueError:
-                continue
-
-            decoded = _decode_zone_name(item.get("name"))
-            if isinstance(decoded, str) and decoded.strip():
-                program_names[index] = decoded
-            else:
-                program_names.setdefault(index, raw_id)
 
     for path in data:
         if not (
@@ -2723,7 +2707,6 @@ class BoschPoinTTAPISelectEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_select_{slug}"
-        self._attr_options = []
         self._attr_device_info = _resolve_device_info(
             uuid,
             description.key,
