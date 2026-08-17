@@ -4,6 +4,57 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+Collected for 1.4.0 (pre-released as 1.4.0-beta.1). None of it has been
+confirmed on real hardware yet — the appliance status table in particular is
+transcribed from manufacturer documentation, not observed.
+
+### Added
+- **Appliance status sensor** — `/system/appliance/displayCode` and `causeCode`
+  resolved against a Bosch/Buderus display+cause table to a readable state
+  (`heating_operation`, `no_flame_after_ignition`, …), with the raw codes kept
+  on the entity attributes. Locking and blocking faults take precedence over
+  the normal status. Contributed by @jfhautenauven (#18).
+- **Per-zone assigned-program selects** — the zone's `clockProgram` is now
+  writable, offering the decoded schedule names as options. Contributed by
+  @jfhautenauven (#18).
+- **Per-zone optimum start state sensor** — created only for zones that
+  advertise `optimumStartState`. Contributed by @jfhautenauven (#18).
+- **Heat demand type sensor** — `/heatSources/flameIndication` exposed as
+  off / central heating / hot water. Contributed by @jfhautenauven (#18).
+- **Conditional entity creation** — zigbee firmware version, electricity annual
+  goal and energy efficiency are created only when the appliance advertises
+  them, and the annual gas goal is now conditional too, so gateways without
+  those resources stop showing permanently-unavailable entities. Contributed by
+  @jfhautenauven (#18).
+- **Electricity day and month averages report kWh** — as plain informational
+  sensors. They deliberately carry no `device_class`/`state_class`: an average
+  falls as well as rises, and `TOTAL` would make HA read every dip as a meter
+  reset. Promote them once someone has watched the value across a full day on
+  real hardware (#18).
+
+### Changed
+- **Burner flame binary sensor reads `actualModulation`** instead of parsing
+  `flameIndication`, whose string dialect (`off`/`ch`/`dhw`) an on/off parser
+  cannot read reliably. Contributed by @jfhautenauven (#18).
+- **Thermostat valve presentation** — battery `ok` is normalised to `OK`, and
+  the assigned zone shows the room name rather than the zone number.
+  Contributed by @jfhautenauven (#18).
+- **Zone climate preset control removed** — `AUTO` and `HEAT` already write the
+  same `userMode`, so the preset was a second control for one setting (#18).
+- **Energy efficiency sensor moved to the Energy performance device** (#18).
+
+### Fixed
+- **Thermal disinfect switch reflects its real state** — the path uses `on`/`off`
+  rather than `true`/`false`, so the switch previously read as off while
+  running. Contributed by @jfhautenauven (#18).
+- **An ambiguous cause code no longer raises a fault** — the cause-only fallback
+  is built only from causes whose display-code variants agree. Cause 273 is a
+  24-hour safety shutdown under display `3F` but normal flame monitoring under
+  `0U`, and 280 is a restart-time fault under `7L` but a normal fan start under
+  `0U`; a boiler that was simply lighting up would have announced a safety
+  shutdown. Ambiguous causes read `unknown` and keep the raw codes in the
+  attributes (#18).
+
 ## [1.3.1] — 2026-08-17 — Quiet teardown on cloud entries
 
 ### Fixed
