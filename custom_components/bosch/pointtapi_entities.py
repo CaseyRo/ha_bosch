@@ -848,22 +848,6 @@ def _appliance_cause_code(data: dict[str, Any]) -> int | None:
         return None
 
 
-def _appliance_error_flag(data: dict[str, Any], path: str) -> bool | None:
-    """Parse appliance error flags that may be bool, numeric or string values."""
-    raw = _val(data, path)
-    if isinstance(raw, bool):
-        return raw
-    if isinstance(raw, (int, float)):
-        return raw != 0
-    if isinstance(raw, str):
-        value = raw.strip().lower()
-        if value in {"true", "1", "on", "yes"}:
-            return True
-        if value in {"false", "0", "off", "no"}:
-            return False
-    return None
-
-
 def _appliance_optional_code(data: dict[str, Any], path: str) -> int | None:
     """Parse optional diagnostic codes (service/blocking/locking) when numeric."""
     raw = _val(data, path)
@@ -882,13 +866,26 @@ def _appliance_optional_code(data: dict[str, Any], path: str) -> int | None:
     return None
 
 
-def _appliance_status_state(data: dict[str, Any]) -> str | None:
+def _appliance_codes(data: dict[str, Any]) -> tuple[
+    str | None,
+    int | None,
+    bool | None,
+    bool | None,
+    int | None,
+    int | None,
+]:
+    """Return the repeated appliance status values used by both state and attributes."""
     display = _appliance_display_code(data)
     cause = _appliance_cause_code(data)
-    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
-    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
+    blocking = _resolve_on_off(_val(data, "/system/appliance/blockingError"))
+    locking = _resolve_on_off(_val(data, "/system/appliance/lockingError"))
     blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
     locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    return display, cause, blocking, locking, blocking_code, locking_code
+
+
+def _appliance_status_state(data: dict[str, Any]) -> str | None:
+    display, cause, blocking, locking, blocking_code, locking_code = _appliance_codes(data)
 
     # Single mapping table, context-aware lookup order:
     # locking pair -> blocking pair -> service pair.
@@ -924,12 +921,7 @@ def _appliance_status_state(data: dict[str, Any]) -> str | None:
 
 
 def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
-    display = _appliance_display_code(data)
-    cause = _appliance_cause_code(data)
-    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
-    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
-    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
-    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    display, cause, blocking, locking, blocking_code, locking_code = _appliance_codes(data)
     if display is None and cause is None and blocking is None and locking is None:
         return None
     attrs: dict[str, Any] = {
@@ -948,11 +940,10 @@ def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _appliance_status_available(data: dict[str, Any]) -> bool:
-    return _val(data, "/system/appliance/displayCode") is not None or _val(
-        data, "/system/appliance/causeCode"
-    ) is not None or _val(data, "/system/appliance/blockingError") is not None or _val(
-        data, "/system/appliance/lockingError"
-    ) is not None
+    return any(
+        _val(data, f"/system/appliance/{key}") is not None
+        for key in ("displayCode", "causeCode", "blockingError", "lockingError")
+    )
 
 
 def _heat_demand_type_state(data: dict[str, Any]) -> str | None:
@@ -2859,19 +2850,25 @@ def _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(
 def _resolve_on_off(raw: Any) -> bool | None:
     """Map an API value to True/False/None.
 
-    Accepts either dialect Bosch returns:
-    - "on"/"off"   — used by /dhwCircuits/dhw1/state, /heatSources/flameIndication
-    - "true"/"false" — used by /heatSources/refillNeeded
-    Comparison is case-insensitive after trim. Any other value returns None
-    so HA renders the entity as "unknown".
+    Accepts the boolean spellings Bosch uses across the API surface:
+    - bool values pass through
+    - numeric 1/0 values map to true/false
+    - "on"/"off" and "true"/"false"
+    - "yes"/"no" and "1"/"0" used by appliance fault flags
+    Comparison is case-insensitive after trim. Numeric status codes such as
+    358 are still active flag values and should resolve to True because the
+    field is reporting an error condition, even though they are not boolean
+    values for the pair-based status lookup.
     """
     if isinstance(raw, bool):
         return raw
+    if isinstance(raw, (int, float)):
+        return raw != 0
     if isinstance(raw, str):
         v = raw.strip().lower()
-        if v in ("on", "true"):
+        if v in ("on", "true", "yes", "1"):
             return True
-        if v in ("off", "false"):
+        if v in ("off", "false", "no", "0"):
             return False
     return None
 

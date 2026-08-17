@@ -26,16 +26,25 @@ from custom_components.bosch.pointtapi_entities import (
         ("TRUE", True),
         ("False", False),
         (" true ", True),
+        # Bosch appliance /status flag spelling
+        ("yes", True),
+        ("no", False),
+        ("YES", True),
+        ("No", False),
+        (" 1 ", True),
+        (" 0 ", False),
         # Bool passthrough
         (True, True),
         (False, False),
+        # Numeric 0/1 are valid boolean flags, not unknown values.
+        (0, False),
+        (1, True),
+        # Non-zero numeric values still mean the fault flag is active.
+        (358, True),
+        ("358", None),
         # Unknown/malformed → None (HA shows "unknown")
-        ("yes", None),
-        ("no", None),
         ("", None),
         (None, None),
-        (0, None),
-        (1, None),
     ],
 )
 def test_resolve_on_off(raw, expected) -> None:
