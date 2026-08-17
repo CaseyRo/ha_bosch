@@ -159,7 +159,10 @@
         "name": "Programma assegnato"
       },
       "optimum_start_state": {
-        "name": "Stato avvio ottimale"
+        "name": "Stato avvio ottimale",
+        "state": {
+          "idle": "Inattivo"
+        }
       },
       "electricity_day_average": {
         "name": "Media giornaliera elettricità"

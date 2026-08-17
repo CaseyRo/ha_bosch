@@ -230,7 +230,10 @@
         "name": "Assigned program"
       },
       "optimum_start_state": {
-        "name": "Optimum start state"
+        "name": "Optimum start state",
+        "state": {
+          "idle": "Idle"
+        }
       },
       "electricity_day_average": {
         "name": "Electricity day average"

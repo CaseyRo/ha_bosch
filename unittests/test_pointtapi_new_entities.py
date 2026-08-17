@@ -773,6 +773,29 @@ class TestComfortControlDescriptions:
 
         assert ent.native_value == "idle"
 
+    def test_zone_optimum_start_state_has_localized_idle_translation(self):
+        assert STRINGS["entity"]["sensor"]["optimum_start_state"]["state"]["idle"] == "Idle"
+        assert json.loads((ROOT / "custom_components" / "bosch" / "translations" / "fr.json").read_text(encoding="utf-8"))["entity"]["sensor"]["optimum_start_state"]["state"]["idle"] == "Au repos"
+
+    def test_boiler_ignition_starts_rounds_float_like_55872_0_to_int(self):
+        data = {
+            "/heatSources/numberOfStarts": {"value": 55872.0},
+        }
+
+        coord = _mock_coordinator(data)
+        desc = next(
+            d
+            for d in _pointtapi_sensor_descriptions(data)
+            if d.key == "/heatSources/numberOfStarts"
+        )
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value == 55872
+        assert isinstance(ent.native_value, int)
+
     def test_zone_assigned_program_sensor_resolves_base64_program_name(self):
         data = {
             "/zones/zn2": {"id": "/zones/zn2"},

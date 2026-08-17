@@ -645,6 +645,25 @@ def _thermostat_valve_protocol_name(data: dict[str, Any], valve_id: int) -> Any:
     return value
 
 
+def _coerce_int_like(value: Any) -> int | None:
+    """Coerce numeric API values to int without leaving float artifacts in HA."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return int(float(text))
+        except ValueError:
+            return None
+    return None
+
+
 def _thermostat_valve_device_info(
     uuid: str,
     data: dict[str, Any],
@@ -850,31 +869,21 @@ def _appliance_display_code(data: dict[str, Any]) -> str | None:
 
 
 def _appliance_cause_code(data: dict[str, Any]) -> int | None:
-    raw = _val(data, "/system/appliance/causeCode")
-    if raw is None:
-        return None
-    try:
-        return int(float(raw))
-    except (TypeError, ValueError):
-        return None
+    return _coerce_int_like(_val(data, "/system/appliance/causeCode"))
 
 
 def _appliance_optional_code(data: dict[str, Any], path: str) -> int | None:
     """Parse optional diagnostic codes (service/blocking/locking) when numeric."""
     raw = _val(data, path)
-    if raw is None or isinstance(raw, bool):
+    if raw is None:
         return None
-    if isinstance(raw, (int, float)):
-        return int(raw)
+    if isinstance(raw, bool):
+        return None
     if isinstance(raw, str):
         value = raw.strip().lower()
         if value in {"", "true", "false", "on", "off", "yes", "no"}:
             return None
-        try:
-            return int(float(value))
-        except ValueError:
-            return None
-    return None
+    return _coerce_int_like(raw)
 
 
 def _appliance_codes(data: dict[str, Any]) -> tuple[
@@ -1781,6 +1790,7 @@ def _pointtapi_sensor_descriptions(
             state_class=SensorStateClass.TOTAL_INCREASING,
             icon="mdi:reload",
             entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda d: _coerce_int_like(_val(d, "/heatSources/numberOfStarts")),
         ),
         # ── Firmware update diagnostic timestamps (v0.32.0) ──────────────────
         BoschPoinTTAPISensorEntityDescription(

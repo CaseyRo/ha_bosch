@@ -159,7 +159,10 @@
         "name": "Toegewezen programma"
       },
       "optimum_start_state": {
-        "name": "Status optimaal starten"
+        "name": "Status optimaal starten",
+        "state": {
+          "idle": "In rust"
+        }
       },
       "electricity_day_average": {
         "name": "Daggemiddelde elektriciteit"

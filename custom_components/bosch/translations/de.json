@@ -159,7 +159,10 @@
         "name": "Zugewiesenes Programm"
       },
       "optimum_start_state": {
-        "name": "Status optimaler Start"
+        "name": "Status optimaler Start",
+        "state": {
+          "idle": "Leerlauf"
+        }
       },
       "electricity_day_average": {
         "name": "Tagesdurchschnitt Strom"

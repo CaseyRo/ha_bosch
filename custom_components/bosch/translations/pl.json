@@ -159,7 +159,10 @@
         "name": "Przypisany program"
       },
       "optimum_start_state": {
-        "name": "Stan optymalnego startu"
+        "name": "Stan optymalnego startu",
+        "state": {
+          "idle": "W spoczynku"
+        }
       },
       "electricity_day_average": {
         "name": "Średnia dzienna energii elektrycznej"

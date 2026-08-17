@@ -159,7 +159,10 @@
         "name": "Priradený program"
       },
       "optimum_start_state": {
-        "name": "Stav optimálneho štartu"
+        "name": "Stav optimálneho štartu",
+        "state": {
+          "idle": "Nečinný"
+        }
       },
       "electricity_day_average": {
         "name": "Denny priemer elektriny"
