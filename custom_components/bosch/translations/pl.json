@@ -241,6 +241,9 @@
       "thermostat_valve_child_lock": {
         "name": "Blokada dziecka"
       },
+      "thermostat_valve_temperature_actual": {
+        "name": "Temperatura rzeczywista"
+      },
       "thermostat_valve_valve_position": {
         "name": "Pozycja zaworu"
       },

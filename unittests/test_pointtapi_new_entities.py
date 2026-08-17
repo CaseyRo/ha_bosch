@@ -234,6 +234,41 @@ class TestNotificationsHelpers:
         assert valve_desc.translation_key == "thermostat_valve_valve_position"
         assert valve_desc.native_unit_of_measurement == "%"
 
+    def test_thermostat_valve_temperature_actual_discovery_from_full_device_tree(self):
+        data = {
+            "/devices/device2": {
+                "id": "/devices/device2",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device2/etrv"},
+                    {"id": "/devices/device2/type"},
+                ],
+            },
+            "/devices/device2/etrv": {
+                "id": "/devices/device2/etrv",
+                "type": "refEnum",
+                "references": [{"id": "/devices/device2/etrv/temperatureActual"}],
+            },
+            "/devices/device2/etrv/temperatureActual": {
+                "id": "/devices/device2/etrv/temperatureActual",
+                "type": "floatValue",
+                "value": 19.5,
+                "unitOfMeasure": "°C",
+            },
+            "/devices/device2/type": {
+                "id": "/devices/device2/type",
+                "type": "stringValue",
+                "value": "thermostat_valve",
+            },
+        }
+
+        sensor_descs = _pointtapi_thermostat_valve_sensor_descriptions(data)
+
+        assert any(desc.key == "/devices/device2/etrv/temperatureActual" for desc in sensor_descs)
+        temp_desc = next(desc for desc in sensor_descs if desc.key == "/devices/device2/etrv/temperatureActual")
+        assert temp_desc.translation_key == "thermostat_valve_temperature_actual"
+        assert temp_desc.native_unit_of_measurement == "°C"
+
     def test_values_key_also_accepted(self):
         """Cloud route on other device types uses 'values' (homecom_alt)."""
         data = {"/notifications": {"values": [{"dcd": 200}]}}

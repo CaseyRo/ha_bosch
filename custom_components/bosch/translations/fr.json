@@ -241,6 +241,9 @@
       "thermostat_valve_child_lock": {
         "name": "Verrouillage enfant"
       },
+      "thermostat_valve_temperature_actual": {
+        "name": "Température actuelle"
+      },
       "thermostat_valve_valve_position": {
         "name": "Position de la vanne"
       },

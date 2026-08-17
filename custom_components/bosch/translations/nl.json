@@ -241,6 +241,9 @@
       "thermostat_valve_child_lock": {
         "name": "Kinderslot"
       },
+      "thermostat_valve_temperature_actual": {
+        "name": "Werkelijke temperatuur"
+      },
       "thermostat_valve_valve_position": {
         "name": "Klepstand"
       },

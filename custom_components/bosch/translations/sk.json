@@ -241,6 +241,9 @@
       "thermostat_valve_child_lock": {
         "name": "Detský zámok"
       },
+      "thermostat_valve_temperature_actual": {
+        "name": "Skutočná teplota"
+      },
       "thermostat_valve_valve_position": {
         "name": "Poloha ventilu"
       },

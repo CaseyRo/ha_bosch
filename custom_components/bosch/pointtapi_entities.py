@@ -833,29 +833,56 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=_thermostat_valve_device_path_from_data(data, valve_id, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{valve_id}/temperatureActual",
+                    translation_key="thermostat_valve_temperature_actual",
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{vid}/temperatureActual"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                ),
             )
         )
 
     for key in sorted((data or {}).keys()):
-        if not key.startswith("/devices/device") or "/etrv/valvePosition" not in key:
+        if not key.startswith("/devices/device"):
             continue
-        valve_id = _thermostat_valve_id_from_path(key)
-        if valve_id is None:
-            continue
-        descriptions.append(
-            BoschPoinTTAPISensorEntityDescription(
-                key=key,
-                translation_key="thermostat_valve_valve_position",
-                native_unit_of_measurement="%",
-                icon="mdi:valve",
-                state_class=SensorStateClass.MEASUREMENT,
-                device_class=SensorDeviceClass.POWER_FACTOR,
-                entity_category=EntityCategory.DIAGNOSTIC,
-                value_fn=lambda d, p=key: _val(d, p),
-                available_fn=lambda d, p=key: _path_available(d, p),
-                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+        if "/etrv/valvePosition" in key:
+            valve_id = _thermostat_valve_id_from_path(key)
+            if valve_id is None:
+                continue
+            descriptions.append(
+                BoschPoinTTAPISensorEntityDescription(
+                    key=key,
+                    translation_key="thermostat_valve_valve_position",
+                    native_unit_of_measurement="%",
+                    icon="mdi:valve",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    device_class=SensorDeviceClass.POWER_FACTOR,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, p=key: _val(d, p),
+                    available_fn=lambda d, p=key: _path_available(d, p),
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                )
             )
-        )
+        if "/etrv/temperatureActual" in key:
+            valve_id = _thermostat_valve_id_from_path(key)
+            if valve_id is None:
+                continue
+            descriptions.append(
+                BoschPoinTTAPISensorEntityDescription(
+                    key=key,
+                    translation_key="thermostat_valve_temperature_actual",
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=lambda d, p=key: _val(d, p),
+                    available_fn=lambda d, p=key: _path_available(d, p),
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                )
+            )
 
     return tuple(descriptions)
 

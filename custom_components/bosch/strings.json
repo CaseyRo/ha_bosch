@@ -262,6 +262,9 @@
       "thermostat_valve_child_lock": {
         "name": "Child lock"
       },
+      "thermostat_valve_temperature_actual": {
+        "name": "Actual temperature"
+      },
       "thermostat_valve_valve_position": {
         "name": "Valve position"
       },
