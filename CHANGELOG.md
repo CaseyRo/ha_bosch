@@ -4,6 +4,18 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-08-17 — Quiet teardown on cloud entries
+
+### Fixed
+- **No more hourly "Unable to remove unknown service bosch/debug_scan"** —
+  `debug_scan` only registers on the XMPP/HTTP path, but every unload removed
+  it unconditionally, so a POINTTAPI (cloud) entry asked Home Assistant to
+  remove a service it never had. Harmless, but it shouted about it in
+  @altugyurtbasi's log every reload since April. Both services are now guarded
+  on `has_service` rather than special-casing the debug one, since
+  `bosch.update` has the same exposure when setup fails before registration
+  (#7).
+
 ## [1.3.0] — 2026-08-12 — Per-valve telemetry, assigned program, schedule/manual climate
 
 Pre-released as 1.3.0-beta.1 and held back from 1.2.0 until someone could run
