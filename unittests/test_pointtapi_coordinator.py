@@ -417,6 +417,8 @@ import time
 from custom_components.bosch.pointtapi_coordinator import (
     HISTORY_HOURLY_PATH,
     HISTORY_HOURLY_REFRESH_INTERVAL,
+    PERSISTENT_CACHE_MAX_AGE,
+    SLOW_RESOURCE_REFRESH_INTERVAL,
     REDISCOVERY_INTERVAL,
     PoinTTAPIDataUpdateCoordinator,
 )
@@ -431,6 +433,10 @@ def _bare_coordinator(client):
     coord._bulk_warned_at = None
     coord._history_hourly_data = None
     coord._last_history_hourly_fetch = 0.0
+    coord._slow_bulk_paths = []
+    coord._fast_bulk_paths = []
+    coord._slow_data = {}
+    coord._last_slow_fetch = 0.0
     return coord
 
 
@@ -451,6 +457,55 @@ def _walk_client():
 
 
 class TestBulkSteadyState:
+    @pytest.mark.asyncio
+    async def test_persistent_cache_loads_only_fresh_slow_resources(self):
+        coord = _bare_coordinator(AsyncMock())
+        store = AsyncMock()
+        store.async_load.return_value = {
+            "saved_at": time.time(),
+            "data": {
+                "/gateway/versionFirmware": {"value": "1.2.3"},
+                "/zones/zn1/status": {"value": "idle"},
+            },
+        }
+        coord._persistent_store = store
+
+        snapshot = await coord.async_load_persistent_cache()
+
+        assert snapshot is not None
+        assert "/gateway/versionFirmware" in coord._slow_data
+        assert "/zones/zn1/status" not in coord._slow_data
+
+    @pytest.mark.asyncio
+    async def test_expired_persistent_cache_is_ignored(self):
+        coord = _bare_coordinator(AsyncMock())
+        store = AsyncMock()
+        store.async_load.return_value = {
+            "saved_at": time.time() - PERSISTENT_CACHE_MAX_AGE - 1,
+            "data": {"/gateway/versionFirmware": {"value": "old"}},
+        }
+        coord._persistent_store = store
+
+        assert await coord.async_load_persistent_cache() is None
+        assert coord._slow_data == {}
+
+    @pytest.mark.asyncio
+    async def test_persistent_cache_save_excludes_history(self):
+        coord = _bare_coordinator(AsyncMock())
+        store = AsyncMock()
+        coord._persistent_store = store
+
+        await coord._async_save_persistent_cache(
+            {
+                "/gateway/versionFirmware": {"value": "1.2.3"},
+                HISTORY_HOURLY_PATH: {"value": []},
+            }
+        )
+
+        saved = store.async_save.await_args.args[0]
+        assert HISTORY_HOURLY_PATH not in saved["data"]
+        assert "/gateway/versionFirmware" in saved["data"]
+
     def test_bulk_failure_logging_is_throttled(self):
         coord = _bare_coordinator(AsyncMock())
         coord._bulk_warned_at = 100.0
@@ -494,13 +549,14 @@ class TestBulkSteadyState:
         await coord._fetch()  # discovery
         client.get.reset_mock()
         client.bulk = AsyncMock(return_value={
-            p: {"id": p, "value": "bulk"} for p in coord._bulk_paths
+            p: {"id": p, "value": "bulk"} for p in coord._fast_bulk_paths
         })
 
         data = await coord._fetch()
 
-        client.bulk.assert_awaited_once_with(coord._bulk_paths)
-        assert data["/gateway"]["value"] == "bulk"
+        client.bulk.assert_awaited_once_with(coord._fast_bulk_paths)
+        assert data["/heatingCircuits/hc1"]["value"] == "bulk"
+        assert data["/gateway"]["references"]
         # Hourly history is served from the discovery cache inside its interval.
         client.get.assert_not_called()
         assert data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
@@ -512,12 +568,37 @@ class TestBulkSteadyState:
         await coord._fetch()
         client.get.reset_mock()
         coord._last_history_hourly_fetch -= HISTORY_HOURLY_REFRESH_INTERVAL
+        client.bulk = AsyncMock(
+            return_value={
+                p: {"id": p, "value": "fast"} for p in coord._fast_bulk_paths
+            }
+        )
         await coord._fetch()
 
         assert any(
             call.args[0].startswith("/energy/historyHourly")
             for call in client.get.await_args_list
         )
+
+    @pytest.mark.asyncio
+    async def test_slow_resources_join_bulk_after_slow_interval(self):
+        client = _walk_client()
+        coord = _bare_coordinator(client)
+        await coord._fetch()
+        coord._last_slow_fetch -= SLOW_RESOURCE_REFRESH_INTERVAL
+        client.bulk = AsyncMock(
+            return_value={
+                p: {"id": p, "value": "refreshed"}
+                for p in coord._fast_bulk_paths + coord._slow_bulk_paths
+            }
+        )
+
+        await coord._fetch()
+
+        client.bulk.assert_awaited_once_with(
+            coord._fast_bulk_paths + coord._slow_bulk_paths
+        )
+        assert coord._slow_data["/gateway"]["value"] == "refreshed"
 
     @pytest.mark.asyncio
     async def test_bulk_failure_falls_back_to_walk(self):
