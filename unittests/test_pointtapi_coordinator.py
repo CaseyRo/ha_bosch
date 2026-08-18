@@ -1,7 +1,7 @@
 """Tests for pointtapi_coordinator.py."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -11,9 +11,11 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from custom_components.bosch.pointtapi_coordinator import (
     POINTTAPI_COORDINATOR_ROOTS,
     _fetch_paths,
+    _fetch_history_hourly_all,
     _device_roots,
     _program_roots,
     _zone_roots,
+    BULK_WARN_INTERVAL,
 )
 
 
@@ -190,6 +192,55 @@ class TestFetchPaths:
         data = await _fetch_paths(client)
 
         assert "/energy/historyHourly" not in data
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_returns_unwalkable_first_payload(self):
+        client = AsyncMock()
+        first = {"value": {"entries": []}}
+        client.get.return_value = first
+
+        assert await _fetch_history_hourly_all(client) is first
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_stops_on_malformed_followup_page(self):
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                {"value": [{"entries": [{"e": "first"}], "next": "next"}]},
+                {"value": "malformed"},
+            ]
+        )
+
+        result = await _fetch_history_hourly_all(client)
+
+        assert result["value"][0]["entries"] == [{"e": "first"}]
+
+    @pytest.mark.asyncio
+    async def test_refenum_nested_errors_are_skipped(self):
+        async def mock_get(path):
+            if path == "/gateway":
+                return {"references": [{"id": "/gateway/mode"}]}
+            if path == "/gateway/mode":
+                return {
+                    "type": "refEnum",
+                    "references": [
+                        {"id": "/gateway/mode/good"},
+                        {"id": "/gateway/mode/bad"},
+                    ],
+                }
+            if path == "/gateway/mode/good":
+                return {"value": "ok"}
+            if path == "/gateway/mode/bad":
+                raise ValueError("optional ref failed")
+            return {"value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/gateway/mode/good" in data
+        assert "/gateway/mode/bad" not in data
 
     @pytest.mark.asyncio
     async def test_non_dict_response_skipped(self):
@@ -379,6 +430,27 @@ def _walk_client():
 
 
 class TestBulkSteadyState:
+    def test_bulk_failure_logging_is_throttled(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._bulk_warned_at = 100.0
+
+        with patch("custom_components.bosch.pointtapi_coordinator.time.monotonic", return_value=101.0):
+            coord._log_bulk_failure("temporary failure")
+
+        assert coord._bulk_warned_at == 100.0
+
+    def test_bulk_failure_logging_warns_after_interval(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._bulk_warned_at = 100.0
+
+        with patch(
+            "custom_components.bosch.pointtapi_coordinator.time.monotonic",
+            return_value=100.0 + BULK_WARN_INTERVAL + 1,
+        ):
+            coord._log_bulk_failure("temporary failure")
+
+        assert coord._bulk_warned_at == 100.0 + BULK_WARN_INTERVAL + 1
+
     @pytest.mark.asyncio
     async def test_first_fetch_runs_discovery_walk(self):
         client = _walk_client()
