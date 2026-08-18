@@ -2875,7 +2875,7 @@ class BoschPoinTTAPIGenericSwitchEntity(
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        self._is_on = _resolve_on_off(_val(data, self._path)) == True
+        self._is_on = _resolve_on_off(_val(data, self._path))
         self.async_write_ha_state()
 
     @property
