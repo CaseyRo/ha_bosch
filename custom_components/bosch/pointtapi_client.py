@@ -117,13 +117,17 @@ class PoinTTAPIClient:
         to sequential GETs. Raises ConfigEntryAuthFailed on 401/403 like get().
         """
         result: dict = {}
+        token = await self._token_callback()
         for i in range(0, len(paths), MAX_BULK_PATHS):
-            result.update(await self._bulk_single(paths[i : i + MAX_BULK_PATHS]))
+            result.update(
+                await self._bulk_single(paths[i : i + MAX_BULK_PATHS], token)
+            )
         return result
 
-    async def _bulk_single(self, paths: list[str]) -> dict:
+    async def _bulk_single(self, paths: list[str], token: str | None = None) -> dict:
         """Issue one bulk POST for up to MAX_BULK_PATHS paths."""
-        token = await self._token_callback()
+        if token is None:
+            token = await self._token_callback()
         headers = {"Authorization": f"Bearer {token}", "Content-Type": APP_JSON}
         body = json.dumps([{"gatewayId": self._device_id, "resourcePaths": list(paths)}])
         async with self._session.post(

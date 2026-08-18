@@ -243,6 +243,24 @@ class TestFetchPaths:
         assert "/gateway/mode/bad" not in data
 
     @pytest.mark.asyncio
+    async def test_duplicate_references_are_fetched_once(self):
+        async def mock_get(path):
+            if path == "/gateway":
+                return {"references": [{"id": "/gateway/shared"}]}
+            if path == "/heatingCircuits/hc1":
+                return {"references": [{"id": "/gateway/shared"}]}
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        await _fetch_paths(client)
+
+        assert [call.args[0] for call in client.get.await_args_list].count(
+            "/gateway/shared"
+        ) == 1
+
+    @pytest.mark.asyncio
     async def test_non_dict_response_skipped(self):
         async def mock_get(path):
             if path == "/gateway":
@@ -398,6 +416,7 @@ import time
 
 from custom_components.bosch.pointtapi_coordinator import (
     HISTORY_HOURLY_PATH,
+    HISTORY_HOURLY_REFRESH_INTERVAL,
     REDISCOVERY_INTERVAL,
     PoinTTAPIDataUpdateCoordinator,
 )
@@ -410,6 +429,8 @@ def _bare_coordinator(client):
     coord._bulk_paths = []
     coord._last_discovery = 0.0
     coord._bulk_warned_at = None
+    coord._history_hourly_data = None
+    coord._last_history_hourly_fetch = 0.0
     return coord
 
 
@@ -480,10 +501,23 @@ class TestBulkSteadyState:
 
         client.bulk.assert_awaited_once_with(coord._bulk_paths)
         assert data["/gateway"]["value"] == "bulk"
-        # Only the paginated resource still rides sequential GETs
-        for call in client.get.await_args_list:
-            assert call.args[0].startswith("/energy/historyHourly")
-        assert HISTORY_HOURLY_PATH in data
+        # Hourly history is served from the discovery cache inside its interval.
+        client.get.assert_not_called()
+        assert data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_refreshes_after_cache_interval(self):
+        client = _walk_client()
+        coord = _bare_coordinator(client)
+        await coord._fetch()
+        client.get.reset_mock()
+        coord._last_history_hourly_fetch -= HISTORY_HOURLY_REFRESH_INTERVAL
+        await coord._fetch()
+
+        assert any(
+            call.args[0].startswith("/energy/historyHourly")
+            for call in client.get.await_args_list
+        )
 
     @pytest.mark.asyncio
     async def test_bulk_failure_falls_back_to_walk(self):

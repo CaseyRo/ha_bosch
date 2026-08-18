@@ -50,6 +50,8 @@ REFERENCES_KEY = "references"
 ID_KEY = "id"
 
 HISTORY_HOURLY_PATH = "/energy/historyHourly"
+# Hourly history does not need to be fetched with every 60-second state poll.
+HISTORY_HOURLY_REFRESH_INTERVAL = 15 * 60
 # Re-run the discovery reference walk at most this often so resources that
 # appear later (e.g. solar enabled by an installer) get picked up.
 REDISCOVERY_INTERVAL = 24 * 3600
@@ -195,6 +197,8 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
             roots.extend(await _device_roots(client))
             continue
         roots.append(r)
+    roots = list(dict.fromkeys(roots))
+    seen_references: set[str] = set()
     for root in roots:
         if root == "/energy/historyHourly":
             try:
@@ -214,8 +218,9 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
             refs = resp.get(REFERENCES_KEY) or []
             for ref in refs:
                 ref_id = ref.get(ID_KEY) if isinstance(ref, dict) else None
-                if not ref_id:
+                if not ref_id or ref_id in seen_references:
                     continue
+                seen_references.add(ref_id)
                 try:
                     sub = await client.get(ref_id)
                     if isinstance(sub, dict):
@@ -281,6 +286,8 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._bulk_paths: list[str] = []
         self._last_discovery: float = 0.0
         self._bulk_warned_at: float | None = None
+        self._history_hourly_data: dict[str, Any] | None = None
+        self._last_history_hourly_fetch: float = 0.0
 
     @property
     def client(self) -> PoinTTAPIClient:
@@ -316,6 +323,10 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # (bulk resourcePaths carry no query strings).
             self._bulk_paths = [p for p in data if p != HISTORY_HOURLY_PATH]
             self._last_discovery = now
+            history = data.get(HISTORY_HOURLY_PATH)
+            if isinstance(history, dict):
+                self._history_hourly_data = history
+                self._last_history_hourly_fetch = now
             return data
 
         try:
@@ -336,17 +347,25 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         if HISTORY_HOURLY_PATH in POINTTAPI_COORDINATOR_ROOTS:
-            try:
-                merged = await _fetch_history_hourly_all(self._client)
-                if isinstance(merged, dict):
-                    data[HISTORY_HOURLY_PATH] = merged
-            except ConfigEntryAuthFailed:
-                _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", HISTORY_HOURLY_PATH)
-            except Exception as err:
-                _LOGGER.debug(
-                    "POINTTAPI optional path %s not available: %s",
-                    HISTORY_HOURLY_PATH, err,
-                )
+            if (
+                self._history_hourly_data is None
+                or now - self._last_history_hourly_fetch
+                >= HISTORY_HOURLY_REFRESH_INTERVAL
+            ):
+                try:
+                    merged = await _fetch_history_hourly_all(self._client)
+                    if isinstance(merged, dict):
+                        self._history_hourly_data = merged
+                        self._last_history_hourly_fetch = now
+                except ConfigEntryAuthFailed:
+                    _LOGGER.debug("POINTTAPI 401/403 on %s, keeping cached data", HISTORY_HOURLY_PATH)
+                except Exception as err:
+                    _LOGGER.debug(
+                        "POINTTAPI optional path %s not available: %s",
+                        HISTORY_HOURLY_PATH, err,
+                    )
+            if self._history_hourly_data is not None:
+                data[HISTORY_HOURLY_PATH] = self._history_hourly_data
         return data
 
     def _log_bulk_failure(self, err: Any) -> None:
