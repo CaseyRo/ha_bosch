@@ -11,6 +11,9 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from custom_components.bosch.pointtapi_coordinator import (
     POINTTAPI_COORDINATOR_ROOTS,
     _fetch_paths,
+    _device_roots,
+    _program_roots,
+    _zone_roots,
 )
 
 
@@ -18,6 +21,32 @@ from custom_components.bosch.pointtapi_coordinator import (
 
 
 class TestFetchPaths:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("root_helper, path", [
+        (_zone_roots, "/zones/zn1"),
+        (_program_roots, "/programs"),
+        (_device_roots, "/devices"),
+    ])
+    async def test_root_discovery_falls_back_for_invalid_listing(
+        self, root_helper, path
+    ):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value={"references": [{"id": None}, "bad"]})
+
+        assert await root_helper(client) == [path]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("root_helper, path", [
+        (_zone_roots, "/zones/zn1"),
+        (_program_roots, "/programs"),
+        (_device_roots, "/devices"),
+    ])
+    async def test_root_discovery_falls_back_on_error(self, root_helper, path):
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=RuntimeError("unavailable"))
+
+        assert await root_helper(client) == [path]
+
     @pytest.mark.asyncio
     async def test_fetches_root_paths(self):
         client = AsyncMock()
@@ -127,6 +156,40 @@ class TestFetchPaths:
         data = await _fetch_paths(client)
         assert "/gateway" in data
         assert "/gateway/forbidden" not in data
+
+    @pytest.mark.asyncio
+    async def test_malformed_nested_reference_is_skipped(self):
+        async def mock_get(path):
+            if path == "/gateway":
+                return {
+                    "id": "/gateway",
+                    "references": [{"id": "/gateway/broken"}],
+                }
+            if path == "/gateway/broken":
+                raise ValueError("malformed resource")
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/gateway" in data
+        assert "/gateway/broken" not in data
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_error_is_skipped(self):
+        async def mock_get(path):
+            if path == "/energy/historyHourly":
+                raise ConfigEntryAuthFailed("403")
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/energy/historyHourly" not in data
 
     @pytest.mark.asyncio
     async def test_non_dict_response_skipped(self):
