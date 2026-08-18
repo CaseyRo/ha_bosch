@@ -214,6 +214,9 @@
       "dhw_actual_temperature": {
         "name": "Teplota"
       },
+      "zone_average_temperature": {
+        "name": "Priemerná teplota"
+      },
       "boiler_ignition_starts": {
         "name": "Počet zapálení"
       },

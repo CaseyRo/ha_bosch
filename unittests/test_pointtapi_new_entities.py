@@ -32,6 +32,7 @@ from custom_components.bosch.pointtapi_entities import (
     _pointtapi_open_window_switch_descriptions,
     _pointtapi_select_descriptions,
     _pointtapi_sensor_descriptions,
+    _pointtapi_zone_actual_temperature_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
 )
 
@@ -44,6 +45,28 @@ STRINGS = json.loads((ROOT / "custom_components" / "bosch" / "strings.json").rea
 
 
 class TestNotificationsHelpers:
+    def test_zone_average_temperature_sensors_are_discovered_per_zone(self):
+        data = {
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn1/temperatureActual": {"value": 19.5},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 21.0},
+            "/zones/zn2/temperatureActual": {"value": 20.5},
+        }
+
+        descriptions = _pointtapi_zone_actual_temperature_sensor_descriptions(data)
+
+        assert [description.key for description in descriptions] == [
+            "/zones/zn1/temperatureActual",
+            "/zones/zn2/temperatureActual",
+        ]
+        assert descriptions[0].translation_key == "zone_average_temperature"
+        assert descriptions[0].native_unit_of_measurement == "°C"
+        assert descriptions[0].device_class == "temperature"
+        assert descriptions[0].state_class == "measurement"
+        assert descriptions[0].available_fn is not None
+        assert descriptions[0].available_fn(data) is True
+        assert descriptions[0].device_info_fn is None
+
     def test_empty_value_list_counts_zero(self):
         data = {"/notifications": {"id": "/notifications", "value": []}}
         assert _notifications_count(data) == 0

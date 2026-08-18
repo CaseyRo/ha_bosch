@@ -1660,6 +1660,28 @@ def _pointtapi_zone_assigned_program_sensor_descriptions(
     )
 
 
+def _pointtapi_zone_actual_temperature_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return one average-temperature sensor for every discovered heating zone."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/temperatureActual",
+            translation_key="zone_average_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+            available_fn=lambda d, zid=zone_id: (
+                f"/zones/{zid}/temperatureActual" in d
+            ),
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
 def _pointtapi_zone_optimum_start_state_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -2064,6 +2086,7 @@ def _pointtapi_sensor_descriptions(
         )
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_zone_actual_temperature_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_assigned_program_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_optimum_start_state_sensor_descriptions(data))
     descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))

@@ -214,6 +214,9 @@
       "dhw_actual_temperature": {
         "name": "Temperatura"
       },
+      "zone_average_temperature": {
+        "name": "Średnia temperatura"
+      },
       "boiler_ignition_starts": {
         "name": "Liczba zapłonów"
       },

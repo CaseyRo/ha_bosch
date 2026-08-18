@@ -214,6 +214,9 @@
       "dhw_actual_temperature": {
         "name": "Temperatura"
       },
+      "zone_average_temperature": {
+        "name": "Temperatura media"
+      },
       "boiler_ignition_starts": {
         "name": "Accensioni del bruciatore"
       },
