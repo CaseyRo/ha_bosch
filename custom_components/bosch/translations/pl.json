@@ -159,7 +159,10 @@
         "name": "Przypisany program"
       },
       "optimum_start_state": {
-        "name": "Stan optymalnego startu"
+        "name": "Stan optymalnego startu",
+        "state": {
+          "idle": "W spoczynku"
+        }
       },
       "electricity_day_average": {
         "name": "Średnia dzienna energii elektrycznej"
@@ -211,6 +214,9 @@
       "dhw_actual_temperature": {
         "name": "Temperatura"
       },
+      "zone_average_temperature": {
+        "name": "Średnia temperatura"
+      },
       "boiler_ignition_starts": {
         "name": "Liczba zapłonów"
       },
@@ -224,16 +230,25 @@
         "name": "Powiadomienia"
       },
       "thermostat_valve_signal_strength": {
-        "name": "Siła sygnału zaworu termostatycznego"
+        "name": "Siła sygnału"
       },
       "thermostat_valve_battery": {
-        "name": "Bateria zaworu termostatycznego"
+        "name": "Bateria"
       },
       "thermostat_valve_zone": {
-        "name": "Strefa zaworu termostatycznego"
+        "name": "Strefa"
       },
       "thermostat_valve_protocol": {
-        "name": "Protokół zaworu termostatycznego"
+        "name": "Protokół"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Blokada dziecka"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Temperatura rzeczywista"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Pozycja zaworu"
       },
       "thermal_disinfect_last_result": {
         "name": "Ostatni wynik dezynfekcji termicznej",
@@ -265,6 +280,9 @@
         "name": "Wpływ temperatury otoczenia"
       },
       "temperature_calibration_offset": {
+        "name": "Przesunięcie kalibracji temperatury"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Przesunięcie kalibracji temperatury"
       },
       "extra_hot_water_duration": {
@@ -302,12 +320,12 @@
         "name": "Wymagane uzupełnienie"
       },
       "thermostat_valve_warning": {
-        "name": "Ostrzeżenie zaworu termostatycznego"
+        "name": "Ostrzeżenia"
       }
     },
     "switch": {
       "boost": {
-        "name": "Boost"
+        "name": "Boost ogrzewania"
       },
       "auto_firmware_update": {
         "name": "Automatyczna aktualizacja oprogramowania"
@@ -323,6 +341,12 @@
       },
       "open_window_detection": {
         "name": "Wykrywanie otwartego okna"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Blokada dziecka"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Pozycja zaworu"
       },
       "thermal_disinfect": {
         "name": "Dezynfekcja termiczna"

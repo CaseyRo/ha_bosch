@@ -223,6 +223,20 @@ class TestBulk:
         assert result["/p/44"]["value"] == "v-/p/44"
 
     @pytest.mark.asyncio
+    async def test_bulk_resolves_token_once_for_multiple_chunks(self):
+        paths = [f"/p/{i}" for i in range(45)]
+        r1 = self._resp(envelope=_bulk_envelope(paths[:30]))
+        r2 = self._resp(envelope=_bulk_envelope(paths[30:]))
+        session = AsyncMock()
+        session.post = MagicMock(side_effect=[_async_ctx(r1), _async_ctx(r2)])
+        token_callback = AsyncMock(return_value="tok")
+        client = PoinTTAPIClient("123", session, token_callback)
+
+        await client.bulk(paths)
+
+        token_callback.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_bulk_body_contains_gateway_id_and_paths(self):
         r = self._resp(envelope=_bulk_envelope(["/a"]))
         client, session = self._client_with_post([r])

@@ -2,6 +2,16 @@
 asyncio_mode = "auto"
 testpaths = ["unittests"]
 
+[tool.coverage.run]
+omit = [
+	"test_pointtapi_oauth.py",
+	"*/test_pointtapi_oauth.py",
+	"probe_boost_resources.py",
+	"*/probe_boost_resources.py",
+	"test_pointtapi_playwright.py",
+	"*/test_pointtapi_playwright.py",
+]
+
 [tool.ruff.lint]
 # Pin ruff's historical default rule set: CI installs ruff unpinned, and a
 # newer ruff broadened its defaults (BLE/DTZ/ASYNC/...), flagging 69

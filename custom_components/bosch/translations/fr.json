@@ -159,7 +159,10 @@
         "name": "Programme assigné"
       },
       "optimum_start_state": {
-        "name": "État du démarrage optimal"
+        "name": "État du démarrage optimal",
+        "state": {
+          "idle": "Au repos"
+        }
       },
       "electricity_day_average": {
         "name": "Moyenne journalière électricité"
@@ -211,6 +214,9 @@
       "dhw_actual_temperature": {
         "name": "Température"
       },
+      "zone_average_temperature": {
+        "name": "Température moyenne"
+      },
       "boiler_ignition_starts": {
         "name": "Nombre de démarrages"
       },
@@ -224,16 +230,25 @@
         "name": "Notifications"
       },
       "thermostat_valve_signal_strength": {
-        "name": "Puissance du signal de la vanne thermostatique"
+        "name": "Puissance du signal"
       },
       "thermostat_valve_battery": {
-        "name": "Batterie de la vanne thermostatique"
+        "name": "Batterie"
       },
       "thermostat_valve_zone": {
-        "name": "Zone de la vanne thermostatique"
+        "name": "Zone"
       },
       "thermostat_valve_protocol": {
-        "name": "Protocole de la vanne thermostatique"
+        "name": "Protocole"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Verrouillage enfant"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Température actuelle"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Position de la vanne"
       },
       "thermal_disinfect_last_result": {
         "name": "Dernier résultat de désinfection thermique",
@@ -265,6 +280,9 @@
         "name": "Influence de la température ambiante"
       },
       "temperature_calibration_offset": {
+        "name": "Décalage de calibration de température"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Décalage de calibration de température"
       },
       "extra_hot_water_duration": {
@@ -302,12 +320,12 @@
         "name": "Remplissage nécessaire"
       },
       "thermostat_valve_warning": {
-        "name": "Avertissement de la vanne thermostatique"
+        "name": "Avertissements"
       }
     },
     "switch": {
       "boost": {
-        "name": "Boost"
+        "name": "Boost de chauffage"
       },
       "auto_firmware_update": {
         "name": "Mise à jour automatique du firmware"
@@ -323,6 +341,12 @@
       },
       "open_window_detection": {
         "name": "Détection fenêtre ouverte"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Verrouillage enfant"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Position de la vanne"
       },
       "thermal_disinfect": {
         "name": "Désinfection thermique"

@@ -16,6 +16,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .pointtapi_client import PoinTTAPIClient
@@ -50,11 +51,40 @@ REFERENCES_KEY = "references"
 ID_KEY = "id"
 
 HISTORY_HOURLY_PATH = "/energy/historyHourly"
+# Hourly history does not need to be fetched with every 60-second state poll.
+HISTORY_HOURLY_REFRESH_INTERVAL = 15 * 60
+# Configuration, diagnostics, energy and device inventories change less often
+# than temperatures and operating modes.
+SLOW_RESOURCE_REFRESH_INTERVAL = 5 * 60
+PERSISTENT_CACHE_VERSION = 1
+PERSISTENT_CACHE_MAX_AGE = 7 * 24 * 3600
+SLOW_RESOURCE_PREFIXES = (
+    "/gateway",
+    "/energy",
+    "/solarCircuits",
+    "/devices",
+    "/programs",
+    "/system/appliance",
+)
+FAST_DEVICE_RESOURCE_MARKERS = (
+    "/devices/list",
+    "/etrv/",
+    "/thermostat/",
+)
 # Re-run the discovery reference walk at most this often so resources that
 # appear later (e.g. solar enabled by an installer) get picked up.
 REDISCOVERY_INTERVAL = 24 * 3600
 # Throttle the bulk-failure WARNING to once per hour; repeats log at DEBUG.
 BULK_WARN_INTERVAL = 3600
+
+
+def _is_slow_resource(path: str) -> bool:
+    """Return whether a resource can use the slower polling cadence."""
+    if path.startswith("/devices/") and any(
+        marker in path for marker in FAST_DEVICE_RESOURCE_MARKERS
+    ):
+        return False
+    return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
 
 
 async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
@@ -195,6 +225,8 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
             roots.extend(await _device_roots(client))
             continue
         roots.append(r)
+    roots = list(dict.fromkeys(roots))
+    seen_references: set[str] = set()
     for root in roots:
         if root == "/energy/historyHourly":
             try:
@@ -214,8 +246,9 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
             refs = resp.get(REFERENCES_KEY) or []
             for ref in refs:
                 ref_id = ref.get(ID_KEY) if isinstance(ref, dict) else None
-                if not ref_id:
+                if not ref_id or ref_id in seen_references:
                     continue
+                seen_references.add(ref_id)
                 try:
                     sub = await client.get(ref_id)
                     if isinstance(sub, dict):
@@ -281,6 +314,54 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._bulk_paths: list[str] = []
         self._last_discovery: float = 0.0
         self._bulk_warned_at: float | None = None
+        self._history_hourly_data: dict[str, Any] | None = None
+        self._last_history_hourly_fetch: float = 0.0
+        self._slow_bulk_paths: list[str] = []
+        self._fast_bulk_paths: list[str] = []
+        self._slow_data: dict[str, Any] = {}
+        self._last_slow_fetch: float = 0.0
+        self._persistent_store = Store(
+            hass, PERSISTENT_CACHE_VERSION, f"bosch.pointtapi.{entry.entry_id}"
+        )
+
+    async def async_load_persistent_cache(self) -> dict[str, Any] | None:
+        """Load the last non-secret resource snapshot for immediate startup state."""
+        try:
+            stored = await self._persistent_store.async_load()
+        except Exception as err:
+            _LOGGER.debug("POINTTAPI persistent cache unavailable: %s", err)
+            return None
+        if not isinstance(stored, dict):
+            return None
+        saved_at = stored.get("saved_at")
+        snapshot = stored.get("data")
+        if (
+            not isinstance(saved_at, (int, float))
+            or time.time() - saved_at > PERSISTENT_CACHE_MAX_AGE
+            or not isinstance(snapshot, dict)
+        ):
+            return None
+        self._slow_data = {
+            path: value
+            for path, value in snapshot.items()
+            if isinstance(path, str) and _is_slow_resource(path)
+        }
+        self._last_slow_fetch = time.monotonic()
+        return snapshot
+
+    async def _async_save_persistent_cache(self, data: dict[str, Any]) -> None:
+        """Persist resource data without credentials for the next startup."""
+        snapshot = {
+            path: value
+            for path, value in data.items()
+            if path != HISTORY_HOURLY_PATH
+        }
+        try:
+            await self._persistent_store.async_save(
+                {"saved_at": time.time(), "data": snapshot}
+            )
+        except Exception as err:
+            _LOGGER.debug("POINTTAPI persistent cache write failed: %s", err)
 
     @property
     def client(self) -> PoinTTAPIClient:
@@ -315,38 +396,75 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # The paginated historyHourly resource stays on sequential GETs
             # (bulk resourcePaths carry no query strings).
             self._bulk_paths = [p for p in data if p != HISTORY_HOURLY_PATH]
+            self._slow_bulk_paths = [p for p in self._bulk_paths if _is_slow_resource(p)]
+            self._fast_bulk_paths = [p for p in self._bulk_paths if not _is_slow_resource(p)]
+            self._slow_data = {
+                p: data[p] for p in self._slow_bulk_paths if p in data
+            }
+            self._last_slow_fetch = now
             self._last_discovery = now
+            history = data.get(HISTORY_HOURLY_PATH)
+            if isinstance(history, dict):
+                self._history_hourly_data = history
+                self._last_history_hourly_fetch = now
+            await self._async_save_persistent_cache(data)
             return data
 
-        try:
-            data = await self._client.bulk(self._bulk_paths)
-        except ConfigEntryAuthFailed:
-            raise
-        except Exception as err:
-            self._log_bulk_failure(err)
-            return await _fetch_paths(self._client)
-        if not data:
+        slow_due = (
+            not self._slow_data
+            or now - self._last_slow_fetch >= SLOW_RESOURCE_REFRESH_INTERVAL
+        )
+        bulk_paths = self._fast_bulk_paths + (
+            self._slow_bulk_paths if slow_due else []
+        )
+        if not bulk_paths:
+            data = {}
+        else:
+            try:
+                data = await self._client.bulk(bulk_paths)
+            except ConfigEntryAuthFailed:
+                raise
+            except Exception as err:
+                self._log_bulk_failure(err)
+                return await _fetch_paths(self._client)
+        if not data and bulk_paths:
             # An all-paths-failed envelope would wipe entity state; treat as
             # a wholesale failure instead.
             self._log_bulk_failure("empty bulk result")
             return await _fetch_paths(self._client)
+        if slow_due:
+            self._slow_data.update(
+                {p: data[p] for p in self._slow_bulk_paths if p in data}
+            )
+            self._last_slow_fetch = now
+        data = {**self._slow_data, **data}
+        if slow_due:
+            await self._async_save_persistent_cache(data)
         _LOGGER.debug(
             "POINTTAPI bulk steady state: %d/%d paths returned",
             len(data), len(self._bulk_paths),
         )
 
         if HISTORY_HOURLY_PATH in POINTTAPI_COORDINATOR_ROOTS:
-            try:
-                merged = await _fetch_history_hourly_all(self._client)
-                if isinstance(merged, dict):
-                    data[HISTORY_HOURLY_PATH] = merged
-            except ConfigEntryAuthFailed:
-                _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", HISTORY_HOURLY_PATH)
-            except Exception as err:
-                _LOGGER.debug(
-                    "POINTTAPI optional path %s not available: %s",
-                    HISTORY_HOURLY_PATH, err,
-                )
+            if (
+                self._history_hourly_data is None
+                or now - self._last_history_hourly_fetch
+                >= HISTORY_HOURLY_REFRESH_INTERVAL
+            ):
+                try:
+                    merged = await _fetch_history_hourly_all(self._client)
+                    if isinstance(merged, dict):
+                        self._history_hourly_data = merged
+                        self._last_history_hourly_fetch = now
+                except ConfigEntryAuthFailed:
+                    _LOGGER.debug("POINTTAPI 401/403 on %s, keeping cached data", HISTORY_HOURLY_PATH)
+                except Exception as err:
+                    _LOGGER.debug(
+                        "POINTTAPI optional path %s not available: %s",
+                        HISTORY_HOURLY_PATH, err,
+                    )
+            if self._history_hourly_data is not None:
+                data[HISTORY_HOURLY_PATH] = self._history_hourly_data
         return data
 
     def _log_bulk_failure(self, err: Any) -> None:

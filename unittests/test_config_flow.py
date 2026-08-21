@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.bosch.config_flow import BoschFlowHandler
+from custom_components.bosch.config_flow import BoschFlowHandler, OptionsFlowHandler
 from custom_components.bosch.const import (
     ACCESS_KEY,
     ACCESS_TOKEN,
@@ -546,3 +546,180 @@ async def test_duplicate_pointtapi_entry_aborts(mock_hass):
             await flow.async_step_pointtapi_oauth(
                 {"oauth_callback_url": "com.bosch.tt.dashtt.pointt://app/login?code=code"}
             )
+
+
+# ── Remaining legacy and options branches ───────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_xmpp_config_local_uses_http_executor_session(mock_hass):
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    flow.configure_gateway = AsyncMock(return_value={"type": "create_entry"})
+
+    with patch(
+        "custom_components.bosch.config_flow.async_get_clientsession",
+        return_value="http-session",
+    ):
+        result = await flow.async_step_xmpp_config(
+            {
+                "address": "127.0.0.1",
+                "access_token": "token",
+                "password": "secret",
+            }
+        )
+
+    assert result["type"] == "create_entry"
+    flow.configure_gateway.assert_awaited_once()
+    kwargs = flow.configure_gateway.await_args.kwargs
+    assert kwargs["session_type"] == "HTTP"
+    assert kwargs["host"] == "127.0.0.1"
+
+
+@pytest.mark.asyncio
+async def test_xmpp_config_remote_uses_selected_protocol(mock_hass):
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    flow._protocol = "XMPP"
+    flow.configure_gateway = AsyncMock(return_value={"type": "create_entry"})
+
+    result = await flow.async_step_xmpp_config(
+        {"address": "192.168.1.20", "access_token": "token"}
+    )
+
+    assert result["type"] == "create_entry"
+    kwargs = flow.configure_gateway.await_args.kwargs
+    assert kwargs["session_type"] == "XMPP"
+    assert kwargs["session"] is mock_hass.loop
+
+
+@pytest.mark.asyncio
+async def test_configure_gateway_firmware_error_notifies_and_creates_entry(mock_hass):
+    from bosch_thermostat_client.exceptions import FirmwareException
+
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    flow._password = "secret"
+    device = MagicMock(
+        device_name="EasyControl",
+        host="192.168.1.20",
+        access_key="key",
+        access_token="token",
+        uuid="uuid-device",
+    )
+    device.check_connection = AsyncMock(side_effect=FirmwareException("old firmware"))
+    mock_hass.async_add_executor_job = AsyncMock(return_value=device)
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = MagicMock()
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
+
+    with patch("custom_components.bosch.config_flow.gateway_chooser", return_value=MagicMock()), patch(
+        "custom_components.bosch.config_flow.create_notification_firmware"
+    ) as notify:
+        result = await flow.configure_gateway(
+            device_type="EASYCONTROL",
+            session_type="XMPP",
+            host="192.168.1.20",
+            access_token="token",
+        )
+
+    assert result["type"] == "create_entry"
+    notify.assert_called_once()
+    flow.async_set_unique_id.assert_awaited_once_with("uuid-device")
+
+
+@pytest.mark.asyncio
+async def test_configure_gateway_executor_runs_gateway_constructor(mock_hass):
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    device = MagicMock(
+        device_name="EasyControl",
+        host="192.168.1.20",
+        access_key="key",
+        access_token="token",
+        check_connection=AsyncMock(return_value="uuid-device"),
+    )
+    gateway_class = MagicMock(return_value=device)
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = MagicMock()
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
+
+    async def run_in_executor(function):
+        return function()
+
+    mock_hass.async_add_executor_job = run_in_executor
+    with patch("custom_components.bosch.config_flow.gateway_chooser", return_value=gateway_class):
+        result = await flow.configure_gateway(
+            device_type="EASYCONTROL",
+            session_type="XMPP",
+            host="192.168.1.20",
+            access_token="token",
+            password="secret",
+            session="session",
+        )
+
+    assert result["type"] == "create_entry"
+    gateway_class.assert_called_once_with(
+        session_type="XMPP",
+        host="192.168.1.20",
+        access_token="token",
+        password="secret",
+        session="session",
+    )
+
+
+@pytest.mark.asyncio
+async def test_configure_gateway_unexpected_error_aborts_unknown(mock_hass):
+    flow = _make_flow(mock_hass)
+    flow.async_abort = MagicMock(return_value={"type": "abort", "reason": "unknown"})
+    mock_hass.async_add_executor_job = AsyncMock(side_effect=RuntimeError("boom"))
+
+    with patch("custom_components.bosch.config_flow.gateway_chooser", return_value=MagicMock()):
+        result = await flow.configure_gateway(
+            device_type="EASYCONTROL",
+            session_type="XMPP",
+            host="192.168.1.20",
+            access_token="token",
+        )
+
+    assert result == {"type": "abort", "reason": "unknown"}
+
+
+@pytest.mark.asyncio
+async def test_configure_gateway_abort_flow_is_re_raised(mock_hass):
+    from homeassistant.data_entry_flow import AbortFlow
+
+    flow = _make_flow(mock_hass)
+    mock_hass.async_add_executor_job = AsyncMock(side_effect=AbortFlow("cancelled"))
+
+    with patch("custom_components.bosch.config_flow.gateway_chooser", return_value=MagicMock()), pytest.raises(AbortFlow):
+        await flow.configure_gateway(
+            device_type="EASYCONTROL",
+            session_type="XMPP",
+            host="192.168.1.20",
+            access_token="token",
+        )
+
+
+@pytest.mark.asyncio
+async def test_options_flow_shows_defaults_and_creates_options():
+    entry = MagicMock(options={"new_stats_api": True, "optimistic_mode": False})
+    flow = OptionsFlowHandler(entry)
+    flow.async_show_form = MagicMock(return_value={"type": "form"})
+    flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
+
+    assert await flow.async_step_init(None) == {"type": "form"}
+    flow.async_show_form.assert_called_once()
+    assert await flow.async_step_init({"new_stats_api": False, "optimistic_mode": True}) == {"type": "create_entry"}
+
+
+@pytest.mark.asyncio
+async def test_discovery_step_is_a_noop(mock_hass):
+    flow = _make_flow(mock_hass)
+    assert await flow.async_step_discovery({"host": "192.168.1.20"}) is None
+
+
+def test_async_get_options_flow_returns_options_handler():
+    entry = MagicMock()
+    options_flow = BoschFlowHandler.async_get_options_flow(entry)
+    assert isinstance(options_flow, OptionsFlowHandler)

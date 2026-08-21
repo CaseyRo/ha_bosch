@@ -1,7 +1,7 @@
 """Tests for pointtapi_coordinator.py."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -11,13 +11,57 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from custom_components.bosch.pointtapi_coordinator import (
     POINTTAPI_COORDINATOR_ROOTS,
     _fetch_paths,
+    _fetch_history_hourly_all,
+    _device_roots,
+    _is_slow_resource,
+    _program_roots,
+    _zone_roots,
+    BULK_WARN_INTERVAL,
 )
+
+
+def test_device_telemetry_uses_fast_polling_cadence():
+    """Valve readings must not inherit the slow inventory cadence."""
+    assert not _is_slow_resource("/devices/device7/etrv/temperatureActual")
+    assert not _is_slow_resource("/devices/device7/etrv/valvePosition")
+    assert not _is_slow_resource("/devices/device7/etrv/childLock/enabled")
+    assert not _is_slow_resource("/devices/list")
+    assert _is_slow_resource("/devices/device7/battery")
+    assert _is_slow_resource("/devices/device7/rssi")
+    assert _is_slow_resource("/devices/device7/type")
+
 
 
 # ── _fetch_paths ─────────────────────────────────────────────────────────────
 
 
 class TestFetchPaths:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("root_helper, path", [
+        (_zone_roots, "/zones/zn1"),
+        (_program_roots, "/programs"),
+        (_device_roots, "/devices"),
+    ])
+    async def test_root_discovery_falls_back_for_invalid_listing(
+        self, root_helper, path
+    ):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value={"references": [{"id": None}, "bad"]})
+
+        assert await root_helper(client) == [path]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("root_helper, path", [
+        (_zone_roots, "/zones/zn1"),
+        (_program_roots, "/programs"),
+        (_device_roots, "/devices"),
+    ])
+    async def test_root_discovery_falls_back_on_error(self, root_helper, path):
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=RuntimeError("unavailable"))
+
+        assert await root_helper(client) == [path]
+
     @pytest.mark.asyncio
     async def test_fetches_root_paths(self):
         client = AsyncMock()
@@ -127,6 +171,107 @@ class TestFetchPaths:
         data = await _fetch_paths(client)
         assert "/gateway" in data
         assert "/gateway/forbidden" not in data
+
+    @pytest.mark.asyncio
+    async def test_malformed_nested_reference_is_skipped(self):
+        async def mock_get(path):
+            if path == "/gateway":
+                return {
+                    "id": "/gateway",
+                    "references": [{"id": "/gateway/broken"}],
+                }
+            if path == "/gateway/broken":
+                raise ValueError("malformed resource")
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/gateway" in data
+        assert "/gateway/broken" not in data
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_error_is_skipped(self):
+        async def mock_get(path):
+            if path == "/energy/historyHourly":
+                raise ConfigEntryAuthFailed("403")
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/energy/historyHourly" not in data
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_returns_unwalkable_first_payload(self):
+        client = AsyncMock()
+        first = {"value": {"entries": []}}
+        client.get.return_value = first
+
+        assert await _fetch_history_hourly_all(client) is first
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_stops_on_malformed_followup_page(self):
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                {"value": [{"entries": [{"e": "first"}], "next": "next"}]},
+                {"value": "malformed"},
+            ]
+        )
+
+        result = await _fetch_history_hourly_all(client)
+
+        assert result["value"][0]["entries"] == [{"e": "first"}]
+
+    @pytest.mark.asyncio
+    async def test_refenum_nested_errors_are_skipped(self):
+        async def mock_get(path):
+            if path == "/gateway":
+                return {"references": [{"id": "/gateway/mode"}]}
+            if path == "/gateway/mode":
+                return {
+                    "type": "refEnum",
+                    "references": [
+                        {"id": "/gateway/mode/good"},
+                        {"id": "/gateway/mode/bad"},
+                    ],
+                }
+            if path == "/gateway/mode/good":
+                return {"value": "ok"}
+            if path == "/gateway/mode/bad":
+                raise ValueError("optional ref failed")
+            return {"value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/gateway/mode/good" in data
+        assert "/gateway/mode/bad" not in data
+
+    @pytest.mark.asyncio
+    async def test_duplicate_references_are_fetched_once(self):
+        async def mock_get(path):
+            if path == "/gateway":
+                return {"references": [{"id": "/gateway/shared"}]}
+            if path == "/heatingCircuits/hc1":
+                return {"references": [{"id": "/gateway/shared"}]}
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        await _fetch_paths(client)
+
+        assert [call.args[0] for call in client.get.await_args_list].count(
+            "/gateway/shared"
+        ) == 1
 
     @pytest.mark.asyncio
     async def test_non_dict_response_skipped(self):
@@ -284,6 +429,9 @@ import time
 
 from custom_components.bosch.pointtapi_coordinator import (
     HISTORY_HOURLY_PATH,
+    HISTORY_HOURLY_REFRESH_INTERVAL,
+    PERSISTENT_CACHE_MAX_AGE,
+    SLOW_RESOURCE_REFRESH_INTERVAL,
     REDISCOVERY_INTERVAL,
     PoinTTAPIDataUpdateCoordinator,
 )
@@ -296,6 +444,12 @@ def _bare_coordinator(client):
     coord._bulk_paths = []
     coord._last_discovery = 0.0
     coord._bulk_warned_at = None
+    coord._history_hourly_data = None
+    coord._last_history_hourly_fetch = 0.0
+    coord._slow_bulk_paths = []
+    coord._fast_bulk_paths = []
+    coord._slow_data = {}
+    coord._last_slow_fetch = 0.0
     return coord
 
 
@@ -316,6 +470,76 @@ def _walk_client():
 
 
 class TestBulkSteadyState:
+    @pytest.mark.asyncio
+    async def test_persistent_cache_loads_only_fresh_slow_resources(self):
+        coord = _bare_coordinator(AsyncMock())
+        store = AsyncMock()
+        store.async_load.return_value = {
+            "saved_at": time.time(),
+            "data": {
+                "/gateway/versionFirmware": {"value": "1.2.3"},
+                "/zones/zn1/status": {"value": "idle"},
+            },
+        }
+        coord._persistent_store = store
+
+        snapshot = await coord.async_load_persistent_cache()
+
+        assert snapshot is not None
+        assert "/gateway/versionFirmware" in coord._slow_data
+        assert "/zones/zn1/status" not in coord._slow_data
+
+    @pytest.mark.asyncio
+    async def test_expired_persistent_cache_is_ignored(self):
+        coord = _bare_coordinator(AsyncMock())
+        store = AsyncMock()
+        store.async_load.return_value = {
+            "saved_at": time.time() - PERSISTENT_CACHE_MAX_AGE - 1,
+            "data": {"/gateway/versionFirmware": {"value": "old"}},
+        }
+        coord._persistent_store = store
+
+        assert await coord.async_load_persistent_cache() is None
+        assert coord._slow_data == {}
+
+    @pytest.mark.asyncio
+    async def test_persistent_cache_save_excludes_history(self):
+        coord = _bare_coordinator(AsyncMock())
+        store = AsyncMock()
+        coord._persistent_store = store
+
+        await coord._async_save_persistent_cache(
+            {
+                "/gateway/versionFirmware": {"value": "1.2.3"},
+                HISTORY_HOURLY_PATH: {"value": []},
+            }
+        )
+
+        saved = store.async_save.await_args.args[0]
+        assert HISTORY_HOURLY_PATH not in saved["data"]
+        assert "/gateway/versionFirmware" in saved["data"]
+
+    def test_bulk_failure_logging_is_throttled(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._bulk_warned_at = 100.0
+
+        with patch("custom_components.bosch.pointtapi_coordinator.time.monotonic", return_value=101.0):
+            coord._log_bulk_failure("temporary failure")
+
+        assert coord._bulk_warned_at == 100.0
+
+    def test_bulk_failure_logging_warns_after_interval(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._bulk_warned_at = 100.0
+
+        with patch(
+            "custom_components.bosch.pointtapi_coordinator.time.monotonic",
+            return_value=100.0 + BULK_WARN_INTERVAL + 1,
+        ):
+            coord._log_bulk_failure("temporary failure")
+
+        assert coord._bulk_warned_at == 100.0 + BULK_WARN_INTERVAL + 1
+
     @pytest.mark.asyncio
     async def test_first_fetch_runs_discovery_walk(self):
         client = _walk_client()
@@ -338,17 +562,56 @@ class TestBulkSteadyState:
         await coord._fetch()  # discovery
         client.get.reset_mock()
         client.bulk = AsyncMock(return_value={
-            p: {"id": p, "value": "bulk"} for p in coord._bulk_paths
+            p: {"id": p, "value": "bulk"} for p in coord._fast_bulk_paths
         })
 
         data = await coord._fetch()
 
-        client.bulk.assert_awaited_once_with(coord._bulk_paths)
-        assert data["/gateway"]["value"] == "bulk"
-        # Only the paginated resource still rides sequential GETs
-        for call in client.get.await_args_list:
-            assert call.args[0].startswith("/energy/historyHourly")
-        assert HISTORY_HOURLY_PATH in data
+        client.bulk.assert_awaited_once_with(coord._fast_bulk_paths)
+        assert data["/heatingCircuits/hc1"]["value"] == "bulk"
+        assert data["/gateway"]["references"]
+        # Hourly history is served from the discovery cache inside its interval.
+        client.get.assert_not_called()
+        assert data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
+
+    @pytest.mark.asyncio
+    async def test_history_hourly_refreshes_after_cache_interval(self):
+        client = _walk_client()
+        coord = _bare_coordinator(client)
+        await coord._fetch()
+        client.get.reset_mock()
+        coord._last_history_hourly_fetch -= HISTORY_HOURLY_REFRESH_INTERVAL
+        client.bulk = AsyncMock(
+            return_value={
+                p: {"id": p, "value": "fast"} for p in coord._fast_bulk_paths
+            }
+        )
+        await coord._fetch()
+
+        assert any(
+            call.args[0].startswith("/energy/historyHourly")
+            for call in client.get.await_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_slow_resources_join_bulk_after_slow_interval(self):
+        client = _walk_client()
+        coord = _bare_coordinator(client)
+        await coord._fetch()
+        coord._last_slow_fetch -= SLOW_RESOURCE_REFRESH_INTERVAL
+        client.bulk = AsyncMock(
+            return_value={
+                p: {"id": p, "value": "refreshed"}
+                for p in coord._fast_bulk_paths + coord._slow_bulk_paths
+            }
+        )
+
+        await coord._fetch()
+
+        client.bulk.assert_awaited_once_with(
+            coord._fast_bulk_paths + coord._slow_bulk_paths
+        )
+        assert coord._slow_data["/gateway"]["value"] == "refreshed"
 
     @pytest.mark.asyncio
     async def test_bulk_failure_falls_back_to_walk(self):
