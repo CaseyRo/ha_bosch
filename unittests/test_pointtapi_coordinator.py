@@ -13,10 +13,23 @@ from custom_components.bosch.pointtapi_coordinator import (
     _fetch_paths,
     _fetch_history_hourly_all,
     _device_roots,
+    _is_slow_resource,
     _program_roots,
     _zone_roots,
     BULK_WARN_INTERVAL,
 )
+
+
+def test_device_telemetry_uses_fast_polling_cadence():
+    """Valve readings must not inherit the slow inventory cadence."""
+    assert not _is_slow_resource("/devices/device7/etrv/temperatureActual")
+    assert not _is_slow_resource("/devices/device7/etrv/valvePosition")
+    assert not _is_slow_resource("/devices/device7/etrv/childLock/enabled")
+    assert not _is_slow_resource("/devices/list")
+    assert _is_slow_resource("/devices/device7/battery")
+    assert _is_slow_resource("/devices/device7/rssi")
+    assert _is_slow_resource("/devices/device7/type")
+
 
 
 # ── _fetch_paths ─────────────────────────────────────────────────────────────

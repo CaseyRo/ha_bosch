@@ -66,6 +66,11 @@ SLOW_RESOURCE_PREFIXES = (
     "/programs",
     "/system/appliance",
 )
+FAST_DEVICE_RESOURCE_MARKERS = (
+    "/devices/list",
+    "/etrv/",
+    "/thermostat/",
+)
 # Re-run the discovery reference walk at most this often so resources that
 # appear later (e.g. solar enabled by an installer) get picked up.
 REDISCOVERY_INTERVAL = 24 * 3600
@@ -75,6 +80,10 @@ BULK_WARN_INTERVAL = 3600
 
 def _is_slow_resource(path: str) -> bool:
     """Return whether a resource can use the slower polling cadence."""
+    if path.startswith("/devices/") and any(
+        marker in path for marker in FAST_DEVICE_RESOURCE_MARKERS
+    ):
+        return False
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
 
 
