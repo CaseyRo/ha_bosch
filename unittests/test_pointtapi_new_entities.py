@@ -60,6 +60,7 @@ class TestNotificationsHelpers:
             "/zones/zn2/temperatureActual",
         ]
         assert descriptions[0].translation_key == "zone_average_temperature"
+        assert STRINGS["entity"]["sensor"]["zone_average_temperature"]["name"] == "Average temperature"
         assert descriptions[0].native_unit_of_measurement == "°C"
         assert descriptions[0].device_class == "temperature"
         assert descriptions[0].state_class == "measurement"

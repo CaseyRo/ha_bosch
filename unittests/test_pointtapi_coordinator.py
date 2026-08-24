@@ -431,6 +431,7 @@ from custom_components.bosch.pointtapi_coordinator import (
     HISTORY_HOURLY_PATH,
     HISTORY_HOURLY_REFRESH_INTERVAL,
     PERSISTENT_CACHE_MAX_AGE,
+    PERSISTENT_CACHE_SAVE_DELAY,
     SLOW_RESOURCE_REFRESH_INTERVAL,
     REDISCOVERY_INTERVAL,
     PoinTTAPIDataUpdateCoordinator,
@@ -478,6 +479,8 @@ class TestBulkSteadyState:
             "saved_at": time.time(),
             "data": {
                 "/gateway/versionFirmware": {"value": "1.2.3"},
+                "/gateway/identificationKey": {"value": "secret"},
+                "/system/appliance/status": {"value": "ready"},
                 "/zones/zn1/status": {"value": "idle"},
             },
         }
@@ -487,6 +490,8 @@ class TestBulkSteadyState:
 
         assert snapshot is not None
         assert "/gateway/versionFirmware" in coord._slow_data
+        assert "/gateway/identificationKey" not in coord._slow_data
+        assert "/system/appliance/status" in coord._slow_data
         assert "/zones/zn1/status" not in coord._slow_data
 
     @pytest.mark.asyncio
@@ -503,7 +508,7 @@ class TestBulkSteadyState:
         assert coord._slow_data == {}
 
     @pytest.mark.asyncio
-    async def test_persistent_cache_save_excludes_history(self):
+    async def test_persistent_cache_save_is_delayed_and_allowlisted(self):
         coord = _bare_coordinator(AsyncMock())
         store = AsyncMock()
         coord._persistent_store = store
@@ -511,13 +516,20 @@ class TestBulkSteadyState:
         await coord._async_save_persistent_cache(
             {
                 "/gateway/versionFirmware": {"value": "1.2.3"},
+                "/gateway/identificationKey": {"value": "secret"},
+                "/system/appliance/status": {"value": "ready"},
                 HISTORY_HOURLY_PATH: {"value": []},
             }
         )
 
-        saved = store.async_save.await_args.args[0]
-        assert HISTORY_HOURLY_PATH not in saved["data"]
+        store.async_delay_save.assert_called_once()
+        data_func, delay = store.async_delay_save.call_args.args
+        saved = data_func()
+        assert delay == PERSISTENT_CACHE_SAVE_DELAY
         assert "/gateway/versionFirmware" in saved["data"]
+        assert "/gateway/identificationKey" not in saved["data"]
+        assert HISTORY_HOURLY_PATH not in saved["data"]
+        assert "/system/appliance/status" in saved["data"]
 
     def test_bulk_failure_logging_is_throttled(self):
         coord = _bare_coordinator(AsyncMock())

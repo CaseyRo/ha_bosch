@@ -52,12 +52,13 @@ ID_KEY = "id"
 
 HISTORY_HOURLY_PATH = "/energy/historyHourly"
 # Hourly history does not need to be fetched with every 60-second state poll.
-HISTORY_HOURLY_REFRESH_INTERVAL = 15 * 60
+HISTORY_HOURLY_REFRESH_INTERVAL = 30 * 60
 # Configuration, diagnostics, energy and device inventories change less often
 # than temperatures and operating modes.
 SLOW_RESOURCE_REFRESH_INTERVAL = 5 * 60
 PERSISTENT_CACHE_VERSION = 1
 PERSISTENT_CACHE_MAX_AGE = 7 * 24 * 3600
+PERSISTENT_CACHE_SAVE_DELAY = 60
 SLOW_RESOURCE_PREFIXES = (
     "/gateway",
     "/energy",
@@ -65,6 +66,28 @@ SLOW_RESOURCE_PREFIXES = (
     "/devices",
     "/programs",
     "/system/appliance",
+)
+PERSISTENT_CACHE_PREFIXES = (
+    "/solarCircuits",
+    "/system/appliance",
+)
+PERSISTENT_GATEWAY_PATHS = frozenset(
+    {
+        "/gateway/brand",
+        "/gateway/displayType",
+        "/gateway/hmip/versionApplication",
+        "/gateway/hmip/versionOS",
+        "/gateway/productID",
+        "/gateway/productType",
+        "/gateway/update/lastCheck",
+        "/gateway/update/lastUpdate",
+        "/gateway/versionFirmware",
+        "/gateway/versionFirmwareBuild",
+        "/gateway/versionHardware",
+        "/gateway/wifi/versionFirmware",
+        "/gateway/wifi/versionFirmwareBuild",
+        "/gateway/zigbee/versionFirmware",
+    }
 )
 FAST_DEVICE_RESOURCE_MARKERS = (
     "/devices/list",
@@ -85,6 +108,13 @@ def _is_slow_resource(path: str) -> bool:
     ):
         return False
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
+
+
+def _is_persistent_cache_resource(path: str) -> bool:
+    """Return whether a resource is explicitly safe to persist."""
+    return path in PERSISTENT_GATEWAY_PATHS or path.startswith(
+        PERSISTENT_CACHE_PREFIXES
+    )
 
 
 async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
@@ -127,16 +157,12 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
     return first
 
 
-async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
-    """GET /zones and return one walk root per zone ("/zones/zn1", ...).
-
-    Multi-zone gateways (ETRVs paired to rooms) list every zone here; walking
-    each one as a root gives it the same fetch depth zn1 always had. Falls
-    back to ["/zones/zn1"] when the listing is missing or fails, preserving
-    single-zone behavior.
-    """
+async def _discover_roots(
+    client: PoinTTAPIClient, root: str, fallback: str
+) -> list[str]:
+    """Return reference roots from a listing, or its static fallback."""
     try:
-        resp = await client.get("/zones")
+        resp = await client.get(root)
         if isinstance(resp, dict):
             roots = [
                 r[ID_KEY]
@@ -146,63 +172,27 @@ async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
             if roots:
                 return roots
     except ConfigEntryAuthFailed:
-        _LOGGER.debug("POINTTAPI 401/403 on /zones, assuming single zone")
+        _LOGGER.debug("POINTTAPI 401/403 on %s, using %s", root, fallback)
     except Exception as err:
         _LOGGER.debug(
-            "POINTTAPI /zones listing unavailable (%s), assuming single zone", err
+            "POINTTAPI %s listing unavailable (%s), using %s", root, err, fallback
         )
-    return ["/zones/zn1"]
+    return [fallback]
+
+
+async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
+    """Return one walk root per zone, with a zn1 fallback."""
+    return await _discover_roots(client, "/zones", "/zones/zn1")
 
 
 async def _program_roots(client: PoinTTAPIClient) -> list[str]:
-    """GET /programs and return one walk root per listed program.
-
-    Mirrors zone-root expansion: use the listing references as source-of-truth
-    and fall back to the top-level /programs root when discovery is missing or
-    unavailable.
-    """
-    try:
-        resp = await client.get("/programs")
-        if isinstance(resp, dict):
-            roots = [
-                r[ID_KEY]
-                for r in (resp.get(REFERENCES_KEY) or [])
-                if isinstance(r, dict) and r.get(ID_KEY)
-            ]
-            if roots:
-                return roots
-    except ConfigEntryAuthFailed:
-        _LOGGER.debug("POINTTAPI 401/403 on /programs, using /programs root")
-    except Exception as err:
-        _LOGGER.debug(
-            "POINTTAPI /programs listing unavailable (%s), using /programs root", err
-        )
-    return ["/programs"]
+    """Return one walk root per listed program."""
+    return await _discover_roots(client, "/programs", "/programs")
 
 
 async def _device_roots(client: PoinTTAPIClient) -> list[str]:
-    """GET /devices and return one walk root per listed device.
-
-    Mirrors zone/program root expansion and falls back to the top-level
-    /devices root when discovery is missing or unavailable.
-    """
-    try:
-        resp = await client.get("/devices")
-        if isinstance(resp, dict):
-            roots = [
-                r[ID_KEY]
-                for r in (resp.get(REFERENCES_KEY) or [])
-                if isinstance(r, dict) and r.get(ID_KEY)
-            ]
-            if roots:
-                return roots
-    except ConfigEntryAuthFailed:
-        _LOGGER.debug("POINTTAPI 401/403 on /devices, using /devices root")
-    except Exception as err:
-        _LOGGER.debug(
-            "POINTTAPI /devices listing unavailable (%s), using /devices root", err
-        )
-    return ["/devices"]
+    """Return one walk root per listed device."""
+    return await _discover_roots(client, "/devices", "/devices")
 
 
 async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
@@ -344,21 +334,21 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._slow_data = {
             path: value
             for path, value in snapshot.items()
-            if isinstance(path, str) and _is_slow_resource(path)
+            if isinstance(path, str) and _is_persistent_cache_resource(path)
         }
-        self._last_slow_fetch = time.monotonic()
-        return snapshot
+        return self._slow_data
 
     async def _async_save_persistent_cache(self, data: dict[str, Any]) -> None:
-        """Persist resource data without credentials for the next startup."""
+        """Schedule persistence of explicitly allowlisted resource data."""
         snapshot = {
             path: value
             for path, value in data.items()
-            if path != HISTORY_HOURLY_PATH
+            if _is_persistent_cache_resource(path)
         }
         try:
-            await self._persistent_store.async_save(
-                {"saved_at": time.time(), "data": snapshot}
+            self._persistent_store.async_delay_save(
+                lambda: {"saved_at": time.time(), "data": snapshot},
+                PERSISTENT_CACHE_SAVE_DELAY,
             )
         except Exception as err:
             _LOGGER.debug("POINTTAPI persistent cache write failed: %s", err)
@@ -438,33 +428,30 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             self._last_slow_fetch = now
         data = {**self._slow_data, **data}
-        if slow_due:
-            await self._async_save_persistent_cache(data)
         _LOGGER.debug(
             "POINTTAPI bulk steady state: %d/%d paths returned",
             len(data), len(self._bulk_paths),
         )
 
-        if HISTORY_HOURLY_PATH in POINTTAPI_COORDINATOR_ROOTS:
-            if (
-                self._history_hourly_data is None
-                or now - self._last_history_hourly_fetch
-                >= HISTORY_HOURLY_REFRESH_INTERVAL
-            ):
-                try:
-                    merged = await _fetch_history_hourly_all(self._client)
-                    if isinstance(merged, dict):
-                        self._history_hourly_data = merged
-                        self._last_history_hourly_fetch = now
-                except ConfigEntryAuthFailed:
-                    _LOGGER.debug("POINTTAPI 401/403 on %s, keeping cached data", HISTORY_HOURLY_PATH)
-                except Exception as err:
-                    _LOGGER.debug(
-                        "POINTTAPI optional path %s not available: %s",
-                        HISTORY_HOURLY_PATH, err,
-                    )
-            if self._history_hourly_data is not None:
-                data[HISTORY_HOURLY_PATH] = self._history_hourly_data
+        if (
+            self._history_hourly_data is None
+            or now - self._last_history_hourly_fetch
+            >= HISTORY_HOURLY_REFRESH_INTERVAL
+        ):
+            try:
+                merged = await _fetch_history_hourly_all(self._client)
+                if isinstance(merged, dict):
+                    self._history_hourly_data = merged
+                    self._last_history_hourly_fetch = now
+            except ConfigEntryAuthFailed:
+                _LOGGER.debug("POINTTAPI 401/403 on %s, keeping cached data", HISTORY_HOURLY_PATH)
+            except Exception as err:
+                _LOGGER.debug(
+                    "POINTTAPI optional path %s not available: %s",
+                    HISTORY_HOURLY_PATH, err,
+                )
+        if self._history_hourly_data is not None:
+            data[HISTORY_HOURLY_PATH] = self._history_hourly_data
         return data
 
     def _log_bulk_failure(self, err: Any) -> None:
