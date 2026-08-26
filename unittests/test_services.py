@@ -16,6 +16,7 @@ from custom_components.bosch.const import (
     SERVICE_GET,
     SERVICE_PUT_FLOAT,
     SERVICE_PUT_STRING,
+    SERVICE_REFRESH_GATEWAY,
     SERVICE_UPDATE,
 )
 from custom_components.bosch.services import (
@@ -110,6 +111,7 @@ class TestServiceRegistration:
 
         handlers = _registered_handlers(hass)
         assert set(handlers) >= {
+            SERVICE_REFRESH_GATEWAY,
             SERVICE_UPDATE,
             RECORDING_SERVICE_UPDATE,
             SERVICE_GET,
@@ -155,10 +157,11 @@ class TestRegisteredHandlers:
     async def test_update_refreshes_all_gateways(self, handlers):
         entries = [_gateway_entry(), _gateway_entry()]
         with patch("custom_components.bosch.services.find_gateway_entry", return_value=entries):
+            await handlers[SERVICE_REFRESH_GATEWAY](_service_call(**{ATTR_DEVICE_ID: ["device1"]}))
             await handlers[SERVICE_UPDATE](_service_call(**{ATTR_DEVICE_ID: ["device1"]}))
 
         for entry in entries:
-            entry.thermostat_refresh.assert_awaited_once()
+            assert entry.thermostat_refresh.call_count == 2
 
     @pytest.mark.asyncio
     async def test_recording_refresh_updates_gateway_and_recordings(self, handlers):

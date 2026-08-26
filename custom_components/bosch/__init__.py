@@ -638,13 +638,17 @@ class BoschGatewayEntry:
                 async_dispatcher_send(self.hass, signal)
             return True
 
-    async def custom_put(self, path: str, value: Any) -> None:
+    async def custom_put(self, path: str, value: Any) -> Any:
         """Send PUT directly to gateway without parsing."""
-        await self.gateway.raw_put(path=path, value=value)
+        if self._protocol == POINTTAPI:
+            return await self.gateway.put(uri=path, value=value)
+        return await self.gateway.raw_put(path=path, value=value)
 
-    async def custom_get(self, path) -> str:
+    async def custom_get(self, path) -> Any:
         """Fetch value from gateway."""
         async with self._update_lock:
+            if self._protocol == POINTTAPI:
+                return await self.gateway.get(uri=path)
             return await self.gateway.raw_query(path=path)
 
     async def component_update(self, component_type=None, event_time=None):
@@ -715,6 +719,10 @@ class BoschGatewayEntry:
             self.uuid,
             event_time,
         )
+        if self._protocol == POINTTAPI:
+            if coordinator := getattr(self._data, "coordinator", None):
+                await coordinator.async_request_refresh()
+            return
         async with self._update_lock:
             await self.component_update(SENSOR, event_time)
             await self.component_update(BINARY_SENSOR, event_time)

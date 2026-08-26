@@ -102,3 +102,83 @@ async def test_pointtapi_refresh_failure_does_not_forward_platforms():
             await _gateway_entry(hass, entry).async_init()
 
     hass.config_entries.async_forward_entry_setups.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pointtapi_custom_get_and_put():
+    hass = MagicMock()
+    entry = SimpleNamespace(
+        entry_id="entry-123",
+        runtime_data=SimpleNamespace(gateway=None, coordinator=None),
+    )
+    gw_entry = _gateway_entry(hass, entry)
+    gw_entry._update_lock = MagicMock()
+    gw_entry._update_lock.__aenter__ = AsyncMock()
+    gw_entry._update_lock.__aexit__ = AsyncMock()
+
+    client = MagicMock()
+    client.get = AsyncMock(return_value={"value": "2026-08-26T12:00:00"})
+    client.put = AsyncMock(return_value=True)
+    gw_entry.gateway = client
+
+    # Test POINTTAPI custom_get
+    get_res = await gw_entry.custom_get("/gateway/DateTime")
+    assert get_res == {"value": "2026-08-26T12:00:00"}
+    client.get.assert_awaited_once_with(uri="/gateway/DateTime")
+
+    # Test POINTTAPI custom_put
+    put_res = await gw_entry.custom_put("/gateway/time/timeZone", "Europe/Brussels")
+    assert put_res is True
+    client.put.assert_awaited_once_with(uri="/gateway/time/timeZone", value="Europe/Brussels")
+
+
+@pytest.mark.asyncio
+async def test_xmpp_custom_get_and_put_fallbacks():
+    hass = MagicMock()
+    entry = SimpleNamespace(
+        entry_id="entry-123",
+        runtime_data=SimpleNamespace(gateway=None, coordinator=None),
+    )
+    gw_entry = bosch_module.BoschGatewayEntry(
+        hass=hass,
+        uuid="gateway-123",
+        host="192.168.1.100",
+        protocol="xmpp",
+        device_type="NEFIT",
+        access_key="key",
+        access_token="token",
+        entry=entry,
+    )
+    gw_entry._update_lock = MagicMock()
+    gw_entry._update_lock.__aenter__ = AsyncMock()
+    gw_entry._update_lock.__aexit__ = AsyncMock()
+
+    client = MagicMock()
+    client.raw_query = AsyncMock(return_value="xmpp_val")
+    client.raw_put = AsyncMock(return_value="xmpp_put_res")
+    gw_entry.gateway = client
+
+    get_res = await gw_entry.custom_get("/gateway/name")
+    assert get_res == "xmpp_val"
+    client.raw_query.assert_awaited_once_with(path="/gateway/name")
+
+    put_res = await gw_entry.custom_put("/gateway/name", "NewName")
+    assert put_res == "xmpp_put_res"
+    client.raw_put.assert_awaited_once_with(path="/gateway/name", value="NewName")
+
+
+@pytest.mark.asyncio
+async def test_pointtapi_thermostat_refresh_triggers_coordinator():
+    hass = MagicMock()
+    coordinator = MagicMock()
+    coordinator.async_request_refresh = AsyncMock()
+    entry = SimpleNamespace(
+        entry_id="entry-123",
+        runtime_data=SimpleNamespace(gateway=None, coordinator=coordinator),
+    )
+    gw_entry = _gateway_entry(hass, entry)
+    gw_entry._update_lock = MagicMock()
+    gw_entry._update_lock.locked.return_value = False
+
+    await gw_entry.thermostat_refresh()
+    coordinator.async_request_refresh.assert_awaited_once()
