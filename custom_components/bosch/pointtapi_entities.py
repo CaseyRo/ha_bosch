@@ -716,6 +716,32 @@ def _thermostat_valve_device_info(
     )
 
 
+def _thermostat_device_type(data: dict[str, Any], device_id: int) -> str | None:
+    """Return the raw /devices/device{N}/type value if present."""
+    obj = (data or {}).get(f"/devices/device{device_id}/type")
+    if not isinstance(obj, dict):
+        return None
+    value = obj.get("value")
+    return value if isinstance(value, str) else None
+
+
+def _thermostat_valve_device_info_for_path(
+    uuid: str,
+    data: dict[str, Any],
+    path: str,
+    language: str | None = None,
+) -> DeviceInfo:
+    """Attach to a dedicated thermostat-valve device only for real valve rows."""
+    valve_id = _thermostat_valve_id_from_path(path)
+    if valve_id is None:
+        return _resolve_device_info(uuid, path, language=language, data=data)
+    if _thermostat_valve_row_by_id(data, valve_id) is not None:
+        return _thermostat_valve_device_info(uuid, data, valve_id, language)
+    if _thermostat_device_type(data, valve_id) == THERMOSTAT_VALVE_TYPE:
+        return _thermostat_valve_device_info(uuid, data, valve_id, language)
+    return _resolve_device_info(uuid, path, language=language, data=data)
+
+
 def _thermostat_valve_child_lock_path(data: dict[str, Any], valve_id: int) -> str | None:
     """Return the child-lock path exposed for a thermostat valve if any."""
     candidates = (
@@ -969,7 +995,6 @@ def _pointtapi_thermostat_valve_switch_descriptions(
                                 break
 
     for path in sorted(discovered):
-        valve_id = _thermostat_valve_id_from_path(path)
         descriptions.append(
             BoschPoinTTAPISwitchEntityDescription(
                 key=path,
@@ -977,10 +1002,8 @@ def _pointtapi_thermostat_valve_switch_descriptions(
                 on_value="true",
                 off_value="false",
                 entity_category=EntityCategory.CONFIG,
-                device_info_fn=lambda u, d, lang=None, vid=valve_id, p=path: (
-                    _thermostat_valve_device_info(u, d, vid, lang)
-                    if vid is not None
-                    else _resolve_device_info(u, p, language=lang, data=d)
+                device_info_fn=lambda u, d, lang=None, p=path: _thermostat_valve_device_info_for_path(
+                    u, d, p, lang
                 ),
             )
         )
@@ -2452,12 +2475,11 @@ class BoschPoinTTAPINumberEntity(
             language=self._language,
             data=coordinator.data or {},
         )
-        valve_id = _thermostat_valve_id_from_path(description.key)
-        if valve_id is not None and description.translation_key == "thermostat_valve_temperature_offset":
-            self._attr_device_info = _thermostat_valve_device_info(
+        if description.translation_key == "thermostat_valve_temperature_offset":
+            self._attr_device_info = _thermostat_valve_device_info_for_path(
                 uuid,
                 coordinator.data or {},
-                valve_id,
+                description.key,
                 self._language,
             )
         self._native_value: float | None = None

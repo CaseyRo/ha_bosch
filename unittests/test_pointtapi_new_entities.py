@@ -431,6 +431,9 @@ class TestNotificationsHelpers:
             for d in switch_descs
             if d.key == "/devices/device1/thermostat/childLock/enabled"
         )
+        device_info = desc.device_info_fn("uuid-1", data, "en")
+        assert device_info["identifiers"] == {("bosch", "uuid-1")}
+
         coordinator = MagicMock(data=data)
         entity = BoschPoinTTAPIGenericSwitchEntity(
             coordinator,
