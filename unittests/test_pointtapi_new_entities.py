@@ -177,9 +177,12 @@ class TestNotificationsHelpers:
             },
             "/devices/list/thermostat_valve/7/childLock/enabled": {
                 "id": "/devices/list/thermostat_valve/7/childLock/enabled",
-                "type": "boolValue",
-                "value": True,
+                "type": "stringValue",
                 "writeable": 1,
+                "used": "true",
+                "recordable": 0,
+                "available": "true",
+                "value": "true",
             },
         }
 
@@ -213,9 +216,12 @@ class TestNotificationsHelpers:
             },
             "/devices/device7/etrv/childLock/enabled": {
                 "id": "/devices/device7/etrv/childLock/enabled",
-                "type": "boolValue",
-                "value": True,
+                "type": "stringValue",
                 "writeable": 1,
+                "used": "true",
+                "recordable": 0,
+                "available": "true",
+                "value": "true",
             },
             "/devices/device7/type": {
                 "id": "/devices/device7/type",
@@ -400,9 +406,12 @@ class TestNotificationsHelpers:
             },
             "/devices/device1/thermostat/childLock/enabled": {
                 "id": "/devices/device1/thermostat/childLock/enabled",
-                "type": "boolValue",
-                "value": False,
+                "type": "stringValue",
                 "writeable": 1,
+                "used": "true",
+                "recordable": 0,
+                "available": "true",
+                "value": "false",
             },
             "/devices/device1/type": {
                 "id": "/devices/device1/type",
@@ -416,6 +425,23 @@ class TestNotificationsHelpers:
             desc.key == "/devices/device1/thermostat/childLock/enabled"
             for desc in switch_descs
         )
+
+        desc = next(
+            d
+            for d in switch_descs
+            if d.key == "/devices/device1/thermostat/childLock/enabled"
+        )
+        coordinator = MagicMock(data=data)
+        entity = BoschPoinTTAPIGenericSwitchEntity(
+            coordinator,
+            "entry-1",
+            "uuid-1",
+            desc,
+        )
+        entity.hass = MagicMock()
+        entity.async_write_ha_state = MagicMock()
+        entity._handle_coordinator_update()
+        assert entity.is_on is False
 
     def test_real_dump_like_fragment_exercises_etrv_and_zone_paths(self):
         data = {
@@ -450,9 +476,12 @@ class TestNotificationsHelpers:
             },
             "/devices/device2/etrv/childLock/enabled": {
                 "id": "/devices/device2/etrv/childLock/enabled",
-                "type": "boolValue",
-                "value": True,
+                "type": "stringValue",
                 "writeable": 1,
+                "used": "true",
+                "recordable": 0,
+                "available": "true",
+                "value": "true",
             },
             "/devices/device2/etrv/valvePosition": {
                 "id": "/devices/device2/etrv/valvePosition",

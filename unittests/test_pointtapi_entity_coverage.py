@@ -187,7 +187,14 @@ class TestThermostatValveHelpers:
             "/devices/device7/etrv/childLock/refEnum": {
                 "references": [{"id": "/devices/device7/etrv/childLock/enabled"}]
             },
-            "/devices/device7/etrv/childLock/enabled": {"value": True},
+            "/devices/device7/etrv/childLock/enabled": {
+                "type": "stringValue",
+                "writeable": 1,
+                "used": "true",
+                "recordable": 0,
+                "available": "true",
+                "value": "true",
+            },
         }
         assert _thermostat_valve_child_lock_path(referenced, 7).endswith("/enabled")
 
