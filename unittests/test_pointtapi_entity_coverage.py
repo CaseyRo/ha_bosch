@@ -177,7 +177,7 @@ class TestThermostatValveHelpers:
         nested = {
             "/devices/list": {"value": [{"id": 7, "type": "thermostat_valve", "childLock": {"enabled": True}}]}
         }
-        assert _thermostat_valve_child_lock_path(nested, 7).endswith("/childLock")
+        assert _thermostat_valve_child_lock_path(nested, 7) is None
         assert _thermostat_valve_device_path_from_data({}, 7, "etrv/name") is None
         assert _thermostat_valve_battery(nested, 99) is None
         assert _thermostat_valve_zone_name(nested, 7) is None
@@ -186,7 +186,8 @@ class TestThermostatValveHelpers:
         referenced = {
             "/devices/device7/etrv/childLock/refEnum": {
                 "references": [{"id": "/devices/device7/etrv/childLock/enabled"}]
-            }
+            },
+            "/devices/device7/etrv/childLock/enabled": {"value": True},
         }
         assert _thermostat_valve_child_lock_path(referenced, 7).endswith("/enabled")
 

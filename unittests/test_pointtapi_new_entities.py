@@ -155,12 +155,38 @@ class TestNotificationsHelpers:
         }
 
         switch_descs = _pointtapi_thermostat_valve_switch_descriptions(data)
+        assert switch_descs == ()
 
+    def test_thermostat_valve_child_lock_prefers_enabled_leaf_from_parent_reference(self):
+        data = {
+            "/devices/list": {
+                "value": [
+                    {
+                        "id": 7,
+                        "type": "thermostat_valve",
+                        "name": "Valve 7",
+                    }
+                ]
+            },
+            "/devices/list/thermostat_valve/7/childLock": {
+                "id": "/devices/list/thermostat_valve/7/childLock",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/list/thermostat_valve/7/childLock/enabled"}
+                ],
+            },
+            "/devices/list/thermostat_valve/7/childLock/enabled": {
+                "id": "/devices/list/thermostat_valve/7/childLock/enabled",
+                "type": "boolValue",
+                "value": True,
+                "writeable": 1,
+            },
+        }
+
+        switch_descs = _pointtapi_thermostat_valve_switch_descriptions(data)
         assert [desc.key for desc in switch_descs] == [
-            "/devices/list/thermostat_valve/7/childLock"
+            "/devices/list/thermostat_valve/7/childLock/enabled"
         ]
-        assert switch_descs[0].translation_key == "thermostat_valve_child_lock"
-        assert switch_descs[0].device_info_fn is not None
 
     def test_thermostat_valve_child_lock_switch_discovery_from_full_device_tree(self):
         data = {
@@ -292,6 +318,104 @@ class TestNotificationsHelpers:
         temp_desc = next(desc for desc in sensor_descs if desc.key == "/devices/device2/etrv/temperatureActual")
         assert temp_desc.translation_key == "thermostat_valve_temperature_actual"
         assert temp_desc.native_unit_of_measurement == "°C"
+
+    def test_thermostat_device_paths_without_etrv_are_discovered(self):
+        data = {
+            "/devices/device1": {
+                "id": "/devices/device1",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device1/thermostat"},
+                    {"id": "/devices/device1/type"},
+                ],
+            },
+            "/devices/device1/thermostat": {
+                "id": "/devices/device1/thermostat",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device1/thermostat/valvePosition"},
+                    {"id": "/devices/device1/thermostat/temperatureActual"},
+                    {"id": "/devices/device1/thermostat/offset"},
+                ],
+            },
+            "/devices/device1/thermostat/valvePosition": {
+                "id": "/devices/device1/thermostat/valvePosition",
+                "type": "floatValue",
+                "value": 39.0,
+                "unitOfMeasure": "%",
+            },
+            "/devices/device1/thermostat/temperatureActual": {
+                "id": "/devices/device1/thermostat/temperatureActual",
+                "type": "floatValue",
+                "value": 20.5,
+                "unitOfMeasure": "°C",
+            },
+            "/devices/device1/thermostat/offset": {
+                "id": "/devices/device1/thermostat/offset",
+                "type": "floatValue",
+                "value": 0.0,
+                "minValue": -2.0,
+                "maxValue": 2.0,
+                "stepSize": 0.5,
+                "unitOfMeasure": "C",
+            },
+            "/devices/device1/type": {
+                "id": "/devices/device1/type",
+                "type": "stringValue",
+                "value": "thermostat",
+            },
+        }
+
+        sensor_descs = {d.key: d for d in _pointtapi_thermostat_valve_sensor_descriptions(data)}
+        assert "/devices/device1/thermostat/valvePosition" in sensor_descs
+        assert "/devices/device1/thermostat/temperatureActual" in sensor_descs
+
+        number_descs = {d.key: d for d in _pointtapi_number_descriptions(data)}
+        assert "/devices/device1/thermostat/offset" in number_descs
+        assert number_descs["/devices/device1/thermostat/offset"].translation_key == "thermostat_valve_temperature_offset"
+
+    def test_thermostat_device_child_lock_uses_enabled_leaf(self):
+        data = {
+            "/devices/device1": {
+                "id": "/devices/device1",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device1/thermostat"},
+                    {"id": "/devices/device1/type"},
+                ],
+            },
+            "/devices/device1/thermostat": {
+                "id": "/devices/device1/thermostat",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device1/thermostat/childLock"},
+                ],
+            },
+            "/devices/device1/thermostat/childLock": {
+                "id": "/devices/device1/thermostat/childLock",
+                "type": "refEnum",
+                "references": [
+                    {"id": "/devices/device1/thermostat/childLock/enabled"},
+                ],
+            },
+            "/devices/device1/thermostat/childLock/enabled": {
+                "id": "/devices/device1/thermostat/childLock/enabled",
+                "type": "boolValue",
+                "value": False,
+                "writeable": 1,
+            },
+            "/devices/device1/type": {
+                "id": "/devices/device1/type",
+                "type": "stringValue",
+                "value": "thermostat",
+            },
+        }
+
+        switch_descs = _pointtapi_thermostat_valve_switch_descriptions(data)
+        assert any(
+            desc.key == "/devices/device1/thermostat/childLock/enabled"
+            for desc in switch_descs
+        )
 
     def test_real_dump_like_fragment_exercises_etrv_and_zone_paths(self):
         data = {
@@ -743,6 +867,42 @@ class TestComfortControlDescriptions:
         assert desc.native_min_value == -6.0
         assert desc.native_max_value == 6.0
         assert desc.native_step == 0.5
+        assert desc.entity_category == EntityCategory.CONFIG
+
+    def test_thermostat_temperature_offset_is_described_from_device_tree(self):
+        data = {
+            "/devices/device1": {
+                "id": "/devices/device1",
+                "type": "refEnum",
+                "references": [{"id": "/devices/device1/thermostat"}],
+            },
+            "/devices/device1/thermostat": {
+                "id": "/devices/device1/thermostat",
+                "type": "refEnum",
+                "references": [{"id": "/devices/device1/thermostat/offset"}],
+            },
+            "/devices/device1/thermostat/offset": {
+                "id": "/devices/device1/thermostat/offset",
+                "type": "floatValue",
+                "value": 0.25,
+                "minValue": -3.0,
+                "maxValue": 3.0,
+                "stepSize": 0.25,
+                "unitOfMeasure": "C",
+            },
+            "/devices/device1/type": {
+                "id": "/devices/device1/type",
+                "type": "stringValue",
+                "value": "thermostat",
+            },
+        }
+
+        descs = {d.key: d for d in _pointtapi_number_descriptions(data)}
+        desc = descs["/devices/device1/thermostat/offset"]
+        assert desc.translation_key == "thermostat_valve_temperature_offset"
+        assert desc.native_min_value == -3.0
+        assert desc.native_max_value == 3.0
+        assert desc.native_step == 0.25
         assert desc.entity_category == EntityCategory.CONFIG
 
     def test_thermal_disinfect_weekday_options(self):
