@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from homeassistant.components.climate.const import HVACAction
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.bosch.pointtapi_entities import (
@@ -32,6 +31,7 @@ from custom_components.bosch.pointtapi_entities import (
     _open_window_status,
     _parse_update_timestamp,
     _path_available,
+    _pointtapi_sensor_descriptions,
     _program_names_by_index,
     _resolve_device_info,
     _resolve_on_off,
@@ -53,7 +53,6 @@ from custom_components.bosch.pointtapi_entities import (
     _zone_program_current_option,
     _zone_program_option_map,
     _zone_program_write_value,
-    _open_window_status,
     _select_state_key,
     pointtapi_zone_ids,
 )
@@ -277,6 +276,16 @@ class TestThermostatValveHelpers:
     def test_valve_warning_state(self, warning, expected):
         data = {"/devices/list": {"value": [{"id": 7, "type": "thermostat_valve", "warning": warning}]}}
         assert _thermostat_valve_warning_state(data, 7) is expected
+
+    def test_pointtapi_sensor_descriptions_unique_keys(self):
+        data = {
+            "/devices/list": {"value": [{"id": 7, "type": "thermostat_valve"}]},
+            "/devices/device7/etrv/temperatureActual": {"value": 22.5},
+            "/devices/device7/etrv/valvePosition": {"value": 15.0},
+        }
+        descriptions = _pointtapi_sensor_descriptions(data)
+        keys = [desc.key for desc in descriptions]
+        assert len(keys) == len(set(keys))
 
 
 class TestGasAndDiagnostics:

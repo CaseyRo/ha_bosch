@@ -794,6 +794,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
     """Return diagnostic sensors for each thermostat valve from /devices/list."""
     data = data or {}
     descriptions: list[BoschPoinTTAPISensorEntityDescription] = []
+    seen_keys: set[str] = set()
 
     for row in _thermostat_valve_rows(data):
         try:
@@ -805,72 +806,77 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
         if value_path is None:
             value_path = f"/devices/list/thermostat_valve/{valve_id}/valvePosition"
 
-        descriptions.extend(
-            (
-                BoschPoinTTAPISensorEntityDescription(
-                    key=f"/devices/list/thermostat_valve/{valve_id}/signal",
-                    translation_key="thermostat_valve_signal_strength",
-                    # No SIGNAL_STRENGTH device class: HA only accepts dB/dBm for
-                    # it, and /devices/list reports link quality as a percentage.
-                    native_unit_of_measurement="%",
-                    icon="mdi:signal",
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "signal"),
-                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
-                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
-                ),
-                BoschPoinTTAPISensorEntityDescription(
-                    key=f"/devices/list/thermostat_valve/{valve_id}/battery",
-                    translation_key="thermostat_valve_battery",
-                    icon="mdi:battery",
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_battery(d, vid),
-                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
-                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
-                ),
-                BoschPoinTTAPISensorEntityDescription(
-                    key=f"/devices/list/thermostat_valve/{valve_id}/zone",
-                    translation_key="thermostat_valve_zone",
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_zone_name(d, vid),
-                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
-                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
-                ),
-                BoschPoinTTAPISensorEntityDescription(
-                    key=f"/devices/list/thermostat_valve/{valve_id}/protocol",
-                    translation_key="thermostat_valve_protocol",
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_protocol_name(d, vid),
-                    available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
-                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
-                ),
-                BoschPoinTTAPISensorEntityDescription(
-                    key=value_path,
-                    translation_key="thermostat_valve_valve_position",
-                    native_unit_of_measurement="%",
-                    icon="mdi:valve",
-                    state_class=SensorStateClass.MEASUREMENT,
-                    device_class=SensorDeviceClass.POWER_FACTOR,
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") or f"/devices/list/thermostat_valve/{vid}/valvePosition"),
-                    available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
-                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
-                ),
-                BoschPoinTTAPISensorEntityDescription(
-                    key=_thermostat_valve_device_path_from_data(data, valve_id, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{valve_id}/temperatureActual",
-                    translation_key="thermostat_valve_temperature_actual",
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{vid}/temperatureActual"),
-                    available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
-                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
-                ),
-            )
-        )
+        temp_path = _thermostat_valve_device_path_from_data(data, valve_id, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{valve_id}/temperatureActual"
+
+        for desc in (
+            BoschPoinTTAPISensorEntityDescription(
+                key=f"/devices/list/thermostat_valve/{valve_id}/signal",
+                translation_key="thermostat_valve_signal_strength",
+                # No SIGNAL_STRENGTH device class: HA only accepts dB/dBm for
+                # it, and /devices/list reports link quality as a percentage.
+                native_unit_of_measurement="%",
+                icon="mdi:signal",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "signal"),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            ),
+            BoschPoinTTAPISensorEntityDescription(
+                key=f"/devices/list/thermostat_valve/{valve_id}/battery",
+                translation_key="thermostat_valve_battery",
+                icon="mdi:battery",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, vid=valve_id: _thermostat_valve_battery(d, vid),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            ),
+            BoschPoinTTAPISensorEntityDescription(
+                key=f"/devices/list/thermostat_valve/{valve_id}/zone",
+                translation_key="thermostat_valve_zone",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, vid=valve_id: _thermostat_valve_zone_name(d, vid),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            ),
+            BoschPoinTTAPISensorEntityDescription(
+                key=f"/devices/list/thermostat_valve/{valve_id}/protocol",
+                translation_key="thermostat_valve_protocol",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, vid=valve_id: _thermostat_valve_protocol_name(d, vid),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            ),
+            BoschPoinTTAPISensorEntityDescription(
+                key=value_path,
+                translation_key="thermostat_valve_valve_position",
+                native_unit_of_measurement="%",
+                icon="mdi:valve",
+                state_class=SensorStateClass.MEASUREMENT,
+                device_class=SensorDeviceClass.POWER_FACTOR,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") or f"/devices/list/thermostat_valve/{vid}/valvePosition"),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            ),
+            BoschPoinTTAPISensorEntityDescription(
+                key=temp_path,
+                translation_key="thermostat_valve_temperature_actual",
+                device_class=SensorDeviceClass.TEMPERATURE,
+                native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                state_class=SensorStateClass.MEASUREMENT,
+                value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{vid}/temperatureActual"),
+                available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+            ),
+        ):
+            if desc.key not in seen_keys:
+                seen_keys.add(desc.key)
+                descriptions.append(desc)
 
     for key in sorted((data or {}).keys()):
         if not key.startswith("/devices/device"):
+            continue
+        if key in seen_keys:
             continue
         if (
             "/etrv/valvePosition" in key
@@ -880,6 +886,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
             valve_id = _thermostat_valve_id_from_path(key)
             if valve_id is None:
                 continue
+            seen_keys.add(key)
             descriptions.append(
                 BoschPoinTTAPISensorEntityDescription(
                     key=key,
@@ -902,6 +909,7 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
             valve_id = _thermostat_valve_id_from_path(key)
             if valve_id is None:
                 continue
+            seen_keys.add(key)
             descriptions.append(
                 BoschPoinTTAPISensorEntityDescription(
                     key=key,
@@ -2119,7 +2127,15 @@ def _pointtapi_sensor_descriptions(
     descriptions.extend(_pointtapi_zone_optimum_start_state_sensor_descriptions(data))
     descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))
     descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
-    return tuple(descriptions)
+
+    seen_keys: set[str] = set()
+    deduped: list[BoschPoinTTAPISensorEntityDescription] = []
+    for desc in descriptions:
+        if desc.key not in seen_keys:
+            seen_keys.add(desc.key)
+            deduped.append(desc)
+
+    return tuple(deduped)
 
 
 class BoschPoinTTAPISensorEntity(
