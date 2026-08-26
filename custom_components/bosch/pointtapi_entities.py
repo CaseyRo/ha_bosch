@@ -630,27 +630,18 @@ def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> 
 
 def _thermostat_valve_device_path_from_data(data: dict[str, Any], valve_id: int, suffix: str) -> str | None:
     """Resolve a valve path across list, etrv, thermostat and direct layouts."""
-    suffixes: list[str] = [suffix]
-
-    # Normalize equivalent layouts for thermostat devices (device1 often uses
-    # /thermostat/* instead of /etrv/*).
+    leaf = suffix
     if "/" in suffix:
         head, tail = suffix.split("/", 1)
         if head in {"etrv", "thermostat"}:
-            suffixes.extend([tail, f"etrv/{tail}", f"thermostat/{tail}"])
-    else:
-        suffixes.extend([f"etrv/{suffix}", f"thermostat/{suffix}"])
+            leaf = tail
 
-    candidates: list[str] = []
-    for part in dict.fromkeys(suffixes):
-        candidates.extend(
-            [
-                f"/devices/list/thermostat_valve/{valve_id}/{part}",
-                f"/devices/device{valve_id}/{part}",
-                f"/devices/device{valve_id}/etrv/{part}",
-                f"/devices/device{valve_id}/thermostat/{part}",
-            ]
-        )
+    candidates: list[str] = [
+        f"/devices/list/thermostat_valve/{valve_id}/{leaf}",
+        f"/devices/device{valve_id}/{leaf}",
+        f"/devices/device{valve_id}/etrv/{leaf}",
+        f"/devices/device{valve_id}/thermostat/{leaf}",
+    ]
 
     for path in candidates:
         if path in (data or {}):
