@@ -4,11 +4,49 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
-Collected for 1.4.0 (pre-released as 1.4.0-beta.1). None of it has been
-confirmed on real hardware yet — the appliance status table in particular is
-transcribed from manufacturer documentation, not observed.
+Collected for 1.5.0 (pre-released as 1.5.0-beta.1, which supersedes
+1.4.0-beta.1 — 1.4.0 never went stable). The #18 items below still have no
+hardware confirmation; the appliance status table in particular is transcribed
+from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
+12-valve production for a week before merge.
 
 ### Added
+- **Thermostat-valve entities** — per-valve child lock (binary sensor),
+  valve position and actual temperature sensors, and a writable calibration
+  offset number, resolved from `/devices/device{id}/etrv/*` with a
+  `/devices/list/thermostat_valve/{id}` fallback. Contributed by
+  @jfhautenauven (#20).
+- **Per-zone actual temperature sensor** — `/zones/{id}/temperatureActual`
+  exposed as `zone_average_temperature`, the zone-level aggregate the climate
+  entity already reports as its current temperature. Contributed by
+  @jfhautenauven (#20).
+- **README entity matrix** — every POINTTAPI entity with platform, translation
+  key, resource path and scope. Contributed by @jfhautenauven (#20).
+
+### Changed
+- **Fast/slow polling cadence** — `/gateway`, `/energy`, `/solarCircuits`,
+  `/programs`, `/system/appliance` and the `/devices` inventory refresh every
+  5 minutes; temperatures, modes and live valve telemetry (`/devices/list`,
+  `etrv/*`, `thermostat/*`) stay on the 60-second cycle. Discovery reruns
+  daily; energy history every 30 minutes. Contributed by @jfhautenauven (#20).
+- **Boost switch renamed "Heating boost"** in all seven locales, so it no
+  longer reads as a generic boost next to the DHW controls (#20).
+- **Integer-like counters** (`numberOfStarts`, valve ids and similar) that
+  arrive as `12.0` or `"12"` now render as integers (#20).
+- **Thermostat-valve labels and protocol display** polished; translation
+  parity restored across de/en/fr/it/nl/pl/sk (#20).
+- **`_discover_roots`** replaces the three copy-pasted zone/program/device root
+  walkers; `_pointtapi_number_descriptions` composes `CONSTANT + dynamic` like
+  the select descriptions already did. Closes most of #19 (#20).
+
+### Removed
+- **Persistent startup cache** — added mid-PR to accelerate boot, then made
+  unreachable by the startup-ordering fix in the same PR (the first live
+  refresh reassigned the slow-data dict before any entity could read it).
+  Deleted rather than carried: a `.storage` blob per config entry that needed
+  a secrets audit on every new gateway field, for no consumer (#20).
+
+### Added (1.4.0-beta.1)
 - **Appliance status sensor** — `/system/appliance/displayCode` and `causeCode`
   resolved against a Bosch/Buderus display+cause table to a readable state
   (`heating_operation`, `no_flame_after_ignition`, …), with the raw codes kept
