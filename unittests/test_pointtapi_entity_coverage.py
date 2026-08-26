@@ -177,7 +177,7 @@ class TestThermostatValveHelpers:
         nested = {
             "/devices/list": {"value": [{"id": 7, "type": "thermostat_valve", "childLock": {"enabled": True}}]}
         }
-        assert _thermostat_valve_child_lock_path(nested, 7).endswith("/childLock")
+        assert _thermostat_valve_child_lock_path(nested, 7) is None
         assert _thermostat_valve_device_path_from_data({}, 7, "etrv/name") is None
         assert _thermostat_valve_battery(nested, 99) is None
         assert _thermostat_valve_zone_name(nested, 7) is None
@@ -186,9 +186,92 @@ class TestThermostatValveHelpers:
         referenced = {
             "/devices/device7/etrv/childLock/refEnum": {
                 "references": [{"id": "/devices/device7/etrv/childLock/enabled"}]
-            }
+            },
+            "/devices/device7/etrv/childLock/enabled": {
+                "type": "stringValue",
+                "writeable": 1,
+                "used": "true",
+                "recordable": 0,
+                "available": "true",
+                "value": "true",
+            },
         }
         assert _thermostat_valve_child_lock_path(referenced, 7).endswith("/enabled")
+
+    @pytest.mark.parametrize(
+        "data, valve_id, suffix, expected",
+        [
+            # Case 1: list summary layout
+            (
+                {"/devices/list/thermostat_valve/2/temperatureActual": {"value": 21.0}},
+                2,
+                "etrv/temperatureActual",
+                "/devices/list/thermostat_valve/2/temperatureActual",
+            ),
+            (
+                {"/devices/list/thermostat_valve/2/temperatureActual": {"value": 21.0}},
+                2,
+                "temperatureActual",
+                "/devices/list/thermostat_valve/2/temperatureActual",
+            ),
+            # Case 2: direct device layout
+            (
+                {"/devices/device2/temperatureActual": {"value": 21.0}},
+                2,
+                "etrv/temperatureActual",
+                "/devices/device2/temperatureActual",
+            ),
+            # Case 3: eTRV device layout (real dump devices 2-13)
+            (
+                {
+                    "/devices/device2/etrv/temperatureActual": {"value": 22.9},
+                    "/devices/device2/etrv/valvePosition": {"value": 0.0},
+                    "/devices/device2/etrv/offset": {"value": 0.0},
+                },
+                2,
+                "etrv/temperatureActual",
+                "/devices/device2/etrv/temperatureActual",
+            ),
+            (
+                {"/devices/device2/etrv/offset": {"value": 0.0}},
+                2,
+                "etrv/offset",
+                "/devices/device2/etrv/offset",
+            ),
+            # Case 4: thermostat device layout (real dump device 1)
+            (
+                {"/devices/device1/thermostat/temperatureActual": {"value": 24.4}},
+                1,
+                "thermostat/temperatureActual",
+                "/devices/device1/thermostat/temperatureActual",
+            ),
+            (
+                {"/devices/device1/thermostat/offset": {"value": 0.0}},
+                1,
+                "etrv/offset",
+                "/devices/device1/thermostat/offset",
+            ),
+            # Case 5: candidate resolution priority (list > direct device > etrv > thermostat)
+            (
+                {
+                    "/devices/list/thermostat_valve/2/offset": {"value": 0.0},
+                    "/devices/device2/etrv/offset": {"value": 0.0},
+                },
+                2,
+                "etrv/offset",
+                "/devices/list/thermostat_valve/2/offset",
+            ),
+            # Case 6: no match returns None
+            (
+                {},
+                2,
+                "etrv/temperatureActual",
+                None,
+            ),
+        ],
+    )
+    def test_thermostat_valve_device_path_from_data_all_layouts(self, data, valve_id, suffix, expected):
+        assert _thermostat_valve_device_path_from_data(data, valve_id, suffix) == expected
 
     @pytest.mark.parametrize("warning, expected", [(0, False), (1, True), ("bad", True), (None, None)])
     def test_valve_warning_state(self, warning, expected):

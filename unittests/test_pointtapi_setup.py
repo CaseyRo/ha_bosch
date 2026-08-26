@@ -59,9 +59,6 @@ async def test_pointtapi_refreshes_before_forwarding_platforms():
         def __init__(self, *_):
             pass
 
-        async def async_load_persistent_cache(self):
-            events.append("cache")
-
         async def async_config_entry_first_refresh(self):
             events.append("refresh")
 
@@ -90,9 +87,6 @@ async def test_pointtapi_refresh_failure_does_not_forward_platforms():
 
     class Coordinator:
         def __init__(self, *_):
-            pass
-
-        async def async_load_persistent_cache(self):
             pass
 
         async def async_config_entry_first_refresh(self):

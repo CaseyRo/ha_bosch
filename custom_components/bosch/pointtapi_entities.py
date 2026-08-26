@@ -629,13 +629,20 @@ def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> 
 
 
 def _thermostat_valve_device_path_from_data(data: dict[str, Any], valve_id: int, suffix: str) -> str | None:
-    """Resolve the valve path from either /devices/list or /devices/deviceX layouts."""
-    candidates = (
-        f"/devices/list/thermostat_valve/{valve_id}/{suffix}",
-        f"/devices/device{valve_id}/{suffix}",
-        f"/devices/device{valve_id}/etrv/{suffix}",
-        f"/devices/device{valve_id}/thermostat/{suffix}",
-    )
+    """Resolve a valve path across list, etrv, thermostat and direct layouts."""
+    leaf = suffix
+    if "/" in suffix:
+        head, tail = suffix.split("/", 1)
+        if head in {"etrv", "thermostat"}:
+            leaf = tail
+
+    candidates: list[str] = [
+        f"/devices/list/thermostat_valve/{valve_id}/{leaf}",
+        f"/devices/device{valve_id}/{leaf}",
+        f"/devices/device{valve_id}/etrv/{leaf}",
+        f"/devices/device{valve_id}/thermostat/{leaf}",
+    ]
+
     for path in candidates:
         if path in (data or {}):
             return path
@@ -712,30 +719,56 @@ def _thermostat_valve_device_info(
 def _thermostat_valve_child_lock_path(data: dict[str, Any], valve_id: int) -> str | None:
     """Return the child-lock path exposed for a thermostat valve if any."""
     candidates = (
-        f"/devices/list/thermostat_valve/{valve_id}/childLock",
+        # Use only concrete enabled leaves for switch state semantics.
         f"/devices/list/thermostat_valve/{valve_id}/childLock/enabled",
         f"/devices/list/thermostat_valve/{valve_id}/etrv/childLock/enabled",
-        f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock",
         f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock/enabled",
     )
     for path in candidates:
         if path in (data or {}):
             return path
 
-    # Bosch can expose a full device tree under /devices/device{N}/... instead of
-    # the compact /devices/list summary rows. Accept both layouts.
-    device_paths = (
+    # If we got a parent childLock node first, follow its references to the
+    # enabled leaf whenever possible.
+    parent_candidates = (
+        f"/devices/list/thermostat_valve/{valve_id}/childLock",
+        f"/devices/list/thermostat_valve/{valve_id}/etrv/childLock",
+        f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock",
+        f"/devices/device{valve_id}/childLock",
         f"/devices/device{valve_id}/etrv/childLock",
-        f"/devices/device{valve_id}/etrv/childLock/enabled",
         f"/devices/device{valve_id}/thermostat/childLock",
+    )
+    for parent_path in parent_candidates:
+        parent_obj = (data or {}).get(parent_path)
+        if not isinstance(parent_obj, dict):
+            continue
+        refs = parent_obj.get("references")
+        if not isinstance(refs, list):
+            continue
+        for ref in refs:
+            if not isinstance(ref, dict):
+                continue
+            ref_id = ref.get("id")
+            if (
+                isinstance(ref_id, str)
+                and ref_id.endswith("/enabled")
+                and ref_id in (data or {})
+            ):
+                return ref_id
+
+    # Bosch can expose a full device tree under /devices/device{N}/... instead of
+    # the compact /devices/list summary rows. Accept both layouts, but only
+    # create switch paths on the enabled leaf.
+    device_paths = (
+        f"/devices/device{valve_id}/etrv/childLock/enabled",
         f"/devices/device{valve_id}/thermostat/childLock/enabled",
     )
     for path in device_paths:
         if path in (data or {}):
             return path
 
-    # Some real dumps expose a parent refEnum node with a references list pointing
-    # to the enabled leaf; prefer the leaf path when it exists.
+    # Some real dumps expose a parent refEnum node with a references list
+    # pointing to the enabled leaf; prefer the leaf path when it exists.
     for key, value in (data or {}).items():
         if not isinstance(value, dict):
             continue
@@ -746,22 +779,12 @@ def _thermostat_valve_child_lock_path(data: dict[str, Any], valve_id: int) -> st
                     if not isinstance(ref, dict):
                         continue
                     ref_id = ref.get("id")
-                    if isinstance(ref_id, str) and ref_id.endswith("/enabled"):
+                    if (
+                        isinstance(ref_id, str)
+                        and ref_id.endswith("/enabled")
+                        and ref_id in (data or {})
+                    ):
                         return ref_id
-
-    # When only a summary row is present, look for nested childLock dictionaries.
-    row = _thermostat_valve_row_by_id(data, valve_id)
-    if not isinstance(row, dict):
-        return None
-
-    nested = (
-        row.get("childLock"),
-        (row.get("etrv") or {}).get("childLock"),
-        (row.get("thermostat") or {}).get("childLock"),
-    )
-    for value in nested:
-        if isinstance(value, dict) and ("enabled" in value or "value" in value):
-            return f"/devices/list/thermostat_valve/{valve_id}/childLock"
     return None
 
 
@@ -849,7 +872,11 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
     for key in sorted((data or {}).keys()):
         if not key.startswith("/devices/device"):
             continue
-        if "/etrv/valvePosition" in key:
+        if (
+            "/etrv/valvePosition" in key
+            or "/thermostat/valvePosition" in key
+            or key.endswith("/valvePosition")
+        ):
             valve_id = _thermostat_valve_id_from_path(key)
             if valve_id is None:
                 continue
@@ -867,7 +894,11 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
                 )
             )
-        if "/etrv/temperatureActual" in key:
+        if (
+            "/etrv/temperatureActual" in key
+            or "/thermostat/temperatureActual" in key
+            or key.endswith("/temperatureActual")
+        ):
             valve_id = _thermostat_valve_id_from_path(key)
             if valve_id is None:
                 continue
@@ -918,7 +949,6 @@ def _pointtapi_thermostat_valve_switch_descriptions(
             discovered.add(key)
             continue
         if key.endswith("/childLock"):
-            ref_id = None
             obj = (data or {}).get(key)
             if isinstance(obj, dict):
                 refs = obj.get("references")
@@ -929,8 +959,6 @@ def _pointtapi_thermostat_valve_switch_descriptions(
                             if ref_id.endswith("/enabled"):
                                 discovered.add(ref_id)
                                 break
-            if ref_id is None:
-                discovered.add(key)
 
     for path in sorted(discovered):
         valve_id = _thermostat_valve_id_from_path(path)
@@ -2354,7 +2382,13 @@ def _pointtapi_dynamic_number_descriptions(
             discovered.add(path)
 
     for key in sorted((data or {}).keys()):
-        if key.startswith("/devices/device") and key.endswith("/etrv/offset"):
+        if not key.startswith("/devices/device"):
+            continue
+        if (
+            key.endswith("/etrv/offset")
+            or key.endswith("/thermostat/offset")
+            or key.endswith("/offset")
+        ):
             discovered.add(key)
 
     for path in sorted(discovered):
@@ -2403,7 +2437,7 @@ class BoschPoinTTAPINumberEntity(
             data=coordinator.data or {},
         )
         valve_id = _thermostat_valve_id_from_path(description.key)
-        if valve_id is not None and "/etrv/offset" in description.key:
+        if valve_id is not None and description.translation_key == "thermostat_valve_temperature_offset":
             self._attr_device_info = _thermostat_valve_device_info(
                 uuid,
                 coordinator.data or {},
@@ -2885,14 +2919,20 @@ class BoschPoinTTAPIGenericSwitchEntity(
         self._path = description.key
         slug = description.key.strip("/").replace("/", "_")
         self._attr_unique_id = f"{entry_id}_pointtapi_switch_{slug}"
-        # Path-based routing via _resolve_device_info covers /gateway, /dhwCircuits, etc.
-        # device_id_suffix is retained on the description for compatibility but no longer used.
-        self._attr_device_info = _resolve_device_info(
-            uuid,
-            description.key,
-            language=self._language,
-            data=coordinator.data or {},
-        )
+        if description.device_info_fn is not None:
+            self._attr_device_info = description.device_info_fn(
+                uuid, coordinator.data or {}, self._language
+            )
+        else:
+            # Path-based routing via _resolve_device_info covers /gateway,
+            # /dhwCircuits, etc. device_id_suffix is retained on the
+            # description for compatibility but no longer used.
+            self._attr_device_info = _resolve_device_info(
+                uuid,
+                description.key,
+                language=self._language,
+                data=coordinator.data or {},
+            )
         self._is_on: bool = False
 
     @callback
