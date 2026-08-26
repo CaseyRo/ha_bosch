@@ -605,12 +605,41 @@ def _thermostat_valve_row_by_id(data: dict[str, Any], valve_id: int) -> dict[str
     return None
 
 
+def _thermostat_valve_id_from_path(path: str) -> int | None:
+    """Extract a thermostat-valve id from either /devices/list or /devices/deviceN paths."""
+    for pattern in (
+        "/devices/list/thermostat_valve/",
+        "/devices/device",
+    ):
+        if pattern not in path:
+            continue
+        suffix = path.split(pattern, 1)[1]
+        digits = "".join(ch for ch in suffix if ch.isdigit())
+        if digits:
+            return int(digits)
+    return None
+
+
 def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> Any:
     """Read one field from a thermostat-valve row in /devices/list."""
     row = _thermostat_valve_row_by_id(data, valve_id)
     if not row:
         return None
     return row.get(field)
+
+
+def _thermostat_valve_device_path_from_data(data: dict[str, Any], valve_id: int, suffix: str) -> str | None:
+    """Resolve the valve path from either /devices/list or /devices/deviceX layouts."""
+    candidates = (
+        f"/devices/list/thermostat_valve/{valve_id}/{suffix}",
+        f"/devices/device{valve_id}/{suffix}",
+        f"/devices/device{valve_id}/etrv/{suffix}",
+        f"/devices/device{valve_id}/thermostat/{suffix}",
+    )
+    for path in candidates:
+        if path in (data or {}):
+            return path
+    return None
 
 
 def _thermostat_valve_battery(data: dict[str, Any], valve_id: int) -> Any:
@@ -634,6 +663,36 @@ def _thermostat_valve_zone_name(data: dict[str, Any], valve_id: int) -> Any:
     return raw_zone
 
 
+def _thermostat_valve_protocol_name(data: dict[str, Any], valve_id: int) -> Any:
+    """Return a human-friendly protocol label for a thermostat valve."""
+    raw = _thermostat_valve_field(data, valve_id, "protocol")
+    if not isinstance(raw, str):
+        return raw
+    value = raw.strip()
+    if value.lower() == "homematicip":
+        return "Homematic-IP"
+    return value
+
+
+def _coerce_int_like(value: Any) -> int | None:
+    """Coerce numeric API values to int without leaving float artifacts in HA."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return int(float(text))
+        except ValueError:
+            return None
+    return None
+
+
 def _thermostat_valve_device_info(
     uuid: str,
     data: dict[str, Any],
@@ -650,6 +709,62 @@ def _thermostat_valve_device_info(
     )
 
 
+def _thermostat_valve_child_lock_path(data: dict[str, Any], valve_id: int) -> str | None:
+    """Return the child-lock path exposed for a thermostat valve if any."""
+    candidates = (
+        f"/devices/list/thermostat_valve/{valve_id}/childLock",
+        f"/devices/list/thermostat_valve/{valve_id}/childLock/enabled",
+        f"/devices/list/thermostat_valve/{valve_id}/etrv/childLock/enabled",
+        f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock",
+        f"/devices/list/thermostat_valve/{valve_id}/thermostat/childLock/enabled",
+    )
+    for path in candidates:
+        if path in (data or {}):
+            return path
+
+    # Bosch can expose a full device tree under /devices/device{N}/... instead of
+    # the compact /devices/list summary rows. Accept both layouts.
+    device_paths = (
+        f"/devices/device{valve_id}/etrv/childLock",
+        f"/devices/device{valve_id}/etrv/childLock/enabled",
+        f"/devices/device{valve_id}/thermostat/childLock",
+        f"/devices/device{valve_id}/thermostat/childLock/enabled",
+    )
+    for path in device_paths:
+        if path in (data or {}):
+            return path
+
+    # Some real dumps expose a parent refEnum node with a references list pointing
+    # to the enabled leaf; prefer the leaf path when it exists.
+    for key, value in (data or {}).items():
+        if not isinstance(value, dict):
+            continue
+        if key.startswith(f"/devices/device{valve_id}/") and ("/childLock" in key or "/thermostat/childLock" in key or "/etrv/childLock" in key):
+            refs = value.get("references")
+            if isinstance(refs, list):
+                for ref in refs:
+                    if not isinstance(ref, dict):
+                        continue
+                    ref_id = ref.get("id")
+                    if isinstance(ref_id, str) and ref_id.endswith("/enabled"):
+                        return ref_id
+
+    # When only a summary row is present, look for nested childLock dictionaries.
+    row = _thermostat_valve_row_by_id(data, valve_id)
+    if not isinstance(row, dict):
+        return None
+
+    nested = (
+        row.get("childLock"),
+        (row.get("etrv") or {}).get("childLock"),
+        (row.get("thermostat") or {}).get("childLock"),
+    )
+    for value in nested:
+        if isinstance(value, dict) and ("enabled" in value or "value" in value):
+            return f"/devices/list/thermostat_valve/{valve_id}/childLock"
+    return None
+
+
 def _pointtapi_thermostat_valve_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -662,6 +777,10 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
             valve_id = int(row.get("id"))
         except (TypeError, ValueError):
             continue
+
+        value_path = _thermostat_valve_device_path_from_data(data, valve_id, "etrv/valvePosition")
+        if value_path is None:
+            value_path = f"/devices/list/thermostat_valve/{valve_id}/valvePosition"
 
         descriptions.extend(
             (
@@ -698,9 +817,134 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
                     key=f"/devices/list/thermostat_valve/{valve_id}/protocol",
                     translation_key="thermostat_valve_protocol",
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    value_fn=lambda d, vid=valve_id: _thermostat_valve_field(d, vid, "protocol"),
+                    value_fn=lambda d, vid=valve_id: _thermostat_valve_protocol_name(d, vid),
                     available_fn=lambda d, vid=valve_id: _thermostat_valve_row_by_id(d, vid) is not None,
                     device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=value_path,
+                    translation_key="thermostat_valve_valve_position",
+                    native_unit_of_measurement="%",
+                    icon="mdi:valve",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    device_class=SensorDeviceClass.POWER_FACTOR,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") or f"/devices/list/thermostat_valve/{vid}/valvePosition"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/valvePosition") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=_thermostat_valve_device_path_from_data(data, valve_id, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{valve_id}/temperatureActual",
+                    translation_key="thermostat_valve_temperature_actual",
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=lambda d, vid=valve_id: _val(d, _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") or f"/devices/list/thermostat_valve/{vid}/temperatureActual"),
+                    available_fn=lambda d, vid=valve_id: _thermostat_valve_device_path_from_data(d, vid, "etrv/temperatureActual") is not None or _thermostat_valve_row_by_id(d, vid) is not None,
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                ),
+            )
+        )
+
+    for key in sorted((data or {}).keys()):
+        if not key.startswith("/devices/device"):
+            continue
+        if "/etrv/valvePosition" in key:
+            valve_id = _thermostat_valve_id_from_path(key)
+            if valve_id is None:
+                continue
+            descriptions.append(
+                BoschPoinTTAPISensorEntityDescription(
+                    key=key,
+                    translation_key="thermostat_valve_valve_position",
+                    native_unit_of_measurement="%",
+                    icon="mdi:valve",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    device_class=SensorDeviceClass.POWER_FACTOR,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, p=key: _val(d, p),
+                    available_fn=lambda d, p=key: _path_available(d, p),
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                )
+            )
+        if "/etrv/temperatureActual" in key:
+            valve_id = _thermostat_valve_id_from_path(key)
+            if valve_id is None:
+                continue
+            descriptions.append(
+                BoschPoinTTAPISensorEntityDescription(
+                    key=key,
+                    translation_key="thermostat_valve_temperature_actual",
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=lambda d, p=key: _val(d, p),
+                    available_fn=lambda d, p=key: _path_available(d, p),
+                    device_info_fn=lambda u, d, lang=None, vid=valve_id: _thermostat_valve_device_info(u, d, vid, lang),
+                )
+            )
+
+    return tuple(descriptions)
+
+
+def _pointtapi_thermostat_valve_switch_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
+    """Return child-lock switches for thermostat valves advertised in /devices/list."""
+    data = data or {}
+    descriptions: list[BoschPoinTTAPISwitchEntityDescription] = []
+
+    # Support the compact /devices/list view and the full device tree under
+    # /devices/device{N}/... used by some EasyControl dumps.
+    discovered: set[str] = set()
+
+    for row in _thermostat_valve_rows(data):
+        try:
+            valve_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+
+        path = _thermostat_valve_child_lock_path(data, valve_id)
+        if not path:
+            continue
+        discovered.add(path)
+
+    for key in sorted((data or {}).keys()):
+        if not key.startswith("/devices/device"):
+            continue
+        if "/etrv/childLock" not in key and "/thermostat/childLock" not in key:
+            continue
+        if key.endswith("/enabled"):
+            discovered.add(key)
+            continue
+        if key.endswith("/childLock"):
+            ref_id = None
+            obj = (data or {}).get(key)
+            if isinstance(obj, dict):
+                refs = obj.get("references")
+                if isinstance(refs, list):
+                    for ref in refs:
+                        if isinstance(ref, dict) and isinstance(ref.get("id"), str):
+                            ref_id = ref["id"]
+                            if ref_id.endswith("/enabled"):
+                                discovered.add(ref_id)
+                                break
+            if ref_id is None:
+                discovered.add(key)
+
+    for path in sorted(discovered):
+        valve_id = _thermostat_valve_id_from_path(path)
+        descriptions.append(
+            BoschPoinTTAPISwitchEntityDescription(
+                key=path,
+                translation_key="thermostat_valve_child_lock",
+                on_value="true",
+                off_value="false",
+                entity_category=EntityCategory.CONFIG,
+                device_info_fn=lambda u, d, lang=None, vid=valve_id, p=path: (
+                    _thermostat_valve_device_info(u, d, vid, lang)
+                    if vid is not None
+                    else _resolve_device_info(u, p, language=lang, data=d)
                 ),
             )
         )
@@ -839,56 +1083,43 @@ def _appliance_display_code(data: dict[str, Any]) -> str | None:
 
 
 def _appliance_cause_code(data: dict[str, Any]) -> int | None:
-    raw = _val(data, "/system/appliance/causeCode")
-    if raw is None:
-        return None
-    try:
-        return int(float(raw))
-    except (TypeError, ValueError):
-        return None
-
-
-def _appliance_error_flag(data: dict[str, Any], path: str) -> bool | None:
-    """Parse appliance error flags that may be bool, numeric or string values."""
-    raw = _val(data, path)
-    if isinstance(raw, bool):
-        return raw
-    if isinstance(raw, (int, float)):
-        return raw != 0
-    if isinstance(raw, str):
-        value = raw.strip().lower()
-        if value in {"true", "1", "on", "yes"}:
-            return True
-        if value in {"false", "0", "off", "no"}:
-            return False
-    return None
+    return _coerce_int_like(_val(data, "/system/appliance/causeCode"))
 
 
 def _appliance_optional_code(data: dict[str, Any], path: str) -> int | None:
     """Parse optional diagnostic codes (service/blocking/locking) when numeric."""
     raw = _val(data, path)
-    if raw is None or isinstance(raw, bool):
+    if raw is None:
         return None
-    if isinstance(raw, (int, float)):
-        return int(raw)
+    if isinstance(raw, bool):
+        return None
     if isinstance(raw, str):
         value = raw.strip().lower()
         if value in {"", "true", "false", "on", "off", "yes", "no"}:
             return None
-        try:
-            return int(float(value))
-        except ValueError:
-            return None
-    return None
+    return _coerce_int_like(raw)
+
+
+def _appliance_codes(data: dict[str, Any]) -> tuple[
+    str | None,
+    int | None,
+    bool | None,
+    bool | None,
+    int | None,
+    int | None,
+]:
+    """Return the repeated appliance status values used by both state and attributes."""
+    display = _appliance_display_code(data)
+    cause = _appliance_cause_code(data)
+    blocking = _resolve_on_off(_val(data, "/system/appliance/blockingError"))
+    locking = _resolve_on_off(_val(data, "/system/appliance/lockingError"))
+    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
+    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    return display, cause, blocking, locking, blocking_code, locking_code
 
 
 def _appliance_status_state(data: dict[str, Any]) -> str | None:
-    display = _appliance_display_code(data)
-    cause = _appliance_cause_code(data)
-    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
-    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
-    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
-    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    display, cause, blocking, locking, blocking_code, locking_code = _appliance_codes(data)
 
     # Single mapping table, context-aware lookup order:
     # locking pair -> blocking pair -> service pair.
@@ -924,12 +1155,7 @@ def _appliance_status_state(data: dict[str, Any]) -> str | None:
 
 
 def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
-    display = _appliance_display_code(data)
-    cause = _appliance_cause_code(data)
-    blocking = _appliance_error_flag(data, "/system/appliance/blockingError")
-    locking = _appliance_error_flag(data, "/system/appliance/lockingError")
-    blocking_code = _appliance_optional_code(data, "/system/appliance/blockingError")
-    locking_code = _appliance_optional_code(data, "/system/appliance/lockingError")
+    display, cause, blocking, locking, blocking_code, locking_code = _appliance_codes(data)
     if display is None and cause is None and blocking is None and locking is None:
         return None
     attrs: dict[str, Any] = {
@@ -948,11 +1174,10 @@ def _appliance_status_attributes(data: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _appliance_status_available(data: dict[str, Any]) -> bool:
-    return _val(data, "/system/appliance/displayCode") is not None or _val(
-        data, "/system/appliance/causeCode"
-    ) is not None or _val(data, "/system/appliance/blockingError") is not None or _val(
-        data, "/system/appliance/lockingError"
-    ) is not None
+    return any(
+        _val(data, f"/system/appliance/{key}") is not None
+        for key in ("displayCode", "causeCode", "blockingError", "lockingError")
+    )
 
 
 def _heat_demand_type_state(data: dict[str, Any]) -> str | None:
@@ -1435,6 +1660,28 @@ def _pointtapi_zone_assigned_program_sensor_descriptions(
     )
 
 
+def _pointtapi_zone_actual_temperature_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return one average-temperature sensor for every discovered heating zone."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISensorEntityDescription(
+            key=f"/zones/{zone_id}/temperatureActual",
+            translation_key="zone_average_temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+            available_fn=lambda d, zid=zone_id: (
+                f"/zones/{zid}/temperatureActual" in d
+            ),
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
 def _pointtapi_zone_optimum_start_state_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -1779,6 +2026,7 @@ def _pointtapi_sensor_descriptions(
             state_class=SensorStateClass.TOTAL_INCREASING,
             icon="mdi:reload",
             entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda d: _coerce_int_like(_val(d, "/heatSources/numberOfStarts")),
         ),
         # ── Firmware update diagnostic timestamps (v0.32.0) ──────────────────
         BoschPoinTTAPISensorEntityDescription(
@@ -1838,6 +2086,7 @@ def _pointtapi_sensor_descriptions(
         )
 
     descriptions.extend(_pointtapi_zone_valve_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_zone_actual_temperature_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_assigned_program_sensor_descriptions(data))
     descriptions.extend(_pointtapi_zone_optimum_start_state_sensor_descriptions(data))
     descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))
@@ -1928,102 +2177,147 @@ class BoschPoinTTAPISensorEntity(
 # ── Number entities (boost settings) ─────────────────────────────────────────
 
 
-def _pointtapi_number_descriptions(
+POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/boostTemperature",
+        translation_key="boost_temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=5.0,
+        native_max_value=30.0,
+        native_step=0.5,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/boostDuration",
+        translation_key="boost_duration",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        native_min_value=0.5,
+        native_max_value=24.0,
+        native_step=0.5,
+    ),
+    # ── Heating circuit configuration (2b) ───────────────────────────────────
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/maxSupply",
+        translation_key="max_supply_temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=25.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/minSupply",
+        translation_key="min_supply_temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=10.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/nightThreshold",
+        translation_key="night_setback_threshold",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=5.0,
+        native_max_value=30.0,
+        native_step=0.5,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/suWiThreshold",
+        translation_key="summer_winter_threshold",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=10.0,
+        native_max_value=30.0,
+        native_step=0.5,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/roomInfluence",
+        translation_key="room_influence",
+        native_min_value=0.0,
+        native_max_value=3.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/system/sensors/temperatures/offset",
+        translation_key="temperature_calibration_offset",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-5.0,
+        native_max_value=5.0,
+        native_step=0.5,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
+    NumberEntityDescription(
+        key="/dhwCircuits/dhw1/extraDhwDuration",
+        translation_key="extra_hot_water_duration",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        native_min_value=15.0,
+        native_max_value=2880.0,
+        native_step=15.0,
+    ),
+    NumberEntityDescription(
+        key="/dhwCircuits/dhw1/thermalDisinfect/time",
+        translation_key="thermal_disinfect_time",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        native_min_value=0.0,
+        native_max_value=1439.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+)
+
+
+def _float_value(value: Any) -> float | None:
+    """Coerce float-like API values to float without accepting booleans."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return float(text)
+        except ValueError:
+            return None
+    return None
+
+
+def _thermostat_valve_offset_description(
+    data: dict[str, Any],
+    path: str,
+) -> NumberEntityDescription | None:
+    """Return a dynamic thermostat-valve calibration-offset number for a path."""
+    obj = data.get(path) if data else None
+    if not isinstance(obj, dict):
+        return None
+
+    min_value = _float_value(obj.get("minValue"))
+    max_value = _float_value(obj.get("maxValue"))
+    step_value = _float_value(obj.get("stepSize"))
+
+    return NumberEntityDescription(
+        key=path,
+        translation_key="thermostat_valve_temperature_offset",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=min_value if min_value is not None else -5.0,
+        native_max_value=max_value if max_value is not None else 5.0,
+        native_step=step_value if step_value is not None else 0.5,
+        entity_category=EntityCategory.CONFIG,
+    )
+
+
+def _pointtapi_dynamic_number_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[NumberEntityDescription, ...]:
-    """Return POINTTAPI number descriptions, plus optional yearly energy goals."""
-    descriptions: list[NumberEntityDescription] = [
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/boostTemperature",
-            translation_key="boost_temperature",
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            native_min_value=5.0,
-            native_max_value=30.0,
-            native_step=0.5,
-        ),
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/boostDuration",
-            translation_key="boost_duration",
-            native_unit_of_measurement=UnitOfTime.HOURS,
-            native_min_value=0.5,
-            native_max_value=24.0,
-            native_step=0.5,
-        ),
-        # ── Heating circuit configuration (2b) ───────────────────────────────────
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/maxSupply",
-            translation_key="max_supply_temperature",
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            native_min_value=25.0,
-            native_max_value=90.0,
-            native_step=1.0,
-            entity_category=EntityCategory.CONFIG,
-        ),
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/minSupply",
-            translation_key="min_supply_temperature",
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            native_min_value=10.0,
-            native_max_value=90.0,
-            native_step=1.0,
-            entity_category=EntityCategory.CONFIG,
-        ),
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/nightThreshold",
-            translation_key="night_setback_threshold",
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            native_min_value=5.0,
-            native_max_value=30.0,
-            native_step=0.5,
-            entity_category=EntityCategory.CONFIG,
-        ),
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/suWiThreshold",
-            translation_key="summer_winter_threshold",
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            native_min_value=10.0,
-            native_max_value=30.0,
-            native_step=0.5,
-            entity_category=EntityCategory.CONFIG,
-        ),
-        NumberEntityDescription(
-            key="/heatingCircuits/hc1/roomInfluence",
-            translation_key="room_influence",
-            native_min_value=0.0,
-            native_max_value=3.0,
-            native_step=1.0,
-            entity_category=EntityCategory.CONFIG,
-        ),
-        NumberEntityDescription(
-            key="/system/sensors/temperatures/offset",
-            translation_key="temperature_calibration_offset",
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            native_min_value=-5.0,
-            native_max_value=5.0,
-            native_step=0.5,
-            entity_category=EntityCategory.CONFIG,
-        ),
-        # ── v1.0.0 comfort controls (constraints from boost-probe-notes.md) ───────
-        NumberEntityDescription(
-            key="/dhwCircuits/dhw1/extraDhwDuration",
-            translation_key="extra_hot_water_duration",
-            native_unit_of_measurement=UnitOfTime.MINUTES,
-            native_min_value=15.0,
-            native_max_value=2880.0,
-            native_step=15.0,
-        ),
-        NumberEntityDescription(
-            key="/dhwCircuits/dhw1/thermalDisinfect/time",
-            translation_key="thermal_disinfect_time",
-            native_unit_of_measurement=UnitOfTime.MINUTES,
-            native_min_value=0.0,
-            native_max_value=1439.0,
-            native_step=1.0,
-            entity_category=EntityCategory.CONFIG,
-        ),
-    ]
+    """Return dynamic POINTTAPI number descriptions such as valve calibration offsets."""
+    data = data or {}
+    descriptions: list[NumberEntityDescription] = []
 
-    if isinstance((data or {}).get("/energy/gas/annualGoal"), dict):
+    if isinstance(data.get("/energy/gas/annualGoal"), dict):
         descriptions.append(
             NumberEntityDescription(
                 key="/energy/gas/annualGoal",
@@ -2036,7 +2330,7 @@ def _pointtapi_number_descriptions(
             )
         )
 
-    if isinstance((data or {}).get("/energy/electricity/annualGoal"), dict):
+    if isinstance(data.get("/energy/electricity/annualGoal"), dict):
         descriptions.append(
             NumberEntityDescription(
                 key="/energy/electricity/annualGoal",
@@ -2049,10 +2343,33 @@ def _pointtapi_number_descriptions(
             )
         )
 
+    discovered: set[str] = set()
+    for row in _thermostat_valve_rows(data):
+        try:
+            valve_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+        path = _thermostat_valve_device_path_from_data(data, valve_id, "etrv/offset")
+        if path:
+            discovered.add(path)
+
+    for key in sorted((data or {}).keys()):
+        if key.startswith("/devices/device") and key.endswith("/etrv/offset"):
+            discovered.add(key)
+
+    for path in sorted(discovered):
+        description = _thermostat_valve_offset_description(data, path)
+        if description is not None:
+            descriptions.append(description)
+
     return tuple(descriptions)
 
 
-POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = _pointtapi_number_descriptions()
+def _pointtapi_number_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[NumberEntityDescription, ...]:
+    """Return all POINTTAPI number descriptions, including dynamic annual goals."""
+    return POINTTAPI_NUMBER_DESCRIPTIONS + _pointtapi_dynamic_number_descriptions(data)
 
 
 class BoschPoinTTAPINumberEntity(
@@ -2085,6 +2402,14 @@ class BoschPoinTTAPINumberEntity(
             language=self._language,
             data=coordinator.data or {},
         )
+        valve_id = _thermostat_valve_id_from_path(description.key)
+        if valve_id is not None and "/etrv/offset" in description.key:
+            self._attr_device_info = _thermostat_valve_device_info(
+                uuid,
+                coordinator.data or {},
+                valve_id,
+                self._language,
+            )
         self._native_value: float | None = None
 
     @callback
@@ -2501,6 +2826,7 @@ class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
     off_value: str = "false"
     device_id_suffix: str | None = None
     device_name_override: str | None = None
+    device_info_fn: Callable[[str, dict[str, Any], str | None], DeviceInfo] | None = None
 
 
 POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
@@ -2572,8 +2898,7 @@ class BoschPoinTTAPIGenericSwitchEntity(
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data or {}
-        val = _val(data, self._path)
-        self._is_on = val == self.entity_description.on_value
+        self._is_on = _resolve_on_off(_val(data, self._path))
         self.async_write_ha_state()
 
     @property
@@ -2851,19 +3176,25 @@ def _pointtapi_thermostat_valve_warning_binary_sensor_descriptions(
 def _resolve_on_off(raw: Any) -> bool | None:
     """Map an API value to True/False/None.
 
-    Accepts either dialect Bosch returns:
-    - "on"/"off"   — used by /dhwCircuits/dhw1/state, /heatSources/flameIndication
-    - "true"/"false" — used by /heatSources/refillNeeded
-    Comparison is case-insensitive after trim. Any other value returns None
-    so HA renders the entity as "unknown".
+    Accepts the boolean spellings Bosch uses across the API surface:
+    - bool values pass through
+    - numeric 1/0 values map to true/false
+    - "on"/"off" and "true"/"false"
+    - "yes"/"no" and "1"/"0" used by appliance fault flags
+    Comparison is case-insensitive after trim. Numeric status codes such as
+    358 are still active flag values and should resolve to True because the
+    field is reporting an error condition, even though they are not boolean
+    values for the pair-based status lookup.
     """
     if isinstance(raw, bool):
         return raw
+    if isinstance(raw, (int, float)):
+        return raw != 0
     if isinstance(raw, str):
         v = raw.strip().lower()
-        if v in ("on", "true"):
+        if v in ("on", "true", "yes", "1"):
             return True
-        if v in ("off", "false"):
+        if v in ("off", "false", "no", "0"):
             return False
     return None
 

@@ -196,6 +196,9 @@
       "dhw_actual_temperature": {
         "name": "Temperature"
       },
+      "zone_average_temperature": {
+        "name": "Average temperature"
+      },
       "boiler_ignition_starts": {
         "name": "Ignition starts"
       },
@@ -230,7 +233,10 @@
         "name": "Assigned program"
       },
       "optimum_start_state": {
-        "name": "Optimum start state"
+        "name": "Optimum start state",
+        "state": {
+          "idle": "Idle"
+        }
       },
       "electricity_day_average": {
         "name": "Electricity day average"
@@ -245,16 +251,25 @@
         "name": "Notifications"
       },
       "thermostat_valve_signal_strength": {
-        "name": "Thermostat valve signal strength"
+        "name": "Signal strength"
       },
       "thermostat_valve_battery": {
-        "name": "Thermostat valve battery"
+        "name": "Battery"
       },
       "thermostat_valve_zone": {
-        "name": "Thermostat valve zone"
+        "name": "Zone"
       },
       "thermostat_valve_protocol": {
-        "name": "Thermostat valve protocol"
+        "name": "Protocol"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Child lock"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Actual temperature"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Valve position"
       },
       "thermal_disinfect_last_result": {
         "name": "Thermal disinfect last result",
@@ -286,6 +301,9 @@
         "name": "Ambient temperature influence"
       },
       "temperature_calibration_offset": {
+        "name": "Temperature calibration offset"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Temperature calibration offset"
       },
       "extra_hot_water_duration": {
@@ -323,12 +341,12 @@
         "name": "Refill needed"
       },
       "thermostat_valve_warning": {
-        "name": "Thermostat valve warning"
+        "name": "Warnings"
       }
     },
     "switch": {
       "boost": {
-        "name": "Boost"
+        "name": "Heating boost"
       },
       "auto_firmware_update": {
         "name": "Auto firmware update"
@@ -344,6 +362,12 @@
       },
       "open_window_detection": {
         "name": "Open window detection"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Child lock"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Valve position"
       },
       "thermal_disinfect": {
         "name": "Thermal disinfect"

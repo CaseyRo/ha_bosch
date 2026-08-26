@@ -159,7 +159,10 @@
         "name": "Toegewezen programma"
       },
       "optimum_start_state": {
-        "name": "Status optimaal starten"
+        "name": "Status optimaal starten",
+        "state": {
+          "idle": "In rust"
+        }
       },
       "electricity_day_average": {
         "name": "Daggemiddelde elektriciteit"
@@ -211,6 +214,9 @@
       "dhw_actual_temperature": {
         "name": "Temperatuur"
       },
+      "zone_average_temperature": {
+        "name": "Gemiddelde temperatuur"
+      },
       "boiler_ignition_starts": {
         "name": "Ontstekingen"
       },
@@ -224,16 +230,25 @@
         "name": "Meldingen"
       },
       "thermostat_valve_signal_strength": {
-        "name": "Signaalsterkte thermostaatkraan"
+        "name": "Signaalsterkte"
       },
       "thermostat_valve_battery": {
-        "name": "Batterij thermostaatkraan"
+        "name": "Batterij"
       },
       "thermostat_valve_zone": {
-        "name": "Zone thermostaatkraan"
+        "name": "Zone"
       },
       "thermostat_valve_protocol": {
-        "name": "Protocol thermostaatkraan"
+        "name": "Protocol"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Kinderslot"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Werkelijke temperatuur"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Klepstand"
       },
       "thermal_disinfect_last_result": {
         "name": "Laatste thermische desinfectie",
@@ -265,6 +280,9 @@
         "name": "Invloed van de omgevingstemperatuur"
       },
       "temperature_calibration_offset": {
+        "name": "Kalibratie-offset temperatuur"
+      },
+      "thermostat_valve_temperature_offset": {
         "name": "Kalibratie-offset temperatuur"
       },
       "extra_hot_water_duration": {
@@ -302,12 +320,12 @@
         "name": "Bijvullen nodig"
       },
       "thermostat_valve_warning": {
-        "name": "Waarschuwing thermostaatkraan"
+        "name": "Waarschuwingen"
       }
     },
     "switch": {
       "boost": {
-        "name": "Boost"
+        "name": "Verwarmingsboost"
       },
       "auto_firmware_update": {
         "name": "Automatische firmware-update"
@@ -323,6 +341,12 @@
       },
       "open_window_detection": {
         "name": "Open-raamdetectie"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Kinderslot"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Klepstand"
       },
       "thermal_disinfect": {
         "name": "Thermische desinfectie"

@@ -371,7 +371,6 @@ class BoschGatewayEntry:
                 self.hass, self.config_entry, self.gateway
             )
             self._data.coordinator = coordinator
-            await coordinator.async_config_entry_first_refresh()
             device_registry = dr.async_get(self.hass)
             device_registry.async_get_or_create(
                 config_entry_id=self.config_entry.entry_id,
@@ -381,6 +380,7 @@ class BoschGatewayEntry:
                 name=f"EasyControl (POINTTAPI) {self._host}",
                 sw_version="",
             )
+            await coordinator.async_config_entry_first_refresh()
             await self.hass.config_entries.async_forward_entry_setups(
                 self.config_entry,
                 [p for p in self.supported_platforms if p],
