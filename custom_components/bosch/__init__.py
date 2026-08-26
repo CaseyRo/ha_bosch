@@ -64,6 +64,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
@@ -157,6 +158,49 @@ _LOGGER = logging.getLogger(__name__)
 _LIBRARY_LOGGER = logging.getLogger("bosch_thermostat_client")
 
 HOUR = timedelta(hours=1)
+
+
+def _remove_stale_pointtapi_valve_devices(
+    hass: HomeAssistant, entry_id: str, uuid: str, data: dict[str, Any]
+) -> None:
+    """Remove obsolete thermostat-valve devices after a device refresh."""
+    known_types: dict[int, str] = {}
+    for path, resource in (data or {}).items():
+        if not path.startswith("/devices/device") or not path.endswith("/type"):
+            continue
+        try:
+            device_id = int(path.removeprefix("/devices/device").removesuffix("/type"))
+        except ValueError:
+            continue
+        value = resource.get("value") if isinstance(resource, dict) else None
+        if isinstance(value, str):
+            known_types[device_id] = value
+
+    if not known_types:
+        return
+
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+    prefix = f"{uuid}_trv_"
+    for device in list(device_registry.devices.values()):
+        valve_ids = [
+            identifier.split(prefix, 1)[1]
+            for domain, identifier in device.identifiers
+            if domain == DOMAIN and identifier.startswith(prefix)
+        ]
+        if not valve_ids or any(
+            known_types.get(int(valve_id)) == "thermostat_valve"
+            for valve_id in valve_ids
+            if valve_id.isdigit()
+        ):
+            continue
+        if not all(valve_id.isdigit() for valve_id in valve_ids):
+            continue
+        if any(int(valve_id) in known_types for valve_id in valve_ids):
+            for entity in list(entity_registry.entities.values()):
+                if entity.device_id == device.id and entity.config_entry_id == entry_id:
+                    entity_registry.async_remove(entity.entity_id)
+            device_registry.async_remove_device(device.id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
@@ -381,6 +425,12 @@ class BoschGatewayEntry:
                 sw_version="",
             )
             await coordinator.async_config_entry_first_refresh()
+            _remove_stale_pointtapi_valve_devices(
+                self.hass,
+                self.config_entry.entry_id,
+                self.uuid,
+                getattr(coordinator, "data", None) or {},
+            )
             await self.hass.config_entries.async_forward_entry_setups(
                 self.config_entry,
                 [p for p in self.supported_platforms if p],
