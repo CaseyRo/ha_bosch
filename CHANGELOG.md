@@ -4,8 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
-Collected for 1.5.0 (pre-released as 1.5.0-beta.1, which supersedes
-1.4.0-beta.1 — 1.4.0 never went stable). The #18 items below still have no
+Collected for 1.5.0 (pre-released as 1.5.0-beta.1 and 1.5.0-beta.2, which
+supersede 1.4.0-beta.1 — 1.4.0 never went stable). The #18 items below still have no
 hardware confirmation; the appliance status table in particular is transcribed
 from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
 12-valve production for a week before merge.
@@ -38,6 +38,14 @@ from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
 - **`_discover_roots`** replaces the three copy-pasted zone/program/device root
   walkers; `_pointtapi_number_descriptions` composes `CONSTANT + dynamic` like
   the select descriptions already did. Closes most of #19 (#20).
+
+### Fixed (1.5.0-beta.2)
+- **Thermostat-valve child-lock switches attach to their valve device** — the
+  switch constructor ignored the description's `device_info_fn`, so every
+  child-lock switch landed on the gateway device in beta.1. Discovery is now
+  strict on the `childLock/enabled` leaf (no parent-node fallback switch) and
+  handles `/devices/deviceN/thermostat/*` layouts beside `etrv/*` for valve
+  position, actual temperature and offset. Contributed by @jfhautenauven (#23).
 
 ### Removed
 - **Persistent startup cache** — added mid-PR to accelerate boot, then made
