@@ -371,7 +371,6 @@ class BoschGatewayEntry:
                 self.hass, self.config_entry, self.gateway
             )
             self._data.coordinator = coordinator
-            await coordinator.async_load_persistent_cache()
             device_registry = dr.async_get(self.hass)
             device_registry.async_get_or_create(
                 config_entry_id=self.config_entry.entry_id,

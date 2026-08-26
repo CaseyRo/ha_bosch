@@ -16,7 +16,6 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .pointtapi_client import PoinTTAPIClient
@@ -56,9 +55,6 @@ HISTORY_HOURLY_REFRESH_INTERVAL = 30 * 60
 # Configuration, diagnostics, energy and device inventories change less often
 # than temperatures and operating modes.
 SLOW_RESOURCE_REFRESH_INTERVAL = 5 * 60
-PERSISTENT_CACHE_VERSION = 1
-PERSISTENT_CACHE_MAX_AGE = 7 * 24 * 3600
-PERSISTENT_CACHE_SAVE_DELAY = 60
 SLOW_RESOURCE_PREFIXES = (
     "/gateway",
     "/energy",
@@ -66,28 +62,6 @@ SLOW_RESOURCE_PREFIXES = (
     "/devices",
     "/programs",
     "/system/appliance",
-)
-PERSISTENT_CACHE_PREFIXES = (
-    "/solarCircuits",
-    "/system/appliance",
-)
-PERSISTENT_GATEWAY_PATHS = frozenset(
-    {
-        "/gateway/brand",
-        "/gateway/displayType",
-        "/gateway/hmip/versionApplication",
-        "/gateway/hmip/versionOS",
-        "/gateway/productID",
-        "/gateway/productType",
-        "/gateway/update/lastCheck",
-        "/gateway/update/lastUpdate",
-        "/gateway/versionFirmware",
-        "/gateway/versionFirmwareBuild",
-        "/gateway/versionHardware",
-        "/gateway/wifi/versionFirmware",
-        "/gateway/wifi/versionFirmwareBuild",
-        "/gateway/zigbee/versionFirmware",
-    }
 )
 FAST_DEVICE_RESOURCE_MARKERS = (
     "/devices/list",
@@ -108,13 +82,6 @@ def _is_slow_resource(path: str) -> bool:
     ):
         return False
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
-
-
-def _is_persistent_cache_resource(path: str) -> bool:
-    """Return whether a resource is explicitly safe to persist."""
-    return path in PERSISTENT_GATEWAY_PATHS or path.startswith(
-        PERSISTENT_CACHE_PREFIXES
-    )
 
 
 async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
@@ -310,48 +277,6 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._fast_bulk_paths: list[str] = []
         self._slow_data: dict[str, Any] = {}
         self._last_slow_fetch: float = 0.0
-        self._persistent_store = Store(
-            hass, PERSISTENT_CACHE_VERSION, f"bosch.pointtapi.{entry.entry_id}"
-        )
-
-    async def async_load_persistent_cache(self) -> dict[str, Any] | None:
-        """Load the last non-secret resource snapshot for immediate startup state."""
-        try:
-            stored = await self._persistent_store.async_load()
-        except Exception as err:
-            _LOGGER.debug("POINTTAPI persistent cache unavailable: %s", err)
-            return None
-        if not isinstance(stored, dict):
-            return None
-        saved_at = stored.get("saved_at")
-        snapshot = stored.get("data")
-        if (
-            not isinstance(saved_at, (int, float))
-            or time.time() - saved_at > PERSISTENT_CACHE_MAX_AGE
-            or not isinstance(snapshot, dict)
-        ):
-            return None
-        self._slow_data = {
-            path: value
-            for path, value in snapshot.items()
-            if isinstance(path, str) and _is_persistent_cache_resource(path)
-        }
-        return self._slow_data
-
-    async def _async_save_persistent_cache(self, data: dict[str, Any]) -> None:
-        """Schedule persistence of explicitly allowlisted resource data."""
-        snapshot = {
-            path: value
-            for path, value in data.items()
-            if _is_persistent_cache_resource(path)
-        }
-        try:
-            self._persistent_store.async_delay_save(
-                lambda: {"saved_at": time.time(), "data": snapshot},
-                PERSISTENT_CACHE_SAVE_DELAY,
-            )
-        except Exception as err:
-            _LOGGER.debug("POINTTAPI persistent cache write failed: %s", err)
 
     @property
     def client(self) -> PoinTTAPIClient:
@@ -397,7 +322,6 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if isinstance(history, dict):
                 self._history_hourly_data = history
                 self._last_history_hourly_fetch = now
-            await self._async_save_persistent_cache(data)
             return data
 
         slow_due = (

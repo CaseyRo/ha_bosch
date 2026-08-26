@@ -1,6 +1,7 @@
 """Tests for pointtapi_coordinator.py."""
 from __future__ import annotations
 
+import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -425,13 +426,9 @@ class TestFetchPaths:
 # ── Bulk steady state (discovery-then-bulk, fallback, rediscovery) ──────────
 
 
-import time
-
 from custom_components.bosch.pointtapi_coordinator import (
     HISTORY_HOURLY_PATH,
     HISTORY_HOURLY_REFRESH_INTERVAL,
-    PERSISTENT_CACHE_MAX_AGE,
-    PERSISTENT_CACHE_SAVE_DELAY,
     SLOW_RESOURCE_REFRESH_INTERVAL,
     REDISCOVERY_INTERVAL,
     PoinTTAPIDataUpdateCoordinator,
@@ -471,66 +468,6 @@ def _walk_client():
 
 
 class TestBulkSteadyState:
-    @pytest.mark.asyncio
-    async def test_persistent_cache_loads_only_fresh_slow_resources(self):
-        coord = _bare_coordinator(AsyncMock())
-        store = AsyncMock()
-        store.async_load.return_value = {
-            "saved_at": time.time(),
-            "data": {
-                "/gateway/versionFirmware": {"value": "1.2.3"},
-                "/gateway/identificationKey": {"value": "secret"},
-                "/system/appliance/status": {"value": "ready"},
-                "/zones/zn1/status": {"value": "idle"},
-            },
-        }
-        coord._persistent_store = store
-
-        snapshot = await coord.async_load_persistent_cache()
-
-        assert snapshot is not None
-        assert "/gateway/versionFirmware" in coord._slow_data
-        assert "/gateway/identificationKey" not in coord._slow_data
-        assert "/system/appliance/status" in coord._slow_data
-        assert "/zones/zn1/status" not in coord._slow_data
-
-    @pytest.mark.asyncio
-    async def test_expired_persistent_cache_is_ignored(self):
-        coord = _bare_coordinator(AsyncMock())
-        store = AsyncMock()
-        store.async_load.return_value = {
-            "saved_at": time.time() - PERSISTENT_CACHE_MAX_AGE - 1,
-            "data": {"/gateway/versionFirmware": {"value": "old"}},
-        }
-        coord._persistent_store = store
-
-        assert await coord.async_load_persistent_cache() is None
-        assert coord._slow_data == {}
-
-    @pytest.mark.asyncio
-    async def test_persistent_cache_save_is_delayed_and_allowlisted(self):
-        coord = _bare_coordinator(AsyncMock())
-        store = AsyncMock()
-        coord._persistent_store = store
-
-        await coord._async_save_persistent_cache(
-            {
-                "/gateway/versionFirmware": {"value": "1.2.3"},
-                "/gateway/identificationKey": {"value": "secret"},
-                "/system/appliance/status": {"value": "ready"},
-                HISTORY_HOURLY_PATH: {"value": []},
-            }
-        )
-
-        store.async_delay_save.assert_called_once()
-        data_func, delay = store.async_delay_save.call_args.args
-        saved = data_func()
-        assert delay == PERSISTENT_CACHE_SAVE_DELAY
-        assert "/gateway/versionFirmware" in saved["data"]
-        assert "/gateway/identificationKey" not in saved["data"]
-        assert HISTORY_HOURLY_PATH not in saved["data"]
-        assert "/system/appliance/status" in saved["data"]
-
     def test_bulk_failure_logging_is_throttled(self):
         coord = _bare_coordinator(AsyncMock())
         coord._bulk_warned_at = 100.0
