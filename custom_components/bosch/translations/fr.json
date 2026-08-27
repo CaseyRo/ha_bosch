@@ -78,6 +78,8 @@
           "system_pressure_too_low": "Pression du système trop faible",
           "flue_gas_test_heat_demand": "Demande thermique due au test des fumées",
           "flue_gas_thermostat_or_air_pressure_active": "Thermostat des fumées ou contrôleur de pression d'air activé",
+          "flue_gas_sensor_temperature_differential_too_great": "Différence de température trop importante entre les sondes de température des fumées 1 et 2",
+          "flue_gas_temperature_above_120_celsius": "Température des fumées supérieure à 120 °C",
           "safety_supply_temp_rising_too_fast": "Température de sécurité/de départ qui augmente trop rapidement",
           "heating_gradient_limitation": "Limitation de gradient en mode chauffage",
           "dhw_gradient_limitation": "Limitation de gradient en ECS",

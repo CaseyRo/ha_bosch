@@ -78,6 +78,8 @@
           "system_pressure_too_low": "Pressione del sistema troppo bassa",
           "flue_gas_test_heat_demand": "Richiesta termica dovuta al test fumi",
           "flue_gas_thermostat_or_air_pressure_active": "Termostato fumi o controllo pressione aria attivo",
+          "flue_gas_sensor_temperature_differential_too_great": "Differenza di temperatura eccessiva tra i sensori della temperatura dei fumi 1 e 2",
+          "flue_gas_temperature_above_120_celsius": "Temperatura dei fumi superiore a 120 °C",
           "safety_supply_temp_rising_too_fast": "Temperatura di sicurezza/mandata in aumento troppo rapido",
           "heating_gradient_limitation": "Limitazione del gradiente in riscaldamento",
           "dhw_gradient_limitation": "Limitazione del gradiente in ACS",

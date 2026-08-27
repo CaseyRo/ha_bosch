@@ -84,6 +84,8 @@ _APPLIANCE_STATUS_BY_CODE: dict[tuple[str, int], str] = {
     ("A", 208): "flue_gas_test_heat_demand",
     ("-A", 208): "flue_gas_test_heat_demand",
     ("1C", 210): "flue_gas_thermostat_or_air_pressure_active",
+    ("1C", 526): "flue_gas_sensor_temperature_differential_too_great",
+    ("1F", 525): "flue_gas_temperature_above_120_celsius",
     ("2E", 212): "safety_supply_temp_rising_too_fast",
     ("2P", 212): "safety_supply_temp_rising_too_fast",
     ("2P", 341): "heating_gradient_limitation",

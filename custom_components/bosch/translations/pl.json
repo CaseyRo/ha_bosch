@@ -78,6 +78,8 @@
           "system_pressure_too_low": "Ciśnienie instalacji zbyt niskie",
           "flue_gas_test_heat_demand": "Zapotrzebowanie na ciepło z powodu testu spalin",
           "flue_gas_thermostat_or_air_pressure_active": "Aktywny termostat spalin lub regulator ciśnienia powietrza",
+          "flue_gas_sensor_temperature_differential_too_great": "Różnica temperatur między czujnikiem temperatury spalin 1 i 2 jest zbyt duża",
+          "flue_gas_temperature_above_120_celsius": "Temperatura spalin wyższa niż 120 °C",
           "safety_supply_temp_rising_too_fast": "Temperatura bezpieczeństwa/zasilania rośnie zbyt szybko",
           "heating_gradient_limitation": "Ograniczenie gradientu w trybie ogrzewania",
           "dhw_gradient_limitation": "Ograniczenie gradientu w trybie CWU",

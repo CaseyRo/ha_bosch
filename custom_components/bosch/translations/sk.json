@@ -78,6 +78,8 @@
           "system_pressure_too_low": "Tlak systému je príliš nízky",
           "flue_gas_test_heat_demand": "Požiadavka na teplo z dôvodu testu spalín",
           "flue_gas_thermostat_or_air_pressure_active": "Aktívny termostat spalín alebo regulátor tlaku vzduchu",
+          "flue_gas_sensor_temperature_differential_too_great": "Rozdiel teploty medzi snímačmi teploty spalín 1 a 2 je príliš veľký",
+          "flue_gas_temperature_above_120_celsius": "Teplota spalín vyššia ako 120 °C",
           "safety_supply_temp_rising_too_fast": "Bezpečnostná/prívodná teplota stúpa príliš rýchlo",
           "heating_gradient_limitation": "Obmedzenie gradientu v režime vykurovania",
           "supply_return_temp_difference_too_high": "Rozdiel teploty prívodu a spiatočky je príliš veľký",

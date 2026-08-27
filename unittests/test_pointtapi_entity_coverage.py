@@ -114,6 +114,22 @@ class TestEntityHelperConversions:
         info = _resolve_device_info("uuid1", "/zones/zn2/status", data=data)
         assert info["name"] == "Heating Zone Lounge"
 
+    def test_appliance_status_maps_flue_gas_sensor_temperature_differential(self):
+        data = {
+            "/system/appliance/displayCode": {"value": "1C"},
+            "/system/appliance/causeCode": {"value": 526},
+        }
+        assert _appliance_status_state(data) == (
+            "flue_gas_sensor_temperature_differential_too_great"
+        )
+
+    def test_appliance_status_maps_high_flue_gas_temperature(self):
+        data = {
+            "/system/appliance/displayCode": {"value": "1F"},
+            "/system/appliance/causeCode": {"value": 525},
+        }
+        assert _appliance_status_state(data) == "flue_gas_temperature_above_120_celsius"
+
     def test_decode_and_path_availability_are_defensive(self):
         assert _decode_zone_name("U2Fsb24=") == "Salon"
         assert _decode_zone_name("not-base64") == "not-base64"
