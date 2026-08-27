@@ -84,6 +84,7 @@ from .switch import SWITCH
 from .pointtapi_client import PoinTTAPIClient
 from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
 from .pointtapi_oauth import ensure_valid_token
+from .pointtapi_entities import _gateway_product_info
 
 from .const import (
     ACCESS_KEY,
@@ -421,16 +422,19 @@ class BoschGatewayEntry:
                 self.hass, self.config_entry, self.gateway
             )
             self._data.coordinator = coordinator
+            await coordinator.async_config_entry_first_refresh()
+            manufacturer, model = _gateway_product_info(
+                getattr(coordinator, "data", None)
+            )
             device_registry = dr.async_get(self.hass)
             device_registry.async_get_or_create(
                 config_entry_id=self.config_entry.entry_id,
                 identifiers={(DOMAIN, self.uuid)},
-                manufacturer="Bosch",
-                model="EasyControl",
+                manufacturer=manufacturer,
+                model=model,
                 name=f"EasyControl (POINTTAPI) {self._host}",
                 sw_version="",
             )
-            await coordinator.async_config_entry_first_refresh()
             await self.hass.config_entries.async_forward_entry_setups(
                 self.config_entry,
                 [p for p in self.supported_platforms if p],

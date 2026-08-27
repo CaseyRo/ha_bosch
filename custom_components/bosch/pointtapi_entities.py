@@ -339,6 +339,19 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
     },
 }
 
+_GATEWAY_PRODUCT_MODELS = {
+    "8737906740": ("Buderus", "TC100.2"),
+    "8737906738": ("Bosch", "CT200"),
+    "8737906739": ("Bosch", "CT200"),
+}
+
+
+def _gateway_product_info(data: dict[str, Any] | None = None) -> tuple[str, str]:
+    """Return the gateway manufacturer and model from its product ID."""
+    product = (data or {}).get("/gateway/productID")
+    product_id = product.get("value") if isinstance(product, dict) else None
+    return _GATEWAY_PRODUCT_MODELS.get(product_id, ("Bosch", "Easycontrol"))
+
 
 def _normalize_language(language: str | None) -> str:
     """Normalize HA language to a supported short code."""
@@ -461,13 +474,15 @@ def _resolve_device_info(
     attached to a zone device must do so, or the registry name flip-flops.
     """
     p = path or ""
+    gateway_manufacturer, gateway_model = _gateway_product_info(data)
 
     # Explicit kind overrides (entities whose device isn't path-derivable)
     if kind in _GATEWAY_KINDS:
         return DeviceInfo(
             identifiers={(DOMAIN, uuid)},
             name=_device_name("gateway", language),
-            manufacturer="Bosch",
+            manufacturer=gateway_manufacturer,
+            model=gateway_model,
         )
     if kind in _DHW_KINDS:
         return DeviceInfo(
@@ -540,7 +555,8 @@ def _resolve_device_info(
     return DeviceInfo(
         identifiers={(DOMAIN, uuid)},
         name=_device_name("gateway", language),
-        manufacturer="Bosch",
+        manufacturer=gateway_manufacturer,
+        model=gateway_model,
     )
 
 
