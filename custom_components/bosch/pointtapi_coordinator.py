@@ -210,7 +210,8 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
                     sub = await client.get(ref_id)
                     if isinstance(sub, dict):
                         data[ref_id] = sub
-                        # Fetch one more level for refEnum (e.g. temperatureLevels -> temperatureLevels/high)
+                        # Fetch nested refEnum leaves such as
+                        # device -> etrv -> childLock -> enabled.
                         if sub.get("type") == "refEnum":
                             for r2 in sub.get(REFERENCES_KEY) or []:
                                 r2_id = r2.get(ID_KEY) if isinstance(r2, dict) else None
@@ -220,6 +221,19 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
                                     sub2 = await client.get(r2_id)
                                     if isinstance(sub2, dict):
                                         data[r2_id] = sub2
+                                        if sub2.get("type") == "refEnum":
+                                            for r3 in sub2.get(REFERENCES_KEY) or []:
+                                                r3_id = r3.get(ID_KEY) if isinstance(r3, dict) else None
+                                                if not r3_id or r3_id in data:
+                                                    continue
+                                                try:
+                                                    leaf = await client.get(r3_id)
+                                                    if isinstance(leaf, dict):
+                                                        data[r3_id] = leaf
+                                                except ConfigEntryAuthFailed:
+                                                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r3_id)
+                                                except Exception:
+                                                    continue
                                 except ConfigEntryAuthFailed:
                                     _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r2_id)
                                 except Exception:

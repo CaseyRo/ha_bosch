@@ -431,6 +431,9 @@ class TestNotificationsHelpers:
             for d in switch_descs
             if d.key == "/devices/device1/thermostat/childLock/enabled"
         )
+        device_info = desc.device_info_fn("uuid-1", data, "en")
+        assert device_info["identifiers"] == {("bosch", "uuid-1")}
+
         coordinator = MagicMock(data=data)
         entity = BoschPoinTTAPIGenericSwitchEntity(
             coordinator,
@@ -1507,6 +1510,8 @@ class TestComfortControlDescriptions:
         assert ent.icon == "mdi:signal"
         assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
         assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
+        assert ent.device_info["manufacturer"] == "Bosch"
+        assert ent.device_info["model"] == "ETRV RT10-RF"
 
     def test_thermostat_valve_protocol_value_is_humanized(self):
         data = {

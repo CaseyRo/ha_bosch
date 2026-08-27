@@ -87,6 +87,8 @@
           "system_pressure_too_low": "System pressure too low",
           "flue_gas_test_heat_demand": "Heat demand due to flue gas test",
           "flue_gas_thermostat_or_air_pressure_active": "Flue gas thermostat or air pressure controller active",
+          "flue_gas_sensor_temperature_differential_too_great": "Temperature differential between flue gas temperature sensors 1 and 2 is too great",
+          "flue_gas_temperature_above_120_celsius": "Flue gas temperature higher than 120 °C",
           "safety_supply_temp_rising_too_fast": "Safety/supply temperature rising too fast",
           "heating_gradient_limitation": "Heating gradient limitation",
           "dhw_gradient_limitation": "DHW gradient limitation",

@@ -84,6 +84,7 @@ from .switch import SWITCH
 from .pointtapi_client import PoinTTAPIClient
 from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
 from .pointtapi_oauth import ensure_valid_token
+from .pointtapi_entities import _gateway_product_info
 
 from .const import (
     ACCESS_KEY,
@@ -157,6 +158,56 @@ _LOGGER = logging.getLogger(__name__)
 _LIBRARY_LOGGER = logging.getLogger("bosch_thermostat_client")
 
 HOUR = timedelta(hours=1)
+
+
+def _pointtapi_valve_ids(data: dict[str, Any]) -> set[int]:
+    """Return thermostat-valve IDs currently reported by POINTTAPI."""
+    valve_ids: set[int] = set()
+    listing = data.get("/devices/list") if data else None
+    values = listing.get("value") if isinstance(listing, dict) else None
+    if isinstance(values, list):
+        for row in values:
+            if not isinstance(row, dict) or row.get("type") != "thermostat_valve":
+                continue
+            try:
+                valve_ids.add(int(row["id"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+
+    for path, resource in (data or {}).items():
+        if not path.startswith("/devices/device") or not path.endswith("/type"):
+            continue
+        value = resource.get("value") if isinstance(resource, dict) else None
+        if value != "thermostat_valve":
+            continue
+        try:
+            valve_ids.add(int(path.removeprefix("/devices/device").removesuffix("/type")))
+        except ValueError:
+            continue
+    return valve_ids
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: BoschConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow deleting devices the POINTTAPI gateway no longer reports."""
+    if entry.data.get(CONF_PROTOCOL) != POINTTAPI:
+        return False
+
+    prefix = f"{entry.data.get(UUID)}_trv_"
+    valve_ids = {
+        int(identifier.removeprefix(prefix))
+        for domain, identifier in device_entry.identifiers
+        if domain == DOMAIN
+        and identifier.startswith(prefix)
+        and identifier.removeprefix(prefix).isdigit()
+    }
+    if not valve_ids:
+        return False
+
+    coordinator = getattr(getattr(entry, "runtime_data", None), "coordinator", None)
+    data = getattr(coordinator, "data", None) or {}
+    return not valve_ids.intersection(_pointtapi_valve_ids(data))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
@@ -371,16 +422,19 @@ class BoschGatewayEntry:
                 self.hass, self.config_entry, self.gateway
             )
             self._data.coordinator = coordinator
+            await coordinator.async_config_entry_first_refresh()
+            manufacturer, model = _gateway_product_info(
+                getattr(coordinator, "data", None)
+            )
             device_registry = dr.async_get(self.hass)
             device_registry.async_get_or_create(
                 config_entry_id=self.config_entry.entry_id,
                 identifiers={(DOMAIN, self.uuid)},
-                manufacturer="Bosch",
-                model="EasyControl",
+                manufacturer=manufacturer,
+                model=model,
                 name=f"EasyControl (POINTTAPI) {self._host}",
                 sw_version="",
             )
-            await coordinator.async_config_entry_first_refresh()
             await self.hass.config_entries.async_forward_entry_setups(
                 self.config_entry,
                 [p for p in self.supported_platforms if p],
@@ -638,13 +692,17 @@ class BoschGatewayEntry:
                 async_dispatcher_send(self.hass, signal)
             return True
 
-    async def custom_put(self, path: str, value: Any) -> None:
+    async def custom_put(self, path: str, value: Any) -> Any:
         """Send PUT directly to gateway without parsing."""
-        await self.gateway.raw_put(path=path, value=value)
+        if self._protocol == POINTTAPI:
+            return await self.gateway.put(uri=path, value=value)
+        return await self.gateway.raw_put(path=path, value=value)
 
-    async def custom_get(self, path) -> str:
+    async def custom_get(self, path) -> Any:
         """Fetch value from gateway."""
         async with self._update_lock:
+            if self._protocol == POINTTAPI:
+                return await self.gateway.get(uri=path)
             return await self.gateway.raw_query(path=path)
 
     async def component_update(self, component_type=None, event_time=None):
@@ -715,6 +773,10 @@ class BoschGatewayEntry:
             self.uuid,
             event_time,
         )
+        if self._protocol == POINTTAPI:
+            if coordinator := getattr(self._data, "coordinator", None):
+                await coordinator.async_request_refresh()
+            return
         async with self._update_lock:
             await self.component_update(SENSOR, event_time)
             await self.component_update(BINARY_SENSOR, event_time)

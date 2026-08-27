@@ -78,6 +78,8 @@
           "system_pressure_too_low": "Systeemdruk te laag",
           "flue_gas_test_heat_demand": "Warmtevraag door rookgastest",
           "flue_gas_thermostat_or_air_pressure_active": "Rookgasthermostaat of luchtdrukregelaar actief",
+          "flue_gas_sensor_temperature_differential_too_great": "Temperatuurverschil tussen rookgastemperatuursensor 1 en 2 is te groot",
+          "flue_gas_temperature_above_120_celsius": "Rookgastemperatuur hoger dan 120 °C",
           "safety_supply_temp_rising_too_fast": "Veiligheids-/aanvoertemperatuur stijgt te snel",
           "heating_gradient_limitation": "Gradiëntbegrenzing in verwarmingsmodus",
           "supply_return_temp_difference_too_high": "Verschil tussen aanvoer- en retourtemperatuur te groot",

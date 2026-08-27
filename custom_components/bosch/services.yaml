@@ -1,8 +1,20 @@
 debug_scan:
   description: >-
-    Run raw scan for Bosch. It will be available as bosch_scan.json in your www dir of Home Assistant. You can check url of the file in logs after it. It doesn't matter which entity you choose. It makes scan for whole your setup. Typically it is https://ha/local/bosch_scan.json?vX .
-    There will be notification in HA with url of the scan. It takes several minutes to finish. Be patient!
-    Choose any device of your bosch integration, it will find UUID and make scan for your whole Bosch setup. You don't need to choose water heater and climate separately!
+    Run raw scan for Bosch (XMPP/HTTP local devices only). It will be available as bosch_scan.json in your www dir of Home Assistant. You can check url of the file in logs after it. It doesn't matter which entity you choose. It makes scan for whole your setup. Typically it is https://ha/local/bosch_scan.json?vX .
+    For POINTTAPI cloud devices, download integration diagnostics or use bosch.send_custom_get for ad-hoc path queries.
+  fields:
+    device_id:
+      name: Device
+      description: Bosch gateway device.
+      required: true
+      selector:
+        device:
+          integration: bosch
+          multiple: true
+refresh_gateway:
+  name: Refresh gateway data
+  description: >-
+    Refresh all data for a Bosch gateway manually (climate, hot water, circuits, zones, sensors, switches). Automatically this occurs every 30-60 seconds depending on protocol.
   fields:
     device_id:
       name: Device
@@ -13,8 +25,9 @@ debug_scan:
           integration: bosch
           multiple: true
 update_thermostat:
+  name: Update thermostat (deprecated)
   description: >-
-    Update thermostat data manually. Automatically it occurs every 30 seconds. Avoid to use it a lot as Bosch gateway might block requests for some time.
+    [DEPRECATED] Legacy alias for refresh_gateway. Refresh all gateway data manually. Deprecated in favor of bosch.refresh_gateway and will be removed in a future release.
   fields:
     device_id:
       name: Device

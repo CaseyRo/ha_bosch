@@ -78,6 +78,8 @@
           "system_pressure_too_low": "Systemdruck zu niedrig",
           "flue_gas_test_heat_demand": "Wärmeanforderung durch Abgastest",
           "flue_gas_thermostat_or_air_pressure_active": "Abgasthermostat oder Luftdruckregler aktiv",
+          "flue_gas_sensor_temperature_differential_too_great": "Temperaturdifferenz zwischen Abgastemperaturfühler 1 und 2 zu groß",
+          "flue_gas_temperature_above_120_celsius": "Abgastemperatur höher als 120 °C",
           "safety_supply_temp_rising_too_fast": "Sicherheits-/Vorlauftemperatur steigt zu schnell",
           "heating_gradient_limitation": "Gradientenbegrenzung im Heizbetrieb",
           "dhw_gradient_limitation": "Gradientenbegrenzung im Warmwasserbetrieb",

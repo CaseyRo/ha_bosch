@@ -8,7 +8,10 @@ from __future__ import annotations
 import pytest
 
 from custom_components.bosch.const import DOMAIN
-from custom_components.bosch.pointtapi_entities import _resolve_device_info
+from custom_components.bosch.pointtapi_entities import (
+    _gateway_product_info,
+    _resolve_device_info,
+)
 
 
 UUID = "101506113"
@@ -56,6 +59,9 @@ def test_resolve_device_info_routes_path_to_expected_device(path: str, expected_
     assert (DOMAIN, expected_id) in identifiers, (
         f"{path} should route to {expected_id}, got {identifiers}"
     )
+    assert info["manufacturer"] == "Bosch"
+    if expected_id.endswith("_zn1") or expected_id.endswith("_zn2"):
+        assert info["model"] == "EasyControl"
 
 
 def test_multizone_zn2_routes_to_its_own_device() -> None:
@@ -86,3 +92,27 @@ def test_device_names_are_localized_when_language_is_provided() -> None:
     assert gateway["name"] == "Passerelle EasyControl"
     assert zone["name"] == "Zone de chauffage"
     assert energy["name"] == "Performance énergétique"
+
+
+@pytest.mark.parametrize(
+    ("product_id", "expected"),
+    [
+        ("8737906740", ("Buderus", "TC100.2")),
+        ("8737906738", ("Bosch", "CT200")),
+        ("8737906739", ("Bosch", "CT200")),
+        ("unknown", ("Bosch", "Easycontrol")),
+    ],
+)
+def test_gateway_product_info(product_id: str, expected: tuple[str, str]) -> None:
+    data = {"/gateway/productID": {"value": product_id}}
+    assert _gateway_product_info(data) == expected
+
+
+def test_gateway_device_info_uses_product_metadata() -> None:
+    info = _resolve_device_info(
+        UUID,
+        "/gateway/productID",
+        data={"/gateway/productID": {"value": "8737906740"}},
+    )
+    assert info["manufacturer"] == "Buderus"
+    assert info["model"] == "TC100.2"

@@ -116,6 +116,46 @@ class TestFetchPaths:
         assert "/dhwCircuits/dhw1/temperatureLevels/high" in data
 
     @pytest.mark.asyncio
+    async def test_follows_nested_child_lock_enabled_leaf(self):
+        """Device child-lock switches need the enabled leaf in coordinator data."""
+        async def mock_get(path):
+            payloads = {
+                "/devices": {
+                    "id": "/devices",
+                    "references": [{"id": "/devices/device2"}],
+                },
+                "/devices/device2": {
+                    "id": "/devices/device2",
+                    "references": [{"id": "/devices/device2/etrv"}],
+                },
+                "/devices/device2/etrv": {
+                    "id": "/devices/device2/etrv",
+                    "type": "refEnum",
+                    "references": [{"id": "/devices/device2/etrv/childLock"}],
+                },
+                "/devices/device2/etrv/childLock": {
+                    "id": "/devices/device2/etrv/childLock",
+                    "type": "refEnum",
+                    "references": [
+                        {"id": "/devices/device2/etrv/childLock/enabled"}
+                    ],
+                },
+                "/devices/device2/etrv/childLock/enabled": {
+                    "id": "/devices/device2/etrv/childLock/enabled",
+                    "type": "stringValue",
+                    "value": "true",
+                },
+            }
+            return payloads.get(path, {"id": path, "value": "stub"})
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client)
+
+        assert "/devices/device2/etrv/childLock/enabled" in data
+
+    @pytest.mark.asyncio
     async def test_gateway_auth_failure_propagates(self):
         """Auth failure on /gateway should re-raise (token is genuinely bad)."""
         async def mock_get(path):

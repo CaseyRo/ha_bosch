@@ -11,6 +11,7 @@ import homeassistant.helpers.config_validation as cv
 from .const import (
     DOMAIN,
     SERVICE_DEBUG,
+    SERVICE_REFRESH_GATEWAY,
     SERVICE_UPDATE,
     RECORDING_SERVICE_UPDATE,
     SERVICE_PUT_STRING,
@@ -154,6 +155,12 @@ def async_register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
         
     hass.services.async_register(
         DOMAIN,
+        SERVICE_REFRESH_GATEWAY,
+        async_handle_thermostat_refresh,
+        SERVICE_INTEGRATION_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
         SERVICE_UPDATE,
         async_handle_thermostat_refresh,
         SERVICE_INTEGRATION_SCHEMA,
@@ -199,6 +206,6 @@ def async_remove_services(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     asks HA to drop a service that was never there and logs "Unable to remove
     unknown service bosch/debug_scan" on every unload and reload (#7).
     """
-    for service in (SERVICE_DEBUG, SERVICE_UPDATE):
+    for service in (SERVICE_DEBUG, SERVICE_UPDATE, SERVICE_REFRESH_GATEWAY):
         if hass.services.has_service(DOMAIN, service):
             hass.services.async_remove(DOMAIN, service)
