@@ -47,6 +47,11 @@ from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
   handles `/devices/deviceN/thermostat/*` layouts beside `etrv/*` for valve
   position, actual temperature and offset. Contributed by @jfhautenauven (#23).
 
+### Fixed (1.5.0-beta.3)
+- **Stale thermostat-valve devices can be deleted from their device page** —
+  users upgrading from beta.2 should delete the one ghost valve device once;
+  future stale devices are no longer removed during startup.
+
 ### Removed
 - **Persistent startup cache** — added mid-PR to accelerate boot, then made
   unreachable by the startup-ordering fix in the same PR (the first live

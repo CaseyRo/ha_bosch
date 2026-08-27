@@ -1,101 +1,57 @@
-"""Tests for POINTTAPI stale device cleanup."""
+"""Tests for POINTTAPI stale device removal eligibility."""
 from __future__ import annotations
 
 from importlib import import_module
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
+import pytest
 
 integration = import_module("custom_components.bosch.__init__")
 
 
-def test_removes_stale_valve_device_and_entities(monkeypatch):
-    stale = SimpleNamespace(
-        id="stale-device",
-        identifiers={("bosch", "uuid_trv_1")},
-    )
-    current = SimpleNamespace(
-        id="current-device",
-        identifiers={("bosch", "uuid_trv_2")},
-    )
-    stale_entity = SimpleNamespace(
-        entity_id="switch.old_child_lock",
-        device_id="stale-device",
-        config_entry_id="entry-1",
-    )
-    device_registry = MagicMock(devices={stale.id: stale, current.id: current})
-    entity_registry = MagicMock(entities={stale_entity.entity_id: stale_entity})
-    monkeypatch.setattr(dr, "async_get", lambda _: device_registry)
-    monkeypatch.setattr(er, "async_get", lambda _: entity_registry)
-
-    integration._remove_stale_pointtapi_valve_devices(
-        MagicMock(),
-        "entry-1",
-        "uuid",
-        {
-            "/devices/device1/type": {"value": "thermostat"},
-            "/devices/device2/type": {"value": "thermostat_valve"},
-        },
+def _entry(data, coordinator_data):
+    coordinator = SimpleNamespace(data=coordinator_data)
+    return SimpleNamespace(
+        data=data,
+        runtime_data=SimpleNamespace(coordinator=coordinator),
     )
 
-    entity_registry.async_remove.assert_called_once_with("switch.old_child_lock")
-    device_registry.async_remove_device.assert_called_once_with("stale-device")
 
-
-def test_keeps_current_valve_devices(monkeypatch):
-    device = SimpleNamespace(
-        id="current-device",
-        identifiers={("bosch", "uuid_trv_2")},
+@pytest.mark.asyncio
+async def test_allows_removing_absent_valve_device():
+    entry = _entry(
+        {"http_xmpp": "pointtapi", "uuid": "uuid"},
+        {"/devices/list": {"value": [{"id": 2, "type": "thermostat"}]}},
     )
-    device_registry = MagicMock(devices={device.id: device})
-    entity_registry = MagicMock(entities={})
-    monkeypatch.setattr(dr, "async_get", lambda _: device_registry)
-    monkeypatch.setattr(er, "async_get", lambda _: entity_registry)
+    device = SimpleNamespace(identifiers={("bosch", "uuid_trv_1")})
 
-    integration._remove_stale_pointtapi_valve_devices(
-        MagicMock(),
-        "entry-1",
-        "uuid",
+    assert await integration.async_remove_config_entry_device(
+        MagicMock(), entry, device
+    ) is True
+
+
+@pytest.mark.asyncio
+async def test_keeps_present_valve_device():
+    entry = _entry(
+        {"http_xmpp": "pointtapi", "uuid": "uuid"},
         {"/devices/device2/type": {"value": "thermostat_valve"}},
     )
+    device = SimpleNamespace(identifiers={("bosch", "uuid_trv_2")})
 
-    device_registry.async_remove_device.assert_not_called()
+    assert await integration.async_remove_config_entry_device(
+        MagicMock(), entry, device
+    ) is False
 
 
-def test_skips_cleanup_without_device_types(monkeypatch):
-    device_registry = MagicMock()
-    entity_registry = MagicMock()
-    monkeypatch.setattr(dr, "async_get", lambda _: device_registry)
-    monkeypatch.setattr(er, "async_get", lambda _: entity_registry)
-
-    integration._remove_stale_pointtapi_valve_devices(
-        MagicMock(), "entry-1", "uuid", {"/devices/device1/name": {"value": "Old"}}
+@pytest.mark.asyncio
+async def test_does_not_allow_removing_gateway_device():
+    entry = _entry(
+        {"http_xmpp": "pointtapi", "uuid": "uuid"},
+        {},
     )
+    device = SimpleNamespace(identifiers={("bosch", "uuid")})
 
-    device_registry.async_remove_device.assert_not_called()
-    entity_registry.async_remove.assert_not_called()
-
-
-def test_does_not_remove_unrelated_entry_or_identifier(monkeypatch):
-    other_entry = SimpleNamespace(
-        id="other-device",
-        identifiers={("bosch", "other-uuid_trv_1")},
-    )
-    malformed = SimpleNamespace(
-        id="malformed-device",
-        identifiers={("bosch", "uuid_trv_unknown")},
-    )
-    device_registry = MagicMock(
-        devices={other_entry.id: other_entry, malformed.id: malformed}
-    )
-    entity_registry = MagicMock(entities={})
-    monkeypatch.setattr(dr, "async_get", lambda _: device_registry)
-    monkeypatch.setattr(er, "async_get", lambda _: entity_registry)
-
-    integration._remove_stale_pointtapi_valve_devices(
-        MagicMock(), "entry-1", "uuid", {"/devices/device1/type": {"value": "thermostat"}}
-    )
-
-    device_registry.async_remove_device.assert_not_called()
+    assert await integration.async_remove_config_entry_device(
+        MagicMock(), entry, device
+    ) is False
