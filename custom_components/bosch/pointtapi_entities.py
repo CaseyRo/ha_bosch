@@ -533,6 +533,7 @@ def _resolve_device_info(
             identifiers={(DOMAIN, f"{uuid}_{zid}")},
             name=f"{_device_name('heating_zone', language)}{suffix}",
             manufacturer="Bosch",
+            model="EasyControl",
             via_device=(DOMAIN, uuid),
         )
     # Gateway-level fallback (gateway/wifi/firmware/etc.)
@@ -722,6 +723,7 @@ def _thermostat_valve_device_info(
         identifiers={(DOMAIN, f"{uuid}_trv_{valve_id}")},
         name=f"{_device_name('thermostat_valve', language)} {name}",
         manufacturer="Bosch",
+        model="ETRV RT10-RF",
         via_device=(DOMAIN, uuid),
     )
 

@@ -57,6 +57,8 @@ def test_resolve_device_info_routes_path_to_expected_device(path: str, expected_
         f"{path} should route to {expected_id}, got {identifiers}"
     )
     assert info["manufacturer"] == "Bosch"
+    if expected_id.endswith("_zn1") or expected_id.endswith("_zn2"):
+        assert info["model"] == "EasyControl"
 
 
 def test_multizone_zn2_routes_to_its_own_device() -> None:
