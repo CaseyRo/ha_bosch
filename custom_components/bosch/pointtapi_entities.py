@@ -467,17 +467,20 @@ def _resolve_device_info(
         return DeviceInfo(
             identifiers={(DOMAIN, uuid)},
             name=_device_name("gateway", language),
+            manufacturer="Bosch",
         )
     if kind in _DHW_KINDS:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_dhw1")},
             name=_device_name("dhw", language),
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
     if kind in _ENERGY_KINDS:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_energy")},
             name=_device_name("energy_performance", language),
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
 
@@ -486,12 +489,14 @@ def _resolve_device_info(
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_solar")},
             name=_device_name("solar", language),
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
     if p.startswith("/dhwCircuits"):
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_dhw1")},
             name=_device_name("dhw", language),
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
     if (
@@ -501,12 +506,14 @@ def _resolve_device_info(
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_boiler")},
             name=_device_name("boiler", language),
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
     if p.startswith("/energy"):
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_energy")},
             name=_device_name("energy_performance", language),
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
     if (
@@ -525,12 +532,14 @@ def _resolve_device_info(
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_{zid}")},
             name=f"{_device_name('heating_zone', language)}{suffix}",
+            manufacturer="Bosch",
             via_device=(DOMAIN, uuid),
         )
     # Gateway-level fallback (gateway/wifi/firmware/etc.)
     return DeviceInfo(
         identifiers={(DOMAIN, uuid)},
         name=_device_name("gateway", language),
+        manufacturer="Bosch",
     )
 
 
@@ -712,6 +721,7 @@ def _thermostat_valve_device_info(
     return DeviceInfo(
         identifiers={(DOMAIN, f"{uuid}_trv_{valve_id}")},
         name=f"{_device_name('thermostat_valve', language)} {name}",
+        manufacturer="Bosch",
         via_device=(DOMAIN, uuid),
     )
 

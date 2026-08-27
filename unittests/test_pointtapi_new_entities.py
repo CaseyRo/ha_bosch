@@ -1510,6 +1510,7 @@ class TestComfortControlDescriptions:
         assert ent.icon == "mdi:signal"
         assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
         assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
+        assert ent.device_info["manufacturer"] == "Bosch"
 
     def test_thermostat_valve_protocol_value_is_humanized(self):
         data = {
