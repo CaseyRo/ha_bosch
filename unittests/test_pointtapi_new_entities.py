@@ -1511,7 +1511,7 @@ class TestComfortControlDescriptions:
         assert ent.device_info["name"] == "Thermostat valve Salle de bains-1"
         assert (("bosch", "uuid1_trv_2") in ent.device_info["identifiers"])
         assert ent.device_info["manufacturer"] == "Bosch"
-        assert ent.device_info["model"] == "ETRV RT10-RF"
+        assert "model" not in ent.device_info
 
     def test_thermostat_valve_protocol_value_is_humanized(self):
         data = {

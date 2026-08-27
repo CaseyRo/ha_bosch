@@ -4,7 +4,7 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
-Collected for 1.5.0 (pre-released as 1.5.0-beta.1 and 1.5.0-beta.2, which
+Collected for 1.5.0 (pre-released as 1.5.0-beta.1 through beta.3, which
 supersede 1.4.0-beta.1 — 1.4.0 never went stable). The #18 items below still have no
 hardware confirmation; the appliance status table in particular is transcribed
 from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
@@ -48,9 +48,34 @@ from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
   position, actual temperature and offset. Contributed by @jfhautenauven (#23).
 
 ### Fixed (1.5.0-beta.3)
+- **Generic services work on cloud entries** — `bosch.send_custom_get` and
+  `bosch.send_custom_put_*` routed through the XMPP client's `raw_query` /
+  `raw_put` even for POINTTAPI entries, so they were advertised and then raised.
+  They now branch on protocol; `bosch.refresh_gateway` is the new name for a
+  manual refresh (a coordinator refresh on cloud entries) and
+  `bosch.update_thermostat` stays as a deprecated alias. `debug_scan` remains
+  XMPP-only: diagnostics plus `send_custom_get` cover the cloud case.
+  Contributed by @jfhautenauven (#24, #25).
+- **beta.2 valve regressions** — duplicate `unique_id` errors from the
+  broadened valve-position/temperature matching, and a phantom
+  "Thermostat valve" device for `thermostat`-typed nodes, are fixed; the
+  coordinator now follows one more reference level so the child-lock
+  `enabled` leaf is actually fetched (the switch read `unavailable`). Child-lock
+  write confirmed end-to-end on real hardware. Contributed by @jfhautenauven (#25).
 - **Stale thermostat-valve devices can be deleted from their device page** —
-  users upgrading from beta.2 should delete the one ghost valve device once;
-  future stale devices are no longer removed during startup.
+  `async_remove_config_entry_device` allows deleting a valve device the gateway
+  no longer reports; users upgrading from beta.2 should delete the one ghost
+  valve device once. Nothing is removed automatically at startup (#25).
+
+### Changed (1.5.0-beta.3)
+- **Device metadata** — the gateway resolves manufacturer and model from
+  `/gateway/productId` (Bosch CT200, Buderus TC100.2); zone devices report
+  `EasyControl`; POINTTAPI child devices carry a manufacturer. Contributed by
+  @jfhautenauven (#25). Thermostat-valve devices deliberately carry **no**
+  model: the API exposes no product id for radiator thermostats and real
+  installs run `homematicip` valves, so a hardcoded name would be wrong.
+- **Two flue-gas appliance status codes** added to the display+cause table
+  (`1C`/526, `1F`/525), translated in all seven locales (#25).
 
 ### Removed
 - **Persistent startup cache** — added mid-PR to accelerate boot, then made
