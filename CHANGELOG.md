@@ -2,13 +2,15 @@
 
 All notable changes to this Bosch Home Assistant custom component will be documented in this file.
 
-## [Unreleased]
+## [1.5.0] — 2026-08-29 — Thermostat-valve entities, appliance status, fast/slow polling
 
-Collected for 1.5.0 (pre-released as 1.5.0-beta.1 through beta.3, which
-supersede 1.4.0-beta.1 — 1.4.0 never went stable). The #18 items below still have no
-hardware confirmation; the appliance status table in particular is transcribed
-from manufacturer documentation, not observed. #20 ran in @jfhautenauven's
-12-valve production for a week before merge.
+Pre-released as 1.5.0-beta.1 through beta.3, which supersede 1.4.0-beta.1 —
+1.4.0 never went stable. @jfhautenauven ran beta.3 on his 12-valve production
+install and reported no defects in normal use; #20 had already run there for a
+week before merge, and the child-lock write was confirmed end-to-end on real
+hardware (#25). The #18 items below still have no hardware confirmation: the
+appliance status table in particular is transcribed from manufacturer
+documentation, not observed.
 
 ### Added
 - **Thermostat-valve entities** — per-valve child lock (binary sensor),

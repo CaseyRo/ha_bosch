@@ -69,11 +69,11 @@ Paste the whole callback URL **or** just the `code` value into the final step �
 
 Token refresh is automatic. If your session expires, HA triggers a re-authentication flow — no need to delete and re-add the integration.
 
-### Entities (POINTTAPI, v1.3.1)
+### Entities (POINTTAPI, v1.5.0)
 
 Entity creation is partly dynamic. What you see depends on what your appliance advertises in its resource references.
 
-#### Chaudiere
+#### Boiler
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
@@ -134,11 +134,12 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | Supply temperature setpoint | supply_temp_setpoint | /heatingCircuits/hc1/supplyTemperatureSetpoint | 1 entity |
 | Sensor | Boiler power setpoint | boiler_power | /heatingCircuits/hc1/powerSetpoint | 1 entity |
 | Sensor | Zone valve position | valve_position | /zones/{zid}/actualValvePosition | Dynamic, per zone when reference exists |
+| Sensor | Zone average temperature | zone_average_temperature | /zones/{zid}/temperatureActual | Dynamic, per discovered zone |
 | Sensor | Assigned program name | assigned_program | /zones/{zid}/assignedProgramName (computed from /programs/pgN/name) | Dynamic, per discovered zone |
 | Sensor | Optimum start state | optimum_start_state | /zones/{zid}/optimumStartState | Dynamic, per zone when reference exists |
 | Binary sensor | Open window detected | open_window_detected | /zones/{zid}/openWindowDetection/status | Dynamic, per zone when reference exists |
 
-#### Vanne thermostatique
+#### Thermostat valve
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
@@ -152,7 +153,7 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | Actual temperature | thermostat_valve_temperature_actual | /devices/list/thermostat_valve/{id}/temperatureActual or /devices/device{id}/.../etrv/temperatureActual | Dynamic, per discovered valve |
 | Binary sensor | Warning state | thermostat_valve_warning | /devices/list/thermostat_valve/{id}/warning | Dynamic, per discovered valve |
 
-#### Efficacite energetique
+#### Energy performance
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
@@ -168,7 +169,7 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | Electricity month average | electricity_month_average | /energy/electricity/monthAverage | Dynamic, only if path available |
 | Sensor | Energy efficiency score | energy_efficiency | /gateway/ui/eco | Dynamic, only if /gateway/ui references include /gateway/ui/eco |
 
-#### Eau chaude sanitaire (DHW)
+#### Domestic hot water (DHW)
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
@@ -182,7 +183,7 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | Thermal disinfect last result | thermal_disinfect_last_result | /dhwCircuits/dhw1/thermalDisinfect/lastResult | 1 entity |
 | Binary sensor | DHW heating | dhw_heating | /dhwCircuits/dhw1/state | 1 entity |
 
-#### Solaire (optionnel)
+#### Solar (optional)
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
@@ -199,11 +200,21 @@ Notes:
 
 ### Under the hood
 - **Bulk polling** — steady-state polls batch all discovered resource reads (188 paths on a typical CT200) into a handful of bulk POSTs against `pointt-api`'s bulk endpoint instead of one GET per path, with automatic per-cycle fallback to sequential GETs if the bulk route ever misbehaves (endpoint format credit: [homecom_alt](https://github.com/serbanb11/homecom_alt), see `docs/pointtapi-api.md`)
-- **Coordinator-based polling** — all data fetched every 60 seconds through a `DataUpdateCoordinator`, not per-entity polling
+- **Coordinator-based polling, fast and slow** — everything runs through one `DataUpdateCoordinator`, not per-entity polling. Temperatures, modes and live valve telemetry refresh every 60 seconds; `/gateway`, `/energy`, `/solarCircuits`, `/programs`, `/system/appliance` and the `/devices` inventory every 5 minutes; energy history every 30 minutes; discovery once a day
 - **OAuth2 with PKCE** — same auth flow the Bosch app uses, with automatic token refresh
 - **Proper error handling** — 401/403 triggers HA's reauth flow, timeouts and network errors surface as `UpdateFailed`
 - **Diagnostics** — full diagnostic dump available from the HA integrations page (credentials are redacted)
 - **HA best practices** — `CoordinatorEntity` pattern, `has_entity_name`, `NumberEntityDescription` dataclasses, unique IDs to prevent duplicates
+
+### Services
+
+Both protocol paths share these, addressed by device id:
+
+- `bosch.refresh_gateway` — force a refresh now. On a cloud entry that is a coordinator refresh; on XMPP it re-reads the gateway. **Replaces `bosch.update_thermostat`**, which still works as a deprecated alias.
+- `bosch.send_custom_get` / `bosch.send_custom_put_float` / `bosch.send_custom_put_string` — read or write any API path directly. Useful for probing resources this integration doesn't expose yet; put the result in an issue.
+- `bosch.debug_scan` — **XMPP/HTTP entries only**. On a cloud entry, use the diagnostics download plus `send_custom_get` instead.
+
+The recording and hot-water services (`bosch.update_recordings_sensor`, `bosch.fetch_recordings_sensor_range`, `bosch.set_dhw_charge`) are XMPP/HTTP concerns and behave as before.
 
 ## Installation
 
