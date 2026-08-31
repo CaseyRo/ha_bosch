@@ -51,7 +51,6 @@ SERVICE_DEBUG = "debug_scan"
 SERVICE_REFRESH_GATEWAY = "refresh_gateway"
 SERVICE_UPDATE = "update_thermostat"
 RECORDING_SERVICE_UPDATE = "update_recordings_sensor"
-SERVICE_MOVE_OLD_DATA = "move_old_statistic_data"
 
 SENSORS = "sensors"
 SWITCHPOINT = "switchPoint"

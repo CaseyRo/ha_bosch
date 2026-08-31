@@ -255,7 +255,8 @@
       "thermal_disinfect_last_result": {
         "name": "Letzte thermische Desinfektion",
         "state": {
-          "done": "Abgeschlossen"
+          "done": "Abgeschlossen",
+          "running": "Läuft"
         }
       }
     },

@@ -717,6 +717,10 @@ class TestTranslationCatalog:
         switch = STRINGS["entity"]["switch"]
         assert switch["thermal_disinfect"]["name"] == "Thermal disinfect"
 
+    def test_thermal_disinfect_last_result_translates_running(self):
+        state = STRINGS["entity"]["sensor"]["thermal_disinfect_last_result"]["state"]
+        assert state["running"] == "In progress"
+
     def test_dhw_heating_binary_sensor_uses_on_off_state_keys(self):
         state = STRINGS["entity"]["binary_sensor"]["dhw_heating"]["state"]
         assert state["on"] == "Heating"

@@ -276,7 +276,8 @@
       "thermal_disinfect_last_result": {
         "name": "Thermal disinfect last result",
         "state": {
-          "done": "Done"
+          "done": "Done",
+          "running": "In progress"
         }
       }
     },

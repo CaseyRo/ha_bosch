@@ -3,7 +3,6 @@
 [![Version](https://img.shields.io/github/manifest-json/v/CaseyRo/ha_bosch/master?filename=custom_components%2Fbosch%2Fmanifest.json&color=slateblue&label=Version&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/releases)
 [![Latest release](https://img.shields.io/github/v/release/CaseyRo/ha_bosch?label=Latest%20release&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/releases)
 [![Last commit](https://img.shields.io/github/last-commit/CaseyRo/ha_bosch?label=Last%20commit&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/commits/master)
-![Downloads](https://img.shields.io/github/downloads/CaseyRo/ha_bosch/total?label=Downloads&style=for-the-badge)
 ![Stars](https://img.shields.io/github/stars/CaseyRo/ha_bosch?label=Stars&color=darkgoldenrod&style=for-the-badge)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?logo=HomeAssistantCommunityStore&logoColor=white&style=for-the-badge)](https://github.com/hacs/integration)
 
@@ -11,18 +10,42 @@ A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-the
 
 ---
 
-> ## v1.3.1 current status
+> ## v1.5.0 current status
 >
-> The integration has moved well beyond the initial v1.0.0 rollout.
-> Current POINTTAPI behavior includes native boost support, bulk polling with fallback,
-> gateway auto-discovery, richer diagnostics, and broader dynamic entity discovery
-> (multi-zone schedule entities, thermostat-valve entities, optional open-window and
-> energy surfaces when advertised by the appliance).
+> The current POINTTAPI release adds dedicated thermostat-valve devices with child lock,
+> valve position, actual temperature, and writable calibration offset controls. It also
+> includes appliance-status decoding, per-zone schedule selection and average-temperature
+> sensors, native boost with a fallback, and reference-driven discovery of optional
+> controls and energy surfaces.
+>
+> Polling is tiered to keep live temperatures, modes, and valve telemetry responsive while
+> refreshing slower gateway, energy, solar, appliance, and inventory data every five
+> minutes. Gateway metadata now identifies supported CT200 and TC100.2 models, and
+> cloud entries support `bosch.refresh_gateway` plus the generic custom GET/PUT services.
+>
+> ### Validation status
+>
+> | Status | Installation | Configuration | Confirmed scope |
+> | --- | --- | --- | --- |
+> | ✅ Tested | Bosch CT200 | 2 heating zones, no thermostat valves | POINTTAPI cloud path |
+> | ✅ Tested | Buderus TC100.2 | 10 heating zones, 12 thermostat valves, hot-water tank | POINTTAPI cloud path and thermostat-valve controls |
+> | ⏳ Testers wanted | Solar production | Not yet tested | See [issue #29](https://github.com/CaseyRo/ha_bosch/issues/29) |
+> | ⏳ Testers wanted | Heat pump | Not yet tested | See [issue #29](https://github.com/CaseyRo/ha_bosch/issues/29) |
 >
 > If you find a regression or device-specific quirk, please report it with diagnostics:
 >
 > - 🐛 **Bug report** → [Open an issue](https://github.com/CaseyRo/ha_bosch/issues/new?template=bug_report.yml)
 > - 📋 **Capture details first** → see [Testing & reporting](#testing--reporting) below
+
+
+> ## Testers wanted: solar and heat-pump installations
+>
+> We are looking for testers with a Bosch installation that has solar production,
+> a heat pump, or both. We want to add reliable POINTTAPI support for these systems,
+> but the development team does not currently have an anonymized diagnostics dump
+> from either setup. If you can help, please join [issue #29](https://github.com/CaseyRo/ha_bosch/issues/29)
+> with your installation details and a redacted diagnostics download. We will follow
+> up with you there.
 
 ---
 
@@ -319,9 +342,9 @@ POINTTAPI bulk fetch failed (...); falling back ...     ← bulk degraded (still
 - When it started (after which version / change)
 
 [Open a bug report](https://github.com/CaseyRo/ha_bosch/issues/new?template=bug_report.yml) — the
-form has fields for all of the above. **Positive reports are just as valuable**: "v1.3.1 works on my
-CT200 with 2 zones, native boost picked the boostShortcut route" tells me the probe ladder
-generalizes beyond my own device.
+form has fields for all of the above. **Positive reports are just as valuable**: "v1.5.0 works on my
+TC100.2 with 10 zones and 12 thermostat valves; native boost picked the boostShortcut route" confirms
+that the dynamic entity discovery and boost probe ladder generalize beyond the tested installations.
 
 > ⚠️ Never paste your access token, refresh token, or OAuth callback URL into an issue.
 > The diagnostics download redacts these automatically — use it instead of hand-copied data.
