@@ -39,4 +39,21 @@ jobs:
 
       - name: Run Tests
         run: |
-          python3 -m pytest --tb=short -q unittests --override-ini="asyncio_mode=auto"
+          # pipefail is NOT on by default in Actions' `bash -e {0}`, and without
+          # it `tee` would swallow pytest's exit code — including the
+          # --cov-fail-under gate, which would then never fail the build.
+          set -o pipefail
+          python3 -m pytest --tb=short -q unittests --override-ini="asyncio_mode=auto" \
+            --cov=custom_components/bosch --cov-report=term --cov-fail-under=70 \
+            | tee pytest.log
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo '### Coverage'
+            echo
+            echo '```'
+            sed -n '/^Name /,/^TOTAL/p' pytest.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  attach-zip:
+    name: Attach integration zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build bosch.zip
+        # Zip the *contents* of the integration directory, not the directory
+        # itself — that is the layout HACS expects if hacs.json ever sets
+        # "zip_release": true, and it keeps this asset drop-in compatible.
+        run: |
+          cd custom_components/bosch
+          zip -r "$GITHUB_WORKSPACE/bosch.zip" . -x '*.pyc' -x '*__pycache__*'
+
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" bosch.zip --clobber

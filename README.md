@@ -3,6 +3,7 @@
 [![Version](https://img.shields.io/github/manifest-json/v/CaseyRo/ha_bosch/master?filename=custom_components%2Fbosch%2Fmanifest.json&color=slateblue&label=Version&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/releases)
 [![Latest release](https://img.shields.io/github/v/release/CaseyRo/ha_bosch?label=Latest%20release&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/releases)
 [![Last commit](https://img.shields.io/github/last-commit/CaseyRo/ha_bosch?label=Last%20commit&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/commits/master)
+[![Downloads](https://img.shields.io/github/downloads/CaseyRo/ha_bosch/total?label=Downloads&style=for-the-badge)](https://github.com/CaseyRo/ha_bosch/releases)
 ![Stars](https://img.shields.io/github/stars/CaseyRo/ha_bosch?label=Stars&color=darkgoldenrod&style=for-the-badge)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?logo=HomeAssistantCommunityStore&logoColor=white&style=for-the-badge)](https://github.com/hacs/integration)
 
