@@ -255,7 +255,8 @@
       "thermal_disinfect_last_result": {
         "name": "Laatste thermische desinfectie",
         "state": {
-          "done": "Uitgevoerd"
+          "done": "Uitgevoerd",
+          "running": "Bezig"
         }
       }
     },

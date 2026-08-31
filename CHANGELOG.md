@@ -2,6 +2,13 @@
 
 All notable changes to this Bosch Home Assistant custom component will be documented in this file.
 
+## [1.5.1-beta.1] — 2026-08-31
+
+### Fixed
+- **Thermal disinfect status** — the newly observed `running` value from
+  `/dhwCircuits/dhw1/thermalDisinfect/lastResult` now has a friendly translated
+  label in all supported languages.
+
 ## [1.5.0] — 2026-08-29 — Thermostat-valve entities, appliance status, fast/slow polling
 
 Pre-released as 1.5.0-beta.1 through beta.3, which supersede 1.4.0-beta.1 —

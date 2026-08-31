@@ -255,7 +255,8 @@
       "thermal_disinfect_last_result": {
         "name": "Ultimo risultato disinfezione termica",
         "state": {
-          "done": "Eseguito"
+          "done": "Eseguito",
+          "running": "In corso"
         }
       }
     },
