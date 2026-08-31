@@ -9,6 +9,16 @@ All notable changes to this Bosch Home Assistant custom component will be docume
   `/dhwCircuits/dhw1/thermalDisinfect/lastResult` now has a friendly translated
   label in all supported languages.
 
+### Removed
+- **`bosch.move_old_statistic_data`** — the service was declared in
+  `services.yaml` and `const.py` but never registered, so calling it always
+  failed. Both declarations are gone; nothing referenced them.
+
+### Repository
+- Releases now carry a `bosch.zip` asset built from the integration directory,
+  so the README download counter reports a real number (#27).
+- CI measures coverage and fails below 70% (baseline 71%) (#28).
+
 ## [1.5.0] — 2026-08-29 — Thermostat-valve entities, appliance status, fast/slow polling
 
 Pre-released as 1.5.0-beta.1 through beta.3, which supersede 1.4.0-beta.1 —
