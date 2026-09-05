@@ -289,6 +289,54 @@ class TestClimateRobustness:
         ent._handle_coordinator_update()
         assert ent.hvac_action == HVACAction.HEATING
 
+    def test_hvac_action_heat_request_with_burner_off_is_idle(self):
+        # #31: zone status is a heat *request*; the burner may not be firing.
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "manual"},
+            "/zones/zn1/status": {"value": "heat request"},
+            "/heatSources/actualModulation": {"value": 0.0},
+            "/heatSources/flameIndication": {"value": "off"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_action == HVACAction.IDLE
+
+    def test_hvac_action_heat_request_with_burner_on_dhw_is_idle(self):
+        # Combi boiler: burner firing for hot water is not room heating.
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/status": {"value": "heat request"},
+            "/heatSources/actualModulation": {"value": 60.0},
+            "/heatSources/flameIndication": {"value": "dhw"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_action == HVACAction.IDLE
+
+    def test_hvac_action_heat_request_with_burner_on_ch_is_heating(self):
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/status": {"value": "heat request"},
+            "/heatSources/actualModulation": {"value": 60.0},
+            "/heatSources/flameIndication": {"value": "ch"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_action == HVACAction.HEATING
+
+    def test_hvac_action_idle_zone_stays_idle_while_burner_heats_another_zone(self):
+        # Multi-zone: /heatSources is installation-level and must not leak
+        # another zone's heating into this zone's action.
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/status": {"value": "idle"},
+            "/heatSources/actualModulation": {"value": 60.0},
+            "/heatSources/flameIndication": {"value": "ch"},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+        assert ent.hvac_action == HVACAction.IDLE
+
     def test_hvac_action_unknown_status_is_unknown(self):
         # Heating-only appliance: an unrecognised status must not be reported as
         # COOLING, which HA renders as "Cooling" in the UI.

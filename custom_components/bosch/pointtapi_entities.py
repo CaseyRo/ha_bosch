@@ -1287,6 +1287,28 @@ _ZONE_STATUS_ACTIONS = {
 }
 
 
+def _zone_hvac_action(data: dict[str, Any], zone_status: Any) -> HVACAction | None:
+    """Zone /status is demand, not delivery (#31).
+
+    HEATING needs the zone to request heat AND the burner to be firing for
+    central heating. A requesting zone with the burner off, or firing for DHW
+    on a combi, is IDLE. The burner signals are installation-level, so they
+    only ever downgrade a zone's own request — they never mark an idle zone
+    as heating on multi-zone setups. Without /heatSources the zone status
+    stands alone, so appliances that don't expose it keep the old mapping.
+    """
+    action = (
+        _ZONE_STATUS_ACTIONS.get(zone_status.strip().lower())
+        if isinstance(zone_status, str)
+        else None
+    )
+    if action is not HVACAction.HEATING:
+        return action
+    if _burner_flame_state(data) is False or _heat_demand_type_state(data) in ("off", "dhw"):
+        return HVACAction.IDLE
+    return action
+
+
 class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
     """Climate entity for one POINTTAPI zone: current/setpoint from coordinator.data."""
 
@@ -1356,11 +1378,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             self._hvac_action = HVACAction.OFF
         else:
             self._hvac_mode = HVACMode.AUTO if user_mode == "clock" else HVACMode.HEAT
-            self._hvac_action = (
-                _ZONE_STATUS_ACTIONS.get(zone_status.strip().lower())
-                if isinstance(zone_status, str)
-                else None
-            )
+            self._hvac_action = _zone_hvac_action(data, zone_status)
         self.async_write_ha_state()
 
     @property
