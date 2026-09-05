@@ -2,6 +2,16 @@
 
 All notable changes to this Bosch Home Assistant custom component will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **POINTTAPI `hvac_action`** — a zone's `/status` of `heat request` no
+  longer reports `heating` on its own. The climate card now shows `heating`
+  only while the burner is actually firing for central heating; a requesting
+  zone with the burner off, or firing for hot water on a combi boiler, shows
+  `idle`. Appliances that don't expose `/heatSources` keep the old mapping.
+  Reported with a controlled test matrix by @SiemEcho (#31).
+
 ## [1.5.1-beta.1] — 2026-08-31
 
 ### Fixed
