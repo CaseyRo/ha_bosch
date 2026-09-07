@@ -1,5 +1,14 @@
 {
   "entity": {
+    "climate": {
+      "state_attributes": {
+        "preset_mode": {
+          "state": {
+            "boost": "Heizungs-Boost"
+          }
+        }
+      }
+    },
     "sensor": {
       "outdoor_temperature": {
         "name": "Außentemperatur"
