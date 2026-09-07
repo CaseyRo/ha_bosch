@@ -280,6 +280,9 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Native-boost probe verdict cache (set by the boost switch's probe
         # ladder; surfaced in diagnostics). None = not yet probed.
         self.boost_probe_result: dict[str, Any] | None = None
+        # Registered per-zone Boost controls, used by climate presets to share
+        # the same native-command and fallback behavior.
+        self.boost_switches: dict[int, Any] = {}
         # Bulk polling state: path set discovered by the reference walk,
         # monotonic timestamps for rediscovery and warning throttling.
         self._bulk_paths: list[str] = []
