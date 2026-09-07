@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +13,7 @@ from custom_components.bosch.pointtapi_entities import (
     _boost_remaining_minutes,
     pointtapi_boost_zone_ids,
 )
+from custom_components.bosch.switch import async_setup_entry
 
 
 def _utcnow() -> datetime:
@@ -109,6 +111,13 @@ def test_boost_switch_uses_its_heating_zone_device() -> None:
     assert switch.device_info["identifiers"] == {("bosch", "uuid1_zn1")}
 
 
+def test_boost_switch_registers_itself_on_the_coordinator() -> None:
+    coord = _mock_coordinator(dict(_BOOST_DATA))
+    switch = _boost_switch(coord, zone_id=2)
+
+    assert coord.boost_switches == {2: switch}
+
+
 def test_boost_switches_are_created_for_all_configured_zones() -> None:
     data = {
         "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
@@ -117,6 +126,31 @@ def test_boost_switches_are_created_for_all_configured_zones() -> None:
     }
 
     assert pointtapi_boost_zone_ids(data) == [1, 2, 3]
+
+
+@pytest.mark.asyncio
+async def test_switch_setup_creates_one_boost_switch_per_zone():
+    coord = _mock_coordinator({
+        **_BOOST_DATA,
+        "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+        "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+        "/zones/zn3/temperatureHeatingSetpoint": {"value": 20.0},
+    })
+    entry = SimpleNamespace(
+        entry_id="entry1",
+        data={"http_xmpp": "pointtapi", "uuid": "uuid1"},
+        runtime_data=SimpleNamespace(coordinator=coord),
+    )
+    add_entities = MagicMock()
+
+    assert await async_setup_entry(MagicMock(), entry, add_entities) is True
+
+    entities = add_entities.call_args.args[0]
+    boost_switches = [
+        entity for entity in entities if isinstance(entity, BoschPoinTTAPIBoostSwitchEntity)
+    ]
+    assert [switch._zone_id for switch in boost_switches] == [1, 2, 3]
+    assert set(coord.boost_switches) == {1, 2, 3}
 
 
 def test_boost_switch_unavailable_when_zone_is_not_allowed() -> None:
@@ -323,6 +357,30 @@ class TestNativeBoostProbe:
         ent._handle_coordinator_update()
 
         assert ent.is_on is True  # device-reported native boost survives restart
+
+    @pytest.mark.asyncio
+    async def test_native_restart_shutdown_uses_boost_shortcut(self):
+        """An active native Boost after restart must not restore a zone mode."""
+        coord = _mock_coordinator({
+            **_BOOST_DATA,
+            "/heatingCircuits/hc1/boostMode": {"value": "on"},
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [1, 2], "allowedZones": [1, 2]}]
+            },
+        })
+        ent = _boost_switch(coord, zone_id=1)
+        ent._handle_coordinator_update()
+
+        await ent.async_turn_off()
+
+        path, value = coord.client.put.await_args_list[0].args
+        assert path == "/heatingCircuits/hc1/boostShortcut"
+        assert value[0]["mode"] == "on"
+        assert value[0]["zones"] == [2]
+        assert all(
+            not call.args[0].startswith("/zones/zn1/")
+            for call in coord.client.put.await_args_list
+        )
 
     @pytest.mark.asyncio
     async def test_selected_zone_ids_come_from_boost_zones_struct(self):

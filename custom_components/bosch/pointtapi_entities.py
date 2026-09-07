@@ -3068,19 +3068,30 @@ class BoschPoinTTAPIBoostSwitchEntity(
         # Native-mode off: no local timer/session exists; deactivate via the
         # probed route and never touch zone user modes.
         probe = self.coordinator.boost_probe_result
+        data = self.coordinator.data or {}
+        route = (
+            probe.get("route")
+            if probe is not None and probe.get("route") != self.ROUTE_FALLBACK
+            else (
+                self.ROUTE_SHORTCUT
+                if (
+                    _val(data, "/heatingCircuits/hc1/boostMode") == "on"
+                    and _boost_shortcut_operable(data)
+                )
+                else None
+            )
+        )
         if (
-            probe is not None
-            and probe.get("route") != self.ROUTE_FALLBACK
+            route is not None
             and self.coordinator.boost_session is None
             and self._auto_off_cancel is None
         ):
-            data = self.coordinator.data or {}
             zones = [
                 zone_id
                 for zone_id in self._selected_zone_ids(data)
                 if zone_id != self._zone_id
             ]
-            if await self._native_boost_off(probe["route"], zones):
+            if await self._native_boost_off(route, zones):
                 self._boost_set_by_us = True
                 self._is_on = False
                 self.async_write_ha_state()
