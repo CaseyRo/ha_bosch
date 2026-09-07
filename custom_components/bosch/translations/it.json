@@ -1,6 +1,6 @@
 {
-  "entity": {
-    "climate": {
+  "entity_component": {
+    "_": {
       "state_attributes": {
         "preset_mode": {
           "state": {
@@ -8,7 +8,9 @@
           }
         }
       }
-    },
+    }
+  },
+  "entity": {
     "sensor": {
       "outdoor_temperature": {
         "name": "Temperatura esterna"
