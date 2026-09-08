@@ -70,7 +70,10 @@ class BoschFlowHandler(config_entries.ConfigFlow):
         """Handle EasyControl protocol choice: XMPP or POINTTAPI."""
         errors = {}
         if user_input is not None:
-            self._protocol = user_input[CONF_PROTOCOL]
+            # The selector's option values are the translation keys, which
+            # hassfest requires to be lowercase — but XMPP is stored uppercase
+            # in entry.data, so map rather than change what is persisted.
+            self._protocol = XMPP if user_input[CONF_PROTOCOL] == "xmpp" else POINTTAPI
             if self._protocol == XMPP:
                 return self._show_xmpp_form(errors)
             # OAuth-first: the authorize URL is device-independent, and the
@@ -82,7 +85,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 {
                     vol.Required(CONF_PROTOCOL): SelectSelector(
                         SelectSelectorConfig(
-                            options=[XMPP, POINTTAPI],
+                            options=["xmpp", POINTTAPI],
                             mode=SelectSelectorMode.LIST,
                             translation_key="protocol",
                         )

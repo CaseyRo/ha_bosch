@@ -59,10 +59,21 @@ async def test_xmpp_protocol_shows_xmpp_config(mock_hass):
     flow = _make_flow(mock_hass)
     flow._choose_type = "EASYCONTROL"
     result = await flow.async_step_easycontrol_protocol(
-        {CONF_PROTOCOL: "XMPP"}
+        {CONF_PROTOCOL: "xmpp"}
     )
     assert result["type"] == "form"
     assert result["step_id"] == "xmpp_config"
+
+
+@pytest.mark.asyncio
+async def test_selector_value_is_lowercase_but_stored_protocol_is_not(mock_hass):
+    """hassfest requires lowercase translation keys, so the selector emits
+    "xmpp" — but entry.data has always held "XMPP" and existing entries are
+    matched against it, so the stored value must not change."""
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    await flow.async_step_easycontrol_protocol({CONF_PROTOCOL: "xmpp"})
+    assert flow._protocol == "XMPP"
 
 
 def _prime_tokens(flow):

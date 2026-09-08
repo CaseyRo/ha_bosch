@@ -498,8 +498,8 @@
   "selector": {
     "protocol": {
       "options": {
-        "XMPP": "Lokale verbinding (XMPP)",
-        "pointtapi": "Cloud / Bosch-account"
+        "pointtapi": "Cloud / Bosch-account",
+        "xmpp": "Lokale verbinding (XMPP)"
       }
     }
   }
