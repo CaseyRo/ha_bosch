@@ -2772,7 +2772,7 @@ class BoschPoinTTAPIBoostSwitchEntity(
     is rejected.
     """
 
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False
     _attr_translation_key = "boost"
     _attr_name = None
 

@@ -4,6 +4,17 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha3] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost zone selection** — Activating a zone no longer activates
+  stale zones that were only preselected while Boost was off.
+- **POINTTAPI Boost turn-off** — A forbidden `boostShortcut` write now falls
+  back to the direct `boostZones` and `boostMode` route instead of surfacing a
+  403 to Home Assistant.
+- **POINTTAPI Boost naming** — Per-zone Boost switches are displayed as
+  `Boost` instead of inheriting the thermostat zone name.
+
 ### Security
 - **Diagnostics no longer leak the appliance serial.** POINTTAPI stores the
   serial under `address`, `device_id` *and* `uuid` in the config entry, none of

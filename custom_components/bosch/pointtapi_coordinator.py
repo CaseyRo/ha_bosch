@@ -435,6 +435,22 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
             return True
         except ConfigEntryAuthFailed:
+            if route == ROUTE_SHORTCUT:
+                try:
+                    if zones:
+                        await self.client.put(
+                            "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+                        )
+                        await self.client.put(
+                            "/heatingCircuits/hc1/boostMode", "on"
+                        )
+                    else:
+                        await self.client.put(
+                            "/heatingCircuits/hc1/boostMode", "off"
+                        )
+                    return True
+                except ConfigEntryAuthFailed:
+                    pass
             raise
         except Exception as err:
             _LOGGER.warning("Native boost OFF via %s failed: %s", route, err)
@@ -470,7 +486,10 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 base_zones = _boost_zone_values(data, "zones")
 
             if enable:
-                target_zones = sorted(base_zones | {zone_id})
+                active_zones = base_zones if _val(
+                    data, "/heatingCircuits/hc1/boostMode"
+                ) == "on" else set()
+                target_zones = sorted(active_zones | {zone_id})
                 probe = self.boost_probe_result
                 try:
                     if probe is None:

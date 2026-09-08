@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -309,6 +310,59 @@ class TestNativeBoostProbe:
         paths = [c.args[0] for c in coord.client.put.await_args_list]
         assert paths == ["/heatingCircuits/hc1/boostShortcut"]
         assert ent.is_on is True
+
+    @pytest.mark.asyncio
+    async def test_turn_on_ignores_preselected_zones_when_boost_is_off(self):
+        """A dormant selection must not activate every preselected zone."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "off"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2], "allowedZones": [1, 2, 3]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+        ent = _boost_switch(coord, zone_id=3)
+
+        await ent.async_turn_on()
+
+        path, value = coord.client.put.await_args_list[0].args
+        assert path == "/heatingCircuits/hc1/boostShortcut"
+        assert value[0]["zones"] == [3]
+
+    @pytest.mark.asyncio
+    async def test_shortcut_forbidden_on_off_falls_back_to_direct_route(self):
+        """A shortcut 403 on turn-off retries boostZones plus boostMode."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2], "allowedZones": [1, 2]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+
+        async def put(path, value):
+            if path == "/heatingCircuits/hc1/boostShortcut":
+                raise ConfigEntryAuthFailed("HTTP 403")
+            return True
+
+        coord.client.put = AsyncMock(side_effect=put)
+        ent = _boost_switch(coord, zone_id=1)
+
+        await ent.async_turn_off()
+
+        paths = [call.args[0] for call in coord.client.put.await_args_list]
+        assert paths == [
+            "/heatingCircuits/hc1/boostShortcut",
+            "/heatingCircuits/hc1/boostZones",
+            "/heatingCircuits/hc1/boostMode",
+        ]
+        assert coord.client.put.await_args_list[-1].args[1] == "on"
 
     @pytest.mark.asyncio
     async def test_native_off_never_touches_usermode(self):
