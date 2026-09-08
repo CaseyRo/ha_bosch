@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha13] — 2026-09-08
+
+### Fixed
+- **POINTTAPI discovery efficiency** — Removes additional unused gateway,
+  energy, DHW, appliance, zone, program, and thermostat-valve metadata calls,
+  including descendant paths covered by wildcard exclusions.
+
 ## [1.6.0-alpha12] — 2026-09-08
 
 ### Changed

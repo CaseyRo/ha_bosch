@@ -446,6 +446,8 @@ class BoschGatewayEntry:
         self._update_lock = asyncio.Lock()
 
         if self._protocol == POINTTAPI:
+            setup_started = time.monotonic()
+            startup_phases: list[tuple[str, float]] = []
             session = async_get_clientsession(self.hass)
             try:
                 token_callback = lambda: ensure_valid_token(
@@ -455,6 +457,9 @@ class BoschGatewayEntry:
                     self._host, session, token_callback
                 )
                 await self.gateway.get("/gateway/DateTime")
+                startup_phases.append(
+                    ("connection_check", time.monotonic() - setup_started)
+                )
             except ConfigEntryAuthFailed:
                 raise
             except Exception as err:
@@ -472,9 +477,9 @@ class BoschGatewayEntry:
                 self.hass, self.config_entry, self.gateway
             )
             self._data.coordinator = coordinator
-            startup_started = time.monotonic()
+            refresh_started = time.monotonic()
             await coordinator.async_config_entry_first_refresh()
-            startup_elapsed = time.monotonic() - startup_started
+            startup_elapsed = time.monotonic() - refresh_started
             timing_summary = "; ".join(
                 f"{path}={duration:.3f}s"
                 for path, duration in getattr(coordinator, "discovery_timings", [])
@@ -484,9 +489,11 @@ class BoschGatewayEntry:
                 startup_elapsed,
                 timing_summary,
             )
+            startup_phases.append(("first_refresh", startup_elapsed))
             manufacturer, model = _gateway_product_info(
                 getattr(coordinator, "data", None)
             )
+            registry_started = time.monotonic()
             device_registry = dr.async_get(self.hass)
             device_registry.async_get_or_create(
                 config_entry_id=self.config_entry.entry_id,
@@ -496,12 +503,24 @@ class BoschGatewayEntry:
                 name=f"EasyControl (POINTTAPI) {self._host}",
                 sw_version="",
             )
+            startup_phases.append(
+                ("device_registry", time.monotonic() - registry_started)
+            )
+            platforms_started = time.monotonic()
             await self.hass.config_entries.async_forward_entry_setups(
                 self.config_entry,
                 [p for p in self.supported_platforms if p],
             )
-            _LOGGER.info(
-                "POINTTAPI gateway ready: device_id=%s",
+            startup_phases.append(
+                ("platform_setups", time.monotonic() - platforms_started)
+            )
+            phase_summary = "; ".join(
+                f"{name}={elapsed:.3f}s" for name, elapsed in startup_phases
+            )
+            _LOGGER.warning(
+                "POINTTAPI startup complete in %.3fs; phases: %s; device_id=%s",
+                time.monotonic() - setup_started,
+                phase_summary,
                 self._host,
             )
             return True

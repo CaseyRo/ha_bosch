@@ -8,6 +8,7 @@ a live RRC2 gateway on 2026-06-05 — see docs/pointtapi-api.md.
 from __future__ import annotations
 
 import asyncio
+import fnmatch
 import logging
 import time
 from datetime import timedelta
@@ -98,12 +99,88 @@ DISCOVERY_UNUSED_PREFIXES = (
     "/gateway/tosAccepted",
     "/gateway/user",
     "/gateway/wizardStepsDone",
+    "/gateway/notificationLight/activate",
+    "/gateway/productType",
+    "/gateway/uuid",
+    "/gateway/versionHardware",
+    "/gateway/versionFirmwareBuild",
+    "/gateway/ui/icons",
+    "/gateway/ui/splashScreen",
+    "/heatingCircuits/hc1/cooling",
+    "/heatingCircuits/hc1/heatCurveMax",
+    "/heatingCircuits/hc1/heatCurveMin",
+    "/heatingCircuits/hc1/buildingHeatup",
+    "/heatingCircuits/hc1/control",
+    "/heatingCircuits/hc1/minOutdoorTemp",
+    "/heatingCircuits/hc1/operatingSeason",
+    "/heatingCircuits/hc1/seasonOptMode",
+    "/heatingCircuits/hc1/setpointOptimization",
+    "/heatingCircuits/hc1/type",
+    "/heatingCircuits/hc1/typeRoomControl",
+    "/dhwCircuits/dhw1/programs",
+    "/dhwCircuits/dhw1/hotWaterSystem",
+    "/system/appliance/firstMaintenanceRequest",
+    "/energy/history",
+    "/energy/currency",
+    "/energy/export",
+    "/energy/exportCoefficient",
+    "/energy/exportStatus",
+    "/energy/offset",
+    "/energy/electricity/price",
+    "/energy/gas/price",
+    "/energy/gas/type",
+    "/energy/gas/unit",
+    "/energy/oil",
+    "/programs/*/monday",
+    "/programs/*/tuesday",
+    "/programs/*/wednesday",
+    "/programs/*/thursday",
+    "/programs/*/friday",
+    "/programs/*/saturday",
+    "/programs/*/sunday",
+    "/zones/*/humidity",
+    "/zones/*/icon",
+    "/zones/*/heatingType",
+    "/zones/*/clockOverride",
+    "/zones/*/nextSetpoint",
+    "/zones/*/optimumStartHeatupRate",
+    "/zones/*/timeToNextSetpoint",
+    "/devices/*/etrv/maxValvePosition",
+    "/devices/*/etrv/openWindowDetection",
+    "/devices/*/etrv/status",
+    "/devices/*/etrv/temperatureGradient",
+    "/devices/*/etrv/valveState",
+    "/devices/*/etrv/whisperMode",
+    "/devices/*/thermostat/maxValvePosition",
+    "/devices/*/thermostat/openWindowDetection",
+    "/devices/*/thermostat/status",
+    "/devices/*/thermostat/temperatureGradient",
+    "/devices/*/thermostat/valveState",
+    "/devices/*/thermostat/whisperMode",
+    "/devices/*/battery",
+    "/devices/*/signal",
+    "/devices/*/name",
+    "/devices/*/protocol",
+    "/devices/*/zone",
+    "/devices/*/versionFirmware",
+    "/devices/*/homematicip",
 )
 
 
 def _discovery_path_needed(path: str) -> bool:
     """Return whether a discovered path can feed the current entity surface."""
-    if any(path == prefix or path.startswith(prefix + "/") for prefix in DISCOVERY_UNUSED_PREFIXES):
+    if any(
+        path == prefix
+        or path.startswith(prefix + "/")
+        or (
+            "*" in prefix
+            and (
+                fnmatch.fnmatch(path, prefix)
+                or fnmatch.fnmatch(path, prefix + "/*")
+            )
+        )
+        for prefix in DISCOVERY_UNUSED_PREFIXES
+    ):
         return False
     # Program names are used by the zone program selector; weekly schedule
     # details are not consumed by any entity.

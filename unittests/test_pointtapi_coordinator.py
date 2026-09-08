@@ -11,6 +11,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.bosch.pointtapi_coordinator import (
     POINTTAPI_COORDINATOR_ROOTS,
+    _discovery_path_needed,
     _fetch_paths,
     _fetch_history_hourly_all,
     _device_roots,
@@ -69,7 +70,11 @@ class TestFetchPaths:
         client.get = AsyncMock(return_value={"id": "/test", "value": "ok"})
 
         data = await _fetch_paths(client)
-        assert len(data) >= len(POINTTAPI_COORDINATOR_ROOTS)
+        assert len(data) >= len([
+            root
+            for root in POINTTAPI_COORDINATOR_ROOTS
+            if _discovery_path_needed(root)
+        ])
 
     @pytest.mark.asyncio
     async def test_follows_references(self):
