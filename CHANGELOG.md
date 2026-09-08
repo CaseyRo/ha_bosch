@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha10] — 2026-09-08
+
+### Fixed
+- **POINTTAPI discovery efficiency** — Skips unused gateway metadata and
+  program-week subtrees during discovery, reducing unnecessary API calls while
+  preserving paths consumed by the current entity surface.
+
 ## [1.6.0-alpha9] — 2026-09-08
 
 ### Fixed

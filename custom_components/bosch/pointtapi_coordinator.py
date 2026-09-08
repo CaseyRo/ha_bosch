@@ -77,6 +77,39 @@ REDISCOVERY_INTERVAL = 24 * 3600
 BULK_WARN_INTERVAL = 3600
 DISCOVERY_OPTIONAL_TIMEOUT = 8
 DISCOVERY_TOTAL_TIMEOUT = 120
+DISCOVERY_UNUSED_PREFIXES = (
+    # Gateway metadata is not exposed by any POINTTAPI entity. Keep the
+    # product, firmware, Wi-Fi, update, notification and UI paths instead.
+    "/gateway/DateTime",
+    "/gateway/brand",
+    "/gateway/displayType",
+    "/gateway/eco",
+    "/gateway/gwlogging",
+    "/gateway/hmip",
+    "/gateway/housingType",
+    "/gateway/identificationKey",
+    "/gateway/installer",
+    "/gateway/localisation",
+    "/gateway/logging",
+    "/gateway/operatingMode",
+    "/gateway/region",
+    "/gateway/serialnumber",
+    "/gateway/time",
+    "/gateway/tosAccepted",
+    "/gateway/user",
+    "/gateway/wizardStepsDone",
+)
+
+
+def _discovery_path_needed(path: str) -> bool:
+    """Return whether a discovered path can feed the current entity surface."""
+    if any(path == prefix or path.startswith(prefix + "/") for prefix in DISCOVERY_UNUSED_PREFIXES):
+        return False
+    # Program names are used by the zone program selector; weekly schedule
+    # details are not consumed by any entity.
+    if path.startswith("/programs/") and "/week" in path:
+        return False
+    return True
 
 
 async def _get_discovery_path(
@@ -237,7 +270,7 @@ async def _fetch_reference_tree(
 ) -> None:
     """Fetch nested references concurrently, capped by the discovery semaphore."""
     async def fetch_reference(ref_id: str, depth: int) -> None:
-        if not ref_id or ref_id in seen_references:
+        if not _discovery_path_needed(ref_id) or ref_id in seen_references:
             return
         seen_references.add(ref_id)
         try:
@@ -307,6 +340,8 @@ async def _fetch_paths(
     roots = list(dict.fromkeys(roots))
     seen_references: set[str] = set()
     for root in roots:
+        if not _discovery_path_needed(root):
+            continue
         if root == "/energy/historyHourly" and not include_history_hourly:
             continue
         if root == "/energy/historyHourly":

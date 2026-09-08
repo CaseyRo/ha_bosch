@@ -88,7 +88,7 @@ class TestFetchPaths:
 
         data = await _fetch_paths(client)
         assert "/gateway" in data
-        assert "/gateway/DateTime" in data
+        assert "/gateway/DateTime" not in data
 
     @pytest.mark.asyncio
     async def test_follows_refenum_second_level(self):
@@ -538,7 +538,7 @@ class TestBulkSteadyState:
 
         client.bulk.assert_not_called()
         assert "/gateway" in data
-        assert "/gateway/DateTime" in data
+        assert "/gateway/DateTime" not in data
         assert HISTORY_HOURLY_PATH not in data
         # historyHourly is excluded from the bulk path set (paginated)
         assert HISTORY_HOURLY_PATH not in coord._bulk_paths
