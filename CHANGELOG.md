@@ -4,6 +4,14 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha7] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup diagnostics** — Records the total first-refresh duration
+  and the elapsed time for each discovery path when startup exceeds 30 seconds.
+- **POINTTAPI discovery timeout** — Bounds the complete discovery walk at 120
+  seconds while preserving partial data and warning when the budget is reached.
+
 ## [1.6.0-alpha6] — 2026-09-08
 
 ### Fixed

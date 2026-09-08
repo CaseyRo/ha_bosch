@@ -76,12 +76,23 @@ REDISCOVERY_INTERVAL = 24 * 3600
 # Throttle the bulk-failure WARNING to once per hour; repeats log at DEBUG.
 BULK_WARN_INTERVAL = 3600
 DISCOVERY_OPTIONAL_TIMEOUT = 8
+DISCOVERY_TOTAL_TIMEOUT = 120
 
 
 async def _get_discovery_path(
-    client: PoinTTAPIClient, path: str, *, timeout: float = DISCOVERY_OPTIONAL_TIMEOUT
+    client: PoinTTAPIClient,
+    path: str,
+    *,
+    timeout: float = DISCOVERY_OPTIONAL_TIMEOUT,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
 ) -> Any:
     """Fetch a discovery path without letting an optional resource stall startup."""
+    if deadline is not None:
+        timeout = min(timeout, max(0.0, deadline - asyncio.get_running_loop().time()))
+        if timeout <= 0:
+            return None
+    started = asyncio.get_running_loop().time()
     try:
         async with asyncio.timeout(timeout):
             return await client.get(path)
@@ -92,6 +103,11 @@ async def _get_discovery_path(
             timeout,
         )
         return None
+    finally:
+        if timings is not None:
+            timings.append(
+                (path, round(asyncio.get_running_loop().time() - started, 3))
+            )
 
 
 def _is_slow_resource(path: str) -> bool:
@@ -144,11 +160,18 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
 
 
 async def _discover_roots(
-    client: PoinTTAPIClient, root: str, fallback: str
+    client: PoinTTAPIClient,
+    root: str,
+    fallback: str,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
 ) -> list[str]:
     """Return reference roots from a listing, or its static fallback."""
     try:
-        resp = await _get_discovery_path(client, root)
+        resp = await _get_discovery_path(
+            client, root, deadline=deadline, timings=timings
+        )
         if isinstance(resp, dict):
             roots = [
                 r[ID_KEY]
@@ -166,23 +189,47 @@ async def _discover_roots(
     return [fallback]
 
 
-async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
+async def _zone_roots(
+    client: PoinTTAPIClient,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> list[str]:
     """Return one walk root per zone, with a zn1 fallback."""
-    return await _discover_roots(client, "/zones", "/zones/zn1")
+    return await _discover_roots(
+        client, "/zones", "/zones/zn1", deadline=deadline, timings=timings
+    )
 
 
-async def _program_roots(client: PoinTTAPIClient) -> list[str]:
+async def _program_roots(
+    client: PoinTTAPIClient,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> list[str]:
     """Return one walk root per listed program."""
-    return await _discover_roots(client, "/programs", "/programs")
+    return await _discover_roots(
+        client, "/programs", "/programs", deadline=deadline, timings=timings
+    )
 
 
-async def _device_roots(client: PoinTTAPIClient) -> list[str]:
+async def _device_roots(
+    client: PoinTTAPIClient,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> list[str]:
     """Return one walk root per listed device."""
-    return await _discover_roots(client, "/devices", "/devices")
+    return await _discover_roots(
+        client, "/devices", "/devices", deadline=deadline, timings=timings
+    )
 
 
 async def _fetch_paths(
-    client: PoinTTAPIClient, *, include_history_hourly: bool = True
+    client: PoinTTAPIClient,
+    *,
+    include_history_hourly: bool = True,
+    timings: list[tuple[str, float]] | None = None,
 ) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
@@ -191,16 +238,23 @@ async def _fetch_paths(
     some sub-resources may be forbidden without the token being invalid.
     """
     data: dict[str, Any] = {}
+    deadline = asyncio.get_running_loop().time() + DISCOVERY_TOTAL_TIMEOUT
     roots: list[str] = []
     for r in POINTTAPI_COORDINATOR_ROOTS:
         if r == "/zones":
-            roots.extend(await _zone_roots(client))
+            roots.extend(
+                await _zone_roots(client, deadline=deadline, timings=timings)
+            )
             continue
         if r == "/programs":
-            roots.extend(await _program_roots(client))
+            roots.extend(
+                await _program_roots(client, deadline=deadline, timings=timings)
+            )
             continue
         if r == "/devices":
-            roots.extend(await _device_roots(client))
+            roots.extend(
+                await _device_roots(client, deadline=deadline, timings=timings)
+            )
             continue
         roots.append(r)
     roots = list(dict.fromkeys(roots))
@@ -220,7 +274,13 @@ async def _fetch_paths(
             continue
         try:
             root_timeout = 30 if root == "/gateway" else DISCOVERY_OPTIONAL_TIMEOUT
-            resp = await _get_discovery_path(client, root, timeout=root_timeout)
+            resp = await _get_discovery_path(
+                client,
+                root,
+                timeout=root_timeout,
+                deadline=deadline,
+                timings=timings,
+            )
             if not isinstance(resp, dict):
                 continue
             data[root] = resp
@@ -231,7 +291,9 @@ async def _fetch_paths(
                     continue
                 seen_references.add(ref_id)
                 try:
-                    sub = await _get_discovery_path(client, ref_id)
+                    sub = await _get_discovery_path(
+                        client, ref_id, deadline=deadline, timings=timings
+                    )
                     if isinstance(sub, dict):
                         data[ref_id] = sub
                         # Fetch nested refEnum leaves such as
@@ -242,7 +304,12 @@ async def _fetch_paths(
                                 if not r2_id or r2_id in data:
                                     continue
                                 try:
-                                    sub2 = await _get_discovery_path(client, r2_id)
+                                    sub2 = await _get_discovery_path(
+                                        client,
+                                        r2_id,
+                                        deadline=deadline,
+                                        timings=timings,
+                                    )
                                     if isinstance(sub2, dict):
                                         data[r2_id] = sub2
                                         if sub2.get("type") == "refEnum":
@@ -251,7 +318,12 @@ async def _fetch_paths(
                                                 if not r3_id or r3_id in data:
                                                     continue
                                                 try:
-                                                    leaf = await _get_discovery_path(client, r3_id)
+                                                    leaf = await _get_discovery_path(
+                                                        client,
+                                                        r3_id,
+                                                        deadline=deadline,
+                                                        timings=timings,
+                                                    )
                                                     if isinstance(leaf, dict):
                                                         data[r3_id] = leaf
                                                 except ConfigEntryAuthFailed:
@@ -275,6 +347,12 @@ async def _fetch_paths(
                 _LOGGER.warning("POINTTAPI gateway fetch failed: %s", err)
                 raise UpdateFailed(f"POINTTAPI fetch failed: {err}") from err
             _LOGGER.debug("POINTTAPI optional path %s not available, skipping: %s", root, err)
+    if asyncio.get_running_loop().time() >= deadline:
+        _LOGGER.warning(
+            "POINTTAPI discovery budget of %ss exhausted; continuing with %s resources",
+            DISCOVERY_TOTAL_TIMEOUT,
+            len(data),
+        )
     return data
 
 
@@ -319,6 +397,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._fast_bulk_paths: list[str] = []
         self._slow_data: dict[str, Any] = {}
         self._last_slow_fetch: float = 0.0
+        self.discovery_timings: list[tuple[str, float]] = []
 
     @property
     def client(self) -> PoinTTAPIClient:
@@ -699,8 +778,11 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not self._bulk_paths or now - self._last_discovery >= REDISCOVERY_INTERVAL:
             # Keep startup focused on current device state. Historical hourly
             # energy data is fetched by the next regular poll.
+            self.discovery_timings = []
             data = await _fetch_paths(
-                self._client, include_history_hourly=False
+                self._client,
+                include_history_hourly=False,
+                timings=self.discovery_timings,
             )
             # The paginated historyHourly resource stays on sequential GETs
             # (bulk resourcePaths carry no query strings).
