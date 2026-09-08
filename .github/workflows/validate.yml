@@ -3,9 +3,13 @@ name: Validate
 on:
   push:
   pull_request:
-  schedule:
-    - cron: "0 0 * * *"
   workflow_dispatch:
+  # No schedule. GitHub auto-disables any workflow containing one after 60
+  # days of repository inactivity, and a disabled workflow then stops
+  # answering push and pull_request as well — so the cron meant to catch
+  # upstream HACS/hassfest rule changes is exactly what removes the gate.
+  # Both adaptive-lighting validators and adaptive-cover's were lost that
+  # way; this repo is only still active because it was pushed recently.
 
 jobs:
   hacs:

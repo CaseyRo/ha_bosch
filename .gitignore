@@ -98,3 +98,7 @@ auth_refresh.py
 sync-to-ha.sh
 .monitor/
 .claude/settings.local.json
+
+# Local noise and one-off probe artifacts
+.DS_Store
+boost_probe_*.json
