@@ -342,7 +342,7 @@
     },
     "switch": {
       "boost": {
-        "name": "Boost ogrzewania"
+        "name": "Boost"
       },
       "auto_firmware_update": {
         "name": "Automatyczna aktualizacja oprogramowania"

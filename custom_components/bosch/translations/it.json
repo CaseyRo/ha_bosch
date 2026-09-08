@@ -342,7 +342,7 @@
     },
     "switch": {
       "boost": {
-        "name": "Boost di riscaldamento"
+        "name": "Boost"
       },
       "auto_firmware_update": {
         "name": "Aggiornamento automatico del firmware"

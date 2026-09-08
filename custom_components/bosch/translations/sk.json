@@ -342,7 +342,7 @@
     },
     "switch": {
       "boost": {
-        "name": "Boost vykurovania"
+        "name": "Boost"
       },
       "auto_firmware_update": {
         "name": "Automatická aktualizácia firmvéru"
