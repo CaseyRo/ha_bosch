@@ -4,6 +4,61 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-beta1] — 2026-09-08
+
+The 1.6.0 beta consolidates the POINTTAPI redesign work developed across the
+alpha releases into a release focused on real-world multi-zone installations,
+clearer device topology, faster startup, and safer Home Assistant behavior.
+
+### Added
+- **Thermostat-valve support** — Adds ETRV valve temperature, valve position,
+  signal, battery, protocol, warning, child-lock, and calibration-offset
+  entities with device-aware routing and reference discovery.
+- **Heating Installation Settings device** — Adds a dedicated device for
+  supply limits, heating curves, summer/winter controls, night thresholds,
+  room influence, global Boost control, and away mode.
+- **Multi-zone controls** — Exposes zone mode for every discovered zone and
+  adds Spanish and Portuguese localization for user-facing entities and
+  virtual device names.
+
+### Changed
+- **Boost as a climate preset** — Keeps the user-facing Boost control on each
+  climate entity instead of exposing misleading per-zone switches.
+- **Optimistic Boost state** — Shows the requested intent immediately,
+  preserves it through incomplete polls, and reconciles it with explicit
+  Bosch state on the next successful update.
+- **Device topology** — Moves thermostat-specific controls from the gateway to
+  the thermostat or heating-installation device, with migrations preserving
+  entity IDs and unique IDs.
+- **Localization architecture** — Supports `es` and `pt` language codes and
+  keeps locale keys synchronized with the canonical base strings.
+
+### Fixed
+- **Multi-zone Boost behavior** — Corrects native zone selection, partial zone
+  removal, stale refresh handling, last-zone shutdown via `boostMode=off`, and
+  `boostShortcut` HTTP 403 fallback to the direct route.
+- **Startup responsiveness** — Publishes loaded coordinator data immediately
+  instead of waiting for a later polling notification.
+- **Home Assistant compatibility** — Adds `mean_type=NONE` for sum-only
+  statistics imports and uses `via_device_id` where the registry API requires
+  an internal device ID.
+- **Registry migrations** — Cleans obsolete Boost switches and names, and
+  moves existing thermostat-specific entities without breaking automations.
+
+### Performance
+- **Smarter POINTTAPI discovery** — Uses domain allowlists, bounded parallel
+  reference fetching, safer traversal, fast/slow resource tiers, cached slow
+  inventories, background history loading, and deliberate rediscovery.
+- **Measured result** — Startup time was reduced by **74%** on a complex
+  installation with ETRV valves compared with the pre-optimization behavior.
+
+### Scope
+- Installation settings: [#22](https://github.com/CaseyRo/ha_bosch/issues/22)
+- Boost model: [#21](https://github.com/CaseyRo/ha_bosch/issues/21)
+- Home Assistant deprecations: [#47](https://github.com/CaseyRo/ha_bosch/issues/47)
+- Spanish/Portuguese localization: [#37](https://github.com/CaseyRo/ha_bosch/issues/37), [#38](https://github.com/CaseyRo/ha_bosch/issues/38)
+- Future locale roadmap: [#39](https://github.com/CaseyRo/ha_bosch/issues/39), [#40](https://github.com/CaseyRo/ha_bosch/issues/40), [#41](https://github.com/CaseyRo/ha_bosch/issues/41)
+
 ## [1.6.0-alpha22] — 2026-09-08
 
 ### Fixed

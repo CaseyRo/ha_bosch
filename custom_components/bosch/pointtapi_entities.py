@@ -301,6 +301,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "EasyControl gateway",
         "pl": "Bramka EasyControl",
         "sk": "Brána EasyControl",
+        "es": "Gateway EasyControl",
+        "pt": "Gateway EasyControl",
     },
     "boiler": {
         "en": "Boiler",
@@ -310,6 +312,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Ketel",
         "pl": "Kocioł",
         "sk": "Kotol",
+        "es": "Caldera",
+        "pt": "Caldeira",
     },
     "dhw": {
         "en": "Hot Water Tank",
@@ -319,6 +323,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Warmwatertank",
         "pl": "Zbiornik ciepłej wody",
         "sk": "Zásobník teplej vody",
+        "es": "Depósito de agua caliente",
+        "pt": "Depósito de água quente",
     },
     "solar": {
         "en": "Solar",
@@ -328,6 +334,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Zonne-energie",
         "pl": "Solarny",
         "sk": "Solar",
+        "es": "Solar",
+        "pt": "Solar",
     },
     "heating_zone": {
         "en": "Heating Zone",
@@ -337,6 +345,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Verwarmingszone",
         "pl": "Strefa ogrzewania",
         "sk": "Vykurovacia zóna",
+        "es": "Zona de calefacción",
+        "pt": "Zona de aquecimento",
     },
     "heating_installation": {
         "en": "Heating Installation Settings",
@@ -346,6 +356,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Instellingen verwarmingsinstallatie",
         "pl": "Ustawienia instalacji grzewczej",
         "sk": "Nastavenia vykurovacieho systému",
+        "es": "Configuración de la instalación de calefacción",
+        "pt": "Definições da instalação de aquecimento",
     },
     "thermostat_valve": {
         "en": "Thermostat valve",
@@ -355,6 +367,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Thermostaatkraan",
         "pl": "Zawór termostatyczny",
         "sk": "Termostatický ventil",
+        "es": "Válvula termostática",
+        "pt": "Válvula termostática",
     },
     "energy_performance": {
         "en": "Energy performance",
@@ -364,6 +378,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Energieprestaties",
         "pl": "Wydajność energetyczna",
         "sk": "Energetická výkonnosť",
+        "es": "Rendimiento energético",
+        "pt": "Desempenho energético",
     },
 }
 
@@ -386,7 +402,7 @@ def _normalize_language(language: str | None) -> str:
     if not isinstance(language, str) or not language.strip():
         return "en"
     code = language.strip().lower().replace("_", "-").split("-", 1)[0]
-    return code if code in {"en", "de", "fr", "it", "nl", "pl", "sk"} else "en"
+    return code if code in {"en", "de", "es", "fr", "it", "nl", "pl", "pt", "sk"} else "en"
 
 
 def _device_name(name_key: str, language: str | None = None) -> str:

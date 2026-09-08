@@ -345,7 +345,7 @@
     },
     "switch": {
       "boost_mode": {
-        "name": "Boost"
+        "name": "Boost - Všeobecné ovládanie"
       },
       "boost_zone": {
         "name": "Boost vykurovania"

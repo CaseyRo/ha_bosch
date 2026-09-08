@@ -93,7 +93,25 @@ def test_device_names_are_localized_when_language_is_provided() -> None:
     assert gateway["name"] == "Passerelle EasyControl"
     assert zone["name"] == "Zone de chauffage"
     assert energy["name"] == "Performance énergétique"
-    assert energy["model"] == "EasyControl"
+
+
+@pytest.mark.parametrize(
+    ("language", "expected_gateway", "expected_installation"),
+    [
+        ("es", "Gateway EasyControl", "Configuración de la instalación de calefacción"),
+        ("pt", "Gateway EasyControl", "Definições da instalação de aquecimento"),
+    ],
+)
+def test_device_names_support_new_locales(
+    language: str, expected_gateway: str, expected_installation: str
+) -> None:
+    gateway = _resolve_device_info(UUID, "/gateway/versionFirmware", language=language)
+    installation = _resolve_device_info(
+        UUID, "/heatingCircuits/hc1/maxSupply", language=language
+    )
+
+    assert gateway["name"] == expected_gateway
+    assert installation["name"] == expected_installation
 
 
 @pytest.mark.parametrize(

@@ -363,7 +363,7 @@
     },
     "switch": {
       "boost_mode": {
-        "name": "Boost"
+        "name": "Boost - General control"
       },
       "boost_zone": {
         "name": "Heating boost"

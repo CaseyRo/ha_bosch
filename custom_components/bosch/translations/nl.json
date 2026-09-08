@@ -345,7 +345,7 @@
     },
     "switch": {
       "boost_mode": {
-        "name": "Boost"
+        "name": "Boost - Algemene bediening"
       },
       "boost_zone": {
         "name": "Verwarmingsboost"
