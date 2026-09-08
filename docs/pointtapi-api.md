@@ -141,7 +141,6 @@ Present in the walk, but only partly usable. Diagnostics from a gas boiler with
 no electricity tariff configured:
 
 ```
-/energy/electricity/annualGoal    available: "true"   value 0.0    (exposed as a number entity in 1.4.0)
 /energy/electricity/dayAverage    available: "false"  value 0.0    unitOfMeasure "kWh"
 /energy/electricity/monthAverage  available: "false"  value 0.0    unitOfMeasure "kWh"
 /energy/electricity/price         used: "false"       value 0.0

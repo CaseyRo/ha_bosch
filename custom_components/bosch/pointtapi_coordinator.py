@@ -114,6 +114,8 @@ DISCOVERY_ALLOWED_PATTERNS = {
     ),
     "/system/sensors": (
         "/system/sensors/humidity/indoor_h1",
+        "/system/sensors/humidity",
+        "/system/sensors/temperatures",
         "/system/sensors/temperatures/outdoor_t1",
         "/system/sensors/temperatures/offset",
     ),
@@ -138,10 +140,8 @@ DISCOVERY_ALLOWED_PATTERNS = {
         "/zones/zn*/userMode",
     ),
     "/energy": (
-        "/energy/electricity/annualGoal",
         "/energy/electricity/dayAverage",
         "/energy/electricity/monthAverage",
-        "/energy/gas/annualGoal",
         "/energy/history",
         "/energy/historyHourly",
     ),
@@ -160,12 +160,10 @@ DISCOVERY_ALLOWED_PATTERNS = {
         "/solarCircuits/sc1/totalSolarGain",
     ),
     "/programs": (
-        "/programs/pg*",
         "/programs/pg*/name",
     ),
     "/devices": (
         "/devices/list",
-        "/devices/device*",
         "/devices/device*/type",
         "/devices/device*/etrv",
         "/devices/device*/etrv/childLock*",
@@ -183,6 +181,14 @@ DISCOVERY_ALLOWED_PATTERNS = {
 
 def _discovery_path_needed(path: str) -> bool:
     """Return whether a discovered path can feed the current entity surface."""
+    compact_valve_prefix = "/devices/list/thermostat_valve/"
+    if path.startswith(compact_valve_prefix):
+        suffix = path.removeprefix(compact_valve_prefix).split("/")
+        return (
+            len(suffix) == 1
+            or (len(suffix) == 2 and suffix[1] == "offset")
+            or (len(suffix) >= 2 and suffix[1] == "childLock")
+        )
     if path.startswith("/zones/zn") and path.count("/") == 2:
         return True
     if path.startswith("/programs/pg") and path.count("/") == 2:
@@ -193,8 +199,29 @@ def _discovery_path_needed(path: str) -> bool:
         return False
     for root, patterns in DISCOVERY_ALLOWED_PATTERNS.items():
         if path.startswith(root + "/"):
-            return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+            return any(_discovery_pattern_matches(path, pattern) for pattern in patterns)
     return True
+
+
+def _discovery_pattern_matches(path: str, pattern: str) -> bool:
+    """Match discovery patterns without allowing ``*`` to cross path segments."""
+    if pattern.endswith("*"):
+        base_parts = pattern[:-1].strip("/").split("/")
+        path_parts = path.strip("/").split("/")
+        if len(path_parts) >= len(base_parts) and all(
+            fnmatch.fnmatchcase(path_part, pattern_part)
+            for path_part, pattern_part in zip(path_parts, base_parts)
+        ):
+            return True
+
+    path_parts = path.strip("/").split("/")
+    pattern_parts = pattern.strip("/").split("/")
+    if len(path_parts) != len(pattern_parts):
+        return False
+    return all(
+        fnmatch.fnmatchcase(path_part, pattern_part)
+        for path_part, pattern_part in zip(path_parts, pattern_parts)
+    )
 
 
 async def _get_discovery_path(
@@ -237,7 +264,10 @@ def _is_slow_resource(path: str) -> bool:
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
 
 
-async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
+async def _fetch_history_hourly_all(
+    client: PoinTTAPIClient,
+    call_counter: list[int] | None = None,
+) -> dict[str, Any] | None:
     """Walk /energy/historyHourly pagination forward to collect every entry.
 
     The API returns 15 entries per page plus a `next` cursor inside the
@@ -246,6 +276,8 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
     today. Returns the original response shape with the entries flattened
     across all pages, or None if the first fetch failed.
     """
+    if call_counter is not None:
+        call_counter[0] += 1
     first = await client.get("/energy/historyHourly")
     if not isinstance(first, dict):
         return None
@@ -260,6 +292,8 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
         if nxt is None:
             break
         try:
+            if call_counter is not None:
+                call_counter[0] += 1
             page = await client.get(f"/energy/historyHourly?next={nxt}")
         except Exception as err:
             _LOGGER.debug("historyHourly pagination stopped at next=%s: %s", nxt, err)
@@ -366,7 +400,7 @@ async def _fetch_reference_tree(
             if not isinstance(child, dict):
                 return
             data[ref_id] = child
-            if child.get("type") != "refEnum" or depth >= 3:
+            if depth >= 3:
                 return
             children = [
                 item.get(ID_KEY)
@@ -394,6 +428,7 @@ async def _fetch_paths(
     *,
     include_history_hourly: bool = True,
     timings: list[tuple[str, float]] | None = None,
+    history_call_counter: list[int] | None = None,
 ) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
@@ -431,9 +466,22 @@ async def _fetch_paths(
             continue
         if root == "/energy/historyHourly":
             try:
-                merged = await _fetch_history_hourly_all(client)
+                history_started = asyncio.get_running_loop().time()
+                merged = await _fetch_history_hourly_all(
+                    client, call_counter=history_call_counter
+                )
                 if isinstance(merged, dict):
                     data[root] = merged
+                if timings is not None:
+                    timings.append(
+                        (
+                            root,
+                            round(
+                                asyncio.get_running_loop().time() - history_started,
+                                3,
+                            ),
+                        )
+                    )
             except ConfigEntryAuthFailed:
                 _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", root)
             except Exception as err:
@@ -521,6 +569,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._slow_data: dict[str, Any] = {}
         self._last_slow_fetch: float = 0.0
         self.discovery_timings: list[tuple[str, float]] = []
+        self.history_hourly_calls = 0
 
     @property
     def client(self) -> PoinTTAPIClient:
@@ -939,14 +988,15 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
         now = time.monotonic()
         if not self._bulk_paths or now - self._last_discovery >= REDISCOVERY_INTERVAL:
-            # Keep startup focused on current device state. Historical hourly
-            # energy data is fetched by the next regular poll.
             self.discovery_timings = []
+            history_calls = [0]
             data = await _fetch_paths(
                 self._client,
-                include_history_hourly=False,
+                include_history_hourly=True,
                 timings=self.discovery_timings,
+                history_call_counter=history_calls,
             )
+            self.history_hourly_calls = history_calls[0]
             # The paginated historyHourly resource stays on sequential GETs
             # (bulk resourcePaths carry no query strings).
             self._bulk_paths = [p for p in data if p != HISTORY_HOURLY_PATH]

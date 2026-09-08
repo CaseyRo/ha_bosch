@@ -816,46 +816,13 @@ class TestComfortControlDescriptions:
         d = descs["/heatSources/returnTemperature"]
         assert d.translation_key == "return_temperature"
 
-    def test_annual_electricity_goal_number_is_described_when_present(self):
-        descs = {
-            d.key: d
-            for d in _pointtapi_number_descriptions(
-                {"/energy/electricity/annualGoal": {"value": 2500}}
-            )
-        }
-        d = descs["/energy/electricity/annualGoal"]
-        assert d.translation_key == "annual_electricity_goal"
-        assert d.native_unit_of_measurement == "kWh"
-        assert d.entity_category == EntityCategory.CONFIG
-
-    def test_annual_gas_goal_number_is_described_when_present(self):
-        descs = {
-            d.key: d
-            for d in _pointtapi_number_descriptions({"/energy/gas/annualGoal": {"value": 2500}})
-        }
-        d = descs["/energy/gas/annualGoal"]
-        assert d.translation_key == "annual_gas_goal"
-        assert d.native_unit_of_measurement == "kWh"
-        assert d.entity_category == EntityCategory.CONFIG
-
-    def test_annual_gas_goal_number_is_not_described_when_missing(self):
-        descs = {d.key: d for d in _pointtapi_number_descriptions({})}
-        assert "/energy/gas/annualGoal" not in descs
-
     def test_number_descriptions_are_static_plus_dynamic(self):
         descs = _pointtapi_number_descriptions({})
         assert descs[:1][0].key == "/heatingCircuits/hc1/boostTemperature"
         assert descs[-1].key == "/dhwCircuits/dhw1/thermalDisinfect/time"
 
-        dynamic = _pointtapi_number_descriptions({
-            "/energy/electricity/annualGoal": {"value": 2500},
-            "/energy/gas/annualGoal": {"value": 1800},
-        })
+        dynamic = _pointtapi_number_descriptions({})
         assert dynamic[0].key == "/heatingCircuits/hc1/boostTemperature"
-        assert {d.key for d in dynamic if d.key.startswith("/energy/")} == {
-            "/energy/electricity/annualGoal",
-            "/energy/gas/annualGoal",
-        }
 
     def test_extra_dhw_switch_uses_translation_key(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}

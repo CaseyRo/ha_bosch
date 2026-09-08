@@ -272,7 +272,6 @@ _DHW_KINDS = {
     "thermal_disinfect",
 }
 _ENERGY_KINDS = {
-    "annual_gas_goal",
     "energy_efficiency",
 }
 _HEATING_INSTALLATION_RESOURCES = {
@@ -2574,32 +2573,6 @@ def _pointtapi_dynamic_number_descriptions(
     """Return dynamic POINTTAPI number descriptions such as valve calibration offsets."""
     data = data or {}
     descriptions: list[NumberEntityDescription] = []
-
-    if isinstance(data.get("/energy/gas/annualGoal"), dict):
-        descriptions.append(
-            NumberEntityDescription(
-                key="/energy/gas/annualGoal",
-                translation_key="annual_gas_goal",
-                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-                native_min_value=0.0,
-                native_max_value=1000000.0,
-                native_step=1.0,
-                entity_category=EntityCategory.CONFIG,
-            )
-        )
-
-    if isinstance(data.get("/energy/electricity/annualGoal"), dict):
-        descriptions.append(
-            NumberEntityDescription(
-                key="/energy/electricity/annualGoal",
-                translation_key="annual_electricity_goal",
-                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-                native_min_value=0.0,
-                native_max_value=1000000.0,
-                native_step=1.0,
-                entity_category=EntityCategory.CONFIG,
-            )
-        )
 
     discovered: set[str] = set()
     for row in _thermostat_valve_rows(data):

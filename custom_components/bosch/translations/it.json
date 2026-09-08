@@ -304,12 +304,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Durata disinfezione termica"
-      },
-      "annual_gas_goal": {
-        "name": "Obiettivo annuale del gas"
-      },
-      "annual_electricity_goal": {
-        "name": "Obiettivo annuale dell'energia elettrica"
       }
     },
     "binary_sensor": {

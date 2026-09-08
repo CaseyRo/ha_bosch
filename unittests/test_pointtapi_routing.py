@@ -36,7 +36,6 @@ UUID = "101506113"
         # Energy performance
         ("/energy/history_total", f"{UUID}_energy"),
         ("/energy/historyHourly_ch", f"{UUID}_energy"),
-        ("/energy/gas/annualGoal", f"{UUID}_energy"),
         # Heating Zone (zn1 → no suffix on name)
         ("/zones/zn1/temperatureActual", f"{UUID}_zn1"),
         ("/zones/zn1/actualValvePosition", f"{UUID}_zn1"),

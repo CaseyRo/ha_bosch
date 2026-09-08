@@ -485,8 +485,19 @@ class BoschGatewayEntry:
                 for path, duration in getattr(coordinator, "discovery_timings", [])
             ) or "no discovery path timings recorded"
             _LOGGER.warning(
-                "POINTTAPI startup first refresh took %.3fs; discovery paths: %s",
+                "POINTTAPI startup first refresh took %.3fs; historyHourly took %.3fs across %d calls; discovery paths: %s",
                 startup_elapsed,
+                next(
+                    (
+                        duration
+                        for path, duration in getattr(
+                            coordinator, "discovery_timings", []
+                        )
+                        if path == "/energy/historyHourly"
+                    ),
+                    0.0,
+                ),
+                getattr(coordinator, "history_hourly_calls", 0),
                 timing_summary,
             )
             startup_phases.append(("first_refresh", startup_elapsed))

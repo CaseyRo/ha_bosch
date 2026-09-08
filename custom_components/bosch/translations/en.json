@@ -325,12 +325,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Thermal disinfect time"
-      },
-      "annual_gas_goal": {
-        "name": "Annual gas goal"
-      },
-      "annual_electricity_goal": {
-        "name": "Annual electricity goal"
       }
     },
     "binary_sensor": {

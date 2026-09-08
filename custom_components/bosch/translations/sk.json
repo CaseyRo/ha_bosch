@@ -304,12 +304,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Trvanie termickej dezinfekcie"
-      },
-      "annual_gas_goal": {
-        "name": "Ročný cieľ spotreby plynu"
-      },
-      "annual_electricity_goal": {
-        "name": "Ročný cieľ spotreby elektriny"
       }
     },
     "binary_sensor": {

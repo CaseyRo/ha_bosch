@@ -4,6 +4,23 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha15] — 2026-09-08
+
+### Added
+- **POINTTAPI thermostat valves** — Adds valve offset and child-lock support
+  with device-specific entity routing and regression coverage.
+
+### Fixed
+- **POINTTAPI discovery and startup** — Improves reference traversal,
+  parallel discovery, startup timing diagnostics, and background history
+  loading while reducing unnecessary API calls.
+- **POINTTAPI boost controls** — Hardens boost route selection, fallback
+  handling, zone validation, and state refresh behavior.
+
+### Removed
+- **Annual energy goals** — Removes the unused annual gas and electricity goal
+  entities, API discovery paths, translations, and related routing code.
+
 ## [1.6.0-alpha14] — 2026-09-08
 
 ### Changed

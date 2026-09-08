@@ -18,7 +18,7 @@ in test_pointtapi_new_entities / _routing / _boost are not repeated.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -227,7 +227,6 @@ class TestNumberRobustness:
             await _number(coord, self.KEY).async_set_native_value(23.5)
 
         coord.client.put.assert_not_awaited()
-
 
 # ── Select (write + malformed) ─────────────────────────────────────────────────
 

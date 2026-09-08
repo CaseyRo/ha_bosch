@@ -22,6 +22,39 @@ from custom_components.bosch.pointtapi_coordinator import (
 )
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/system/sensors/temperatures",
+        "/system/sensors/temperatures/offset",
+        "/programs/pg1",
+        "/programs/pg1/name",
+        "/devices/list/thermostat_valve/2",
+        "/devices/list/thermostat_valve/2/offset",
+        "/devices/device2/etrv/offset",
+    ],
+)
+def test_discovery_allowlist_keeps_required_paths(path):
+    """Required parents and entity leaves remain discoverable."""
+    assert _discovery_path_needed(path) is True
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/system/sensors/temperatures/indoorPCB",
+        "/programs/pg1/monday",
+        "/devices/list/thermostat_valve/2/battery",
+        "/devices/device2/etrv/whisperMode",
+        "/heatSources/hs1/type",
+        "/gateway/installer/companyName",
+    ],
+)
+def test_discovery_allowlist_rejects_unused_paths(path):
+    """Unused metadata does not re-enter discovery through references."""
+    assert _discovery_path_needed(path) is False
+
+
 def test_device_telemetry_uses_fast_polling_cadence():
     """Valve readings must not inherit the slow inventory cadence."""
     assert not _is_slow_resource("/devices/device7/etrv/temperatureActual")
@@ -159,6 +192,61 @@ class TestFetchPaths:
         data = await _fetch_paths(client)
 
         assert "/devices/device2/etrv/childLock/enabled" in data
+
+    @pytest.mark.asyncio
+    async def test_follows_sensor_children_without_refenum_type(self):
+        """Sensor leaves remain discoverable when Bosch omits parent types."""
+        async def mock_get(path):
+            payloads = {
+                "/system/sensors": {
+                    "id": "/system/sensors",
+                    "references": [
+                        {"id": "/system/sensors/humidity"},
+                        {"id": "/system/sensors/temperatures"},
+                    ],
+                },
+                "/system/sensors/humidity": {
+                    "id": "/system/sensors/humidity",
+                    "references": [{"id": "/system/sensors/humidity/indoor_h1"}],
+                },
+                "/system/sensors/temperatures": {
+                    "id": "/system/sensors/temperatures",
+                    "references": [{"id": "/system/sensors/temperatures/outdoor_t1"}],
+                },
+            }
+            return payloads.get(path, {"id": path, "value": 20.0})
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client, include_history_hourly=False)
+
+        assert "/system/sensors/humidity/indoor_h1" in data
+        assert "/system/sensors/temperatures/outdoor_t1" in data
+
+    @pytest.mark.asyncio
+    async def test_follows_boost_children_without_refenum_type(self):
+        """Boost leaves remain discoverable when hc1 omits its parent type."""
+        async def mock_get(path):
+            if path == "/heatingCircuits/hc1":
+                return {
+                    "id": path,
+                    "references": [
+                        {"id": "/heatingCircuits/hc1/boostMode"},
+                        {"id": "/heatingCircuits/hc1/boostShortcut"},
+                        {"id": "/heatingCircuits/hc1/boostZones"},
+                    ],
+                }
+            return {"id": path, "value": "stub"}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        data = await _fetch_paths(client, include_history_hourly=False)
+
+        assert "/heatingCircuits/hc1/boostMode" in data
+        assert "/heatingCircuits/hc1/boostShortcut" in data
+        assert "/heatingCircuits/hc1/boostZones" in data
 
     @pytest.mark.asyncio
     async def test_gateway_auth_failure_propagates(self):
@@ -545,7 +633,7 @@ class TestBulkSteadyState:
         client.bulk.assert_not_called()
         assert "/gateway" in data
         assert "/gateway/DateTime" not in data
-        assert HISTORY_HOURLY_PATH not in data
+        assert HISTORY_HOURLY_PATH in data
         # historyHourly is excluded from the bulk path set (paginated)
         assert HISTORY_HOURLY_PATH not in coord._bulk_paths
         assert "/gateway" in coord._bulk_paths
@@ -562,19 +650,16 @@ class TestBulkSteadyState:
         })
 
         data = await coord._fetch()
-        await coord._history_hourly_task
 
         client.bulk.assert_awaited_once_with(coord._fast_bulk_paths)
         assert data["/heatingCircuits/hc1"]["value"] == "bulk"
         assert data["/gateway"]["references"]
-        # Hourly history is loaded on the first regular poll after startup.
-        assert any(
+        # Hourly history was loaded during the initial discovery walk.
+        assert not any(
             call.args[0].startswith("/energy/historyHourly")
             for call in client.get.await_args_list
         )
-        assert HISTORY_HOURLY_PATH not in data
-        next_data = await coord._fetch()
-        assert next_data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
+        assert data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
 
     @pytest.mark.asyncio
     async def test_history_hourly_refreshes_after_cache_interval(self):
