@@ -91,6 +91,7 @@ def test_device_names_are_localized_when_language_is_provided() -> None:
     assert gateway["name"] == "Passerelle EasyControl"
     assert zone["name"] == "Zone de chauffage"
     assert energy["name"] == "Performance énergétique"
+    assert energy["model"] == "EasyControl"
 
 
 @pytest.mark.parametrize(

@@ -303,8 +303,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         - v2 -> v3: unique_id rename for boost switch (per-zone unique_id)
         - v3 -> v4: remove stale per-zone Boost registry entries so HA recreates
             them with the corrected entity name
+        - v4 -> v5: clear custom Boost switch names so HA uses translations
     """
-    if entry.version >= 4:
+    if entry.version >= 5:
         return True
 
     if entry.version < 2:
@@ -383,6 +384,35 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 removed,
             )
         hass.config_entries.async_update_entry(entry, version=4)
+
+    if entry.version < 5:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
+            prefix = f"{entry.entry_id}_pointtapi_boost_zone_"
+            cleared = 0
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.startswith(prefix)
+                    and getattr(entity, "name", None) is not None
+                ):
+                    try:
+                        registry.async_update_entity(entity.entity_id, name=None)
+                        cleared += 1
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not clear Boost entity name %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 4 to 5 (%d Boost names cleared)",
+                cleared,
+            )
+        hass.config_entries.async_update_entry(entry, version=5)
 
     return True
 

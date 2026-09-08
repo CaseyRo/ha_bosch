@@ -4,6 +4,14 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha16] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost availability** — Rechecks Boost capabilities after a
+  zone mode change so the climate preset follows Bosch's updated state.
+- **Boost switch naming** — Migrates existing entity-registry entries so the
+  translated `Boost chauffage` name is restored without changing entity IDs.
+
 ## [1.6.0-alpha15] — 2026-09-08
 
 ### Added

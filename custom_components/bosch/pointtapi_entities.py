@@ -535,6 +535,7 @@ def _resolve_device_info(
             identifiers={(DOMAIN, f"{uuid}_energy")},
             name=_device_name("energy_performance", language),
             manufacturer="Bosch",
+            model="EasyControl",
             via_device=(DOMAIN, uuid),
         )
 
@@ -568,6 +569,7 @@ def _resolve_device_info(
             identifiers={(DOMAIN, f"{uuid}_energy")},
             name=_device_name("energy_performance", language),
             manufacturer="Bosch",
+            model="EasyControl",
             via_device=(DOMAIN, uuid),
         )
     circuit_id = _heating_installation_circuit_id(p)
@@ -1333,7 +1335,15 @@ _ZONE_STATUS_ACTIONS = {
 }
 
 
-class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
+class _BoschPoinTTAPICoordinatorEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator]):
+    """Coordinator entity that applies already-loaded data on registration."""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
+
+
+class BoschPoinTTAPIClimateEntity(_BoschPoinTTAPICoordinatorEntity, ClimateEntity):
     """Climate entity for one POINTTAPI zone: current/setpoint from coordinator.data."""
 
     _attr_has_entity_name = True
@@ -1570,7 +1580,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
 
 
 class BoschPoinTTAPIWaterHeaterEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], WaterHeaterEntity
+    _BoschPoinTTAPICoordinatorEntity, WaterHeaterEntity
 ):
     """Water heater entity for POINTTAPI dhw1: state and temps from coordinator.data."""
 
@@ -2305,7 +2315,7 @@ def _pointtapi_sensor_descriptions(
 
 
 class BoschPoinTTAPISensorEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SensorEntity
+    _BoschPoinTTAPICoordinatorEntity, SensorEntity
 ):
     """Sensor entity for POINTTAPI: one path from coordinator.data; has_entity_name=True."""
 
@@ -2615,7 +2625,7 @@ def _pointtapi_number_descriptions(
 
 
 class BoschPoinTTAPINumberEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], NumberEntity
+    _BoschPoinTTAPICoordinatorEntity, NumberEntity
 ):
     """Number entity for POINTTAPI: read/write a single path value."""
 
@@ -2736,7 +2746,7 @@ ROUTE_FALLBACK = "fallback"
 
 
 class BoschPoinTTAPIBoostSwitchEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
+    _BoschPoinTTAPICoordinatorEntity, SwitchEntity
 ):
     """Switch entity for POINTTAPI: one-tap boost for one heating zone.
 
@@ -2894,7 +2904,7 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
 
 
 class BoschPoinTTAPIGenericSwitchEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
+    _BoschPoinTTAPICoordinatorEntity, SwitchEntity
 ):
     """Generic switch entity for POINTTAPI boolean paths (true/false string values)."""
 
@@ -3047,7 +3057,7 @@ def _pointtapi_select_descriptions(
 
 
 class BoschPoinTTAPISelectEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SelectEntity
+    _BoschPoinTTAPICoordinatorEntity, SelectEntity
 ):
     """Select entity for POINTTAPI option paths."""
 
@@ -3142,6 +3152,8 @@ class BoschPoinTTAPISelectEntity(
                 self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
+            if self._path.startswith("/zones/") and self._path.endswith("/userMode"):
+                await self.coordinator.async_refresh_boost_state()
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
@@ -3303,7 +3315,7 @@ def _parse_update_timestamp(raw: Any) -> datetime | None:
 
 
 class BoschPoinTTAPIBinarySensorEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], BinarySensorEntity
+    _BoschPoinTTAPICoordinatorEntity, BinarySensorEntity
 ):
     """Binary sensor entity for POINTTAPI; routes device via _resolve_device_info."""
 
@@ -3453,7 +3465,7 @@ def _gateway_latest_version(data: dict[str, Any]) -> str | None:
 
 
 class BoschPoinTTAPIUpdateEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], UpdateEntity
+    _BoschPoinTTAPICoordinatorEntity, UpdateEntity
 ):
     """Read-only Update entity for POINTTAPI gateways.
 

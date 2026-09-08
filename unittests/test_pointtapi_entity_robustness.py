@@ -18,13 +18,14 @@ in test_pointtapi_new_entities / _routing / _boost are not repeated.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 from homeassistant.components.climate.const import HVACAction
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_NUMBER_DESCRIPTIONS,
@@ -51,6 +52,7 @@ def _coord(data):
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
     coord.async_request_refresh = AsyncMock()
+    coord.async_refresh_boost_state = AsyncMock()
     coord.async_set_zone_boost = AsyncMock()
     return coord
 
@@ -228,6 +230,22 @@ class TestNumberRobustness:
 
         coord.client.put.assert_not_awaited()
 
+
+class TestCoordinatorEntityInitialSync:
+    @pytest.mark.asyncio
+    async def test_entity_reads_loaded_data_when_added_after_first_refresh(self):
+        key = "/zones/zn1/temperatureActual"
+        coord = _coord({key: {"value": 21.5}})
+        desc = next(d for d in _pointtapi_sensor_descriptions(coord.data) if d.key == key)
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        with patch.object(CoordinatorEntity, "async_added_to_hass", new=AsyncMock()):
+            await ent.async_added_to_hass()
+
+        assert ent.native_value == 21.5
+        ent.async_write_ha_state.assert_called_once()
+
 # ── Select (write + malformed) ─────────────────────────────────────────────────
 
 
@@ -250,6 +268,7 @@ class TestSelectRobustness:
         coord.client.put.assert_awaited_once_with(self.KEY, "manual")
         assert ent.current_option == "manual"  # optimistic
         coord.async_request_refresh.assert_awaited_once()
+        coord.async_refresh_boost_state.assert_awaited_once()
 
 
 # ── Climate (read + absent + malformed + write) ────────────────────────────────

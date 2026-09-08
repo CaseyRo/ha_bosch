@@ -687,3 +687,33 @@ async def test_version_4_migrates_boost_registry_entries():
             "switch.bibliotheque_thermostat_bibliotheque"
         )
         hass.config_entries.async_update_entry.assert_any_call(entry, version=4)
+
+
+@pytest.mark.asyncio
+async def test_version_5_clears_custom_boost_registry_names():
+    """Migrating to v5 restores translated names for existing Boost switches."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 4
+    entry.entry_id = "test_entry_123"
+    entry.data = {"http_xmpp": "pointtapi"}
+
+    entity = SimpleNamespace(
+        config_entry_id="test_entry_123",
+        domain="switch",
+        unique_id="test_entry_123_pointtapi_boost_zone_1",
+        entity_id="switch.salon_boost",
+        name="Heating boost",
+    )
+    mock_er = MagicMock()
+    mock_er.entities = {entity.entity_id: entity}
+
+    with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
+        assert await async_migrate_entry(hass, entry) is True
+
+    mock_er.async_update_entity.assert_called_once_with(
+        "switch.salon_boost", name=None
+    )
+    hass.config_entries.async_update_entry.assert_called_once_with(entry, version=5)

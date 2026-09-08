@@ -529,6 +529,12 @@ async def _fetch_paths(
 class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator for POINTTAPI: one poll, path-keyed data; 401/403 -> ConfigEntryAuthFailed."""
 
+    _BOOST_REFRESH_PATHS = (
+        "/heatingCircuits/hc1/boostMode",
+        "/heatingCircuits/hc1/boostZones",
+        "/heatingCircuits/hc1/boostShortcut",
+    )
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -575,6 +581,22 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def client(self) -> PoinTTAPIClient:
         """Return the POINTTAPI client for PUT calls from entities."""
         return self._client
+
+    async def async_refresh_boost_state(self) -> None:
+        """Re-read Boost capabilities after Bosch applies a zone mode change."""
+        await asyncio.sleep(1)
+        try:
+            boost_data = await self._client.bulk(list(self._BOOST_REFRESH_PATHS))
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.debug("POINTTAPI targeted Boost refresh failed: %s", err)
+            return
+        if not boost_data:
+            return
+        merged = dict(self.data or {})
+        merged.update(boost_data)
+        self.async_set_updated_data(merged)
 
     async def _confirm_native_active(self) -> bool:
         """A native write counts only if the device reports boost active."""
