@@ -298,10 +298,12 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate POINTTAPI entry versions.
 
-    - v1 -> v2: entity_id renames (device-partition scheme)
-    - v2 -> v3: unique_id rename for boost switch (per-zone unique_id)
+        - v1 -> v2: entity_id renames (device-partition scheme)
+        - v2 -> v3: unique_id rename for boost switch (per-zone unique_id)
+        - v3 -> v4: remove stale per-zone Boost registry entries so HA recreates
+            them with the corrected entity name
     """
-    if entry.version >= 3:
+    if entry.version >= 4:
         return True
 
     if entry.version < 2:
@@ -352,6 +354,34 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "Migration could not update unique_id %s: %s", old_unique_id, err
                 )
         hass.config_entries.async_update_entry(entry, version=3)
+
+    if entry.version < 4:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
+            prefix = f"{entry.entry_id}_pointtapi_boost_zone_"
+            removed = 0
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.startswith(prefix)
+                ):
+                    try:
+                        registry.async_remove(entity.entity_id)
+                        removed += 1
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not remove stale Boost entity %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 3 to 4 (%d stale Boost entities removed)",
+                removed,
+            )
+        hass.config_entries.async_update_entry(entry, version=4)
 
     return True
 

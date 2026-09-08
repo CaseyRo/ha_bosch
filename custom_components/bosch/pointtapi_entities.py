@@ -2773,7 +2773,7 @@ class BoschPoinTTAPIBoostSwitchEntity(
     """
 
     _attr_has_entity_name = False
-    _attr_translation_key = "boost"
+    _attr_translation_key = "boost_zone"
     _attr_name = None
 
     def __init__(

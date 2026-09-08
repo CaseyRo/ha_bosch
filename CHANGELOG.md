@@ -4,6 +4,17 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha4] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost synchronization** — Refreshes the live Boost mode and
+  selected zones before changing the native shortcut selection, and restarts
+  an active shortcut with `boostMode=off` before applying the updated zones.
+- **POINTTAPI Boost registry migration** — Removes stale per-zone Boost entity
+  entries so Home Assistant recreates them with the corrected label.
+- **POINTTAPI Boost naming** — Uses the localized **Heating boost** label for
+  per-zone Boost switches across all supported languages.
+
 ## [1.6.0-alpha3] — 2026-09-08
 
 ### Fixed

@@ -318,10 +318,21 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self, boost_temp: float, duration_h: float, zones: list[int]
     ) -> str:
         """Run the probe ladder once; cache and return the working route."""
-        from .pointtapi_entities import ROUTE_DIRECT, ROUTE_FALLBACK, ROUTE_SHORTCUT
+        from .pointtapi_entities import (
+            ROUTE_DIRECT,
+            ROUTE_FALLBACK,
+            ROUTE_SHORTCUT,
+            _val,
+        )
 
         rungs: list[dict[str, Any]] = []
         try:
+            if _val(
+                self.data or {}, "/heatingCircuits/hc1/boostMode"
+            ) == "on":
+                await self.client.put(
+                    "/heatingCircuits/hc1/boostMode", "off"
+                )
             await self.client.put(
                 "/heatingCircuits/hc1/boostShortcut",
                 [{
@@ -374,10 +385,16 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self, route: str, boost_temp: float, duration_h: float, zones: list[int]
     ) -> bool:
         """Activate boost via the cached native route. True when confirmed."""
-        from .pointtapi_entities import ROUTE_SHORTCUT
+        from .pointtapi_entities import ROUTE_SHORTCUT, _val
 
         try:
             if route == ROUTE_SHORTCUT:
+                if _val(
+                    self.data or {}, "/heatingCircuits/hc1/boostMode"
+                ) == "on":
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostMode", "off"
+                    )
                 await self.client.put(
                     "/heatingCircuits/hc1/boostShortcut",
                     [{
@@ -456,6 +473,19 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.warning("Native boost OFF via %s failed: %s", route, err)
             return False
 
+    async def _refresh_boost_state(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Read the live native Boost state before changing its selection."""
+        fresh = dict(data)
+        for path in (
+            "/heatingCircuits/hc1/boostMode",
+            "/heatingCircuits/hc1/boostZones",
+        ):
+            response = await self.client.get(path)
+            if isinstance(response, dict):
+                fresh[path] = response
+        self.data = fresh
+        return fresh
+
     async def async_set_zone_boost(self, zone_id: int, enable: bool) -> None:
         """Turn boost on or off for a specified zone, serialized with an asyncio.Lock."""
         from .pointtapi_entities import (
@@ -469,6 +499,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         async with self._boost_lock:
             data = self.data or {}
+            data = await self._refresh_boost_state(data)
             if enable and not (
                 _path_writable(data, "/heatingCircuits/hc1/boostShortcut")
                 and zone_id in _boost_zone_values(data, "allowedZones")

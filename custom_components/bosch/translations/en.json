@@ -362,8 +362,8 @@
       }
     },
     "switch": {
-      "boost": {
-        "name": "Boost"
+      "boost_zone": {
+        "name": "Heating boost"
       },
       "auto_firmware_update": {
         "name": "Auto firmware update"
