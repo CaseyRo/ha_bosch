@@ -25,12 +25,20 @@ Cuts POINTTAPI cloud traffic by discovering the resource path set once via the r
 
 ### Requirement: Coordinator discovers paths by reference walk, then polls via bulk
 
-On the first refresh after setup or reload, `PoinTTAPIDataUpdateCoordinator` SHALL run the existing sequential reference walk (roots + references + refEnum second level) and persist the resulting flat path list as the bulk path set. On subsequent refreshes the coordinator SHALL fetch that path set via `client.bulk()` instead of sequential GETs, while keeping `coordinator.data`'s shape (`{path: response}`) unchanged so no entity code needs modification. The discovery walk SHALL re-run at most once per 24 hours so resources that appear later (e.g. solar enabled by an installer) are picked up without a reload.
+On the first refresh after setup or reload, `PoinTTAPIDataUpdateCoordinator` SHALL run the existing sequential reference walk (roots + references + refEnum second level) and persist the resulting flat path list as the bulk path set. On subsequent refreshes the coordinator SHALL fetch that path set via `client.bulk()` instead of sequential GETs, while keeping `coordinator.data`'s shape (`{path: response}`) unchanged so no entity code needs modification. The path set SHALL be split into a fast and a slow tier: paths under `SLOW_RESOURCE_PREFIXES` (`/gateway`, `/energy`, `/solarCircuits`, `/devices`, `/programs`, `/system/appliance`) SHALL be refetched only every `SLOW_RESOURCE_REFRESH_INTERVAL` (5 minutes) and served from the cached `_slow_data` in between, so a steady-state cycle fetches the fast tier alone. Hourly energy history SHALL have its own `HISTORY_HOURLY_REFRESH_INTERVAL` (30 minutes). The discovery walk SHALL re-run at most once per 24 hours so resources that appear later (e.g. solar enabled by an installer) are picked up without a reload.
 
-#### Scenario: Steady-state poll uses bulk only
+#### Scenario: Steady-state poll uses bulk only, and only the fast tier
 
-- **WHEN** the coordinator refreshes after a successful discovery walk and the path set holds 48 paths
-- **THEN** the cycle SHALL issue 2 bulk POSTs (plus the paginated-resource GETs per the pagination requirement) and zero per-path GETs
+- **WHEN** the coordinator refreshes after a successful discovery walk, less than
+  `SLOW_RESOURCE_REFRESH_INTERVAL` since the last slow fetch
+- **THEN** the cycle SHALL bulk-fetch only the fast-tier paths, merge the cached `_slow_data`
+  into the result, and issue zero per-path GETs (paginated resources excepted per the
+  pagination requirement)
+
+#### Scenario: The slow tier refreshes on its own interval
+
+- **WHEN** `SLOW_RESOURCE_REFRESH_INTERVAL` has elapsed since the last slow fetch
+- **THEN** that cycle SHALL bulk-fetch the fast and slow tiers together and reset the slow timer
 
 #### Scenario: Entities read unchanged data shape
 
