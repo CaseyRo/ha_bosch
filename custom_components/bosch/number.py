@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from bosch_thermostat_client.const import NUMBER
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.number.const import NumberMode
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -43,7 +42,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         return True
     uuid = config_entry.data[UUID]
     gateway = rt_data.gateway
-    enabled_switches = config_entry.data.get(NUMBER, [])
     data_number = []
     for switch in gateway.number_switches:
         data_number.append(
@@ -55,7 +53,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 name=switch.name,
                 attr_uri=switch.attr_id,
                 domain_name="Switches",
-                is_enabled=switch.attr_id in enabled_switches,
+                is_enabled=True,
             )
         )
     for circ_type in CIRCUITS:
@@ -72,7 +70,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         attr_uri=switch.attr_id,
                         domain_name=circuit.name,
                         circuit_type=circ_type,
-                        is_enabled=switch.attr_id in enabled_switches,
+                        is_enabled=True,
                     )
                 )
     rt_data.number = data_number

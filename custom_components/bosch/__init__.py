@@ -79,7 +79,6 @@ from homeassistant.helpers.network import get_url
 from homeassistant.util import dt as dt_util
 from homeassistant.util.json import load_json
 
-from .switch import SWITCH
 
 from .pointtapi_client import PoinTTAPIClient
 from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
@@ -90,6 +89,7 @@ from .const import (
     ACCESS_KEY,
     ACCESS_TOKEN,
     BINARY_SENSOR,
+    SWITCH,
     CLIMATE,
     CONF_DEVICE_TYPE,
     CONF_PROTOCOL,

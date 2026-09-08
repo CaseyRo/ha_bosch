@@ -5,7 +5,6 @@ from bosch_thermostat_client.const import (
     RECORDING,
     REGULAR,
     SENSOR,
-    SENSORS,
 )
 from bosch_thermostat_client.const.easycontrol import ENERGY
 from homeassistant.helpers import device_registry as dr
@@ -68,7 +67,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             # first coordinator refresh returned no usable /solarCircuits/sc1 data.
             # This stops non-solar households from seeing four ghost entities.
             solar_available = _solar_data_available(coordinator.data or {})
-            if not solar_available:
+            # Skipping the descriptions is harmless and reversible. *Removing*
+            # an existing solar device is neither — it destroys entity_ids,
+            # customisations and history association. coordinator.data can be
+            # missing /solarCircuits after a timeout or a partial bulk envelope
+            # (the coordinator swallows per-path failures), so only remove once
+            # a refresh has actually succeeded and returned data.
+            if not solar_available and coordinator.last_update_success and coordinator.data:
                 _remove_solar_registry_entries(hass, uuid)
             descriptions = [
                 desc
@@ -115,7 +120,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         return True
     uuid = config_entry.data[UUID]
     gateway = rt_data.gateway
-    enabled_sensors = config_entry.data.get(SENSORS, [])
 
     new_stats_api = config_entry.options.get("new_stats_api", False)
     rt_data.sensor = []
@@ -140,7 +144,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         gateway=gateway,
                         name=sensor.name,
                         attr_uri=sensor.attr_id,
-                        is_enabled=sensor.attr_id in enabled_sensors,
+                        is_enabled=True,
                         **kwargs
                     )
                 ],
@@ -157,7 +161,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         sensor_attributes=energy,
                         attr_uri=sensor.attr_id,
                         new_stats_api=new_stats_api,
-                        is_enabled=sensor.attr_id in enabled_sensors,
+                        is_enabled=True,
                     )
                     for energy in EnergySensors
                 ],
@@ -174,7 +178,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         sensor_attributes=energy,
                         attr_uri=sensor.attr_id,
                         new_stats_api=new_stats_api,
-                        is_enabled=sensor.attr_id in enabled_sensors,
+                        is_enabled=True,
                     )
                     for energy in EcusRecordingSensors
                 ],
@@ -203,7 +207,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         attr_uri=sensor.attr_id,
                         domain_name=circuit.name,
                         circuit_type=circ_type,
-                        is_enabled=sensor.attr_id in enabled_sensors,
+                        is_enabled=True,
                     )
                 )
     async_add_entities(rt_data.sensor)

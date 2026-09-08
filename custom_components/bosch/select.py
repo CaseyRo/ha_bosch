@@ -4,7 +4,6 @@ Support for water heaters connected to Bosch thermostat.
 For more details about this platform, please refer to the documentation at...
 """
 from __future__ import annotations
-from bosch_thermostat_client.const import SELECT
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
@@ -41,7 +40,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         return True
     uuid = config_entry.data[UUID]
     gateway = rt_data.gateway
-    enabled = config_entry.data.get(SELECT, [])
     rt_data.select = []
     selects = gateway.switches.selects
     for select in selects:
@@ -54,7 +52,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 name=select.name,
                 attr_uri=select.attr_id,
                 domain_name="Select",
-                is_enabled=select.attr_id in enabled,
+                is_enabled=True,
             )
         )
     async_add_entities(rt_data.select)
