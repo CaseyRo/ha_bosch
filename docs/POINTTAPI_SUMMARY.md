@@ -8,7 +8,7 @@ I've been working on a full cloud-API integration path for EasyControl devices u
 
 - **`pointtapi_client.py`** — HTTP client for the POINTTAPI REST API (GET/PUT with auto token refresh)
 - **`pointtapi_oauth.py`** — OAuth2 with PKCE flow against Bosch SingleKey ID; token exchange + refresh
-- **`pointtapi_coordinator.py`** — `DataUpdateCoordinator` that polls ~6 root paths + references every 60s, with `asyncio.timeout(120)` and proper error handling
+- **`pointtapi_coordinator.py`** — `DataUpdateCoordinator` that bulk-POSTs a discovered path set on a 60s interval, with fast/slow tiers, with `asyncio.timeout(120)` and proper error handling
 - **`pointtapi_entities.py`** — All POINTTAPI entities (see below)
 - **`diagnostics.py`** — `async_get_config_entry_diagnostics` with credential redaction
 

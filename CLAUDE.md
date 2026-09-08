@@ -29,7 +29,11 @@ uv run --with bosch-thermostat-client==0.28.2 python test_easycontrol_connection
 pip install bosch-thermostat-client==0.28.2 tzdata ruff
 ```
 
-CI runs ruff + pytest on Python 3.12 and 3.13 via `.github/workflows/ci.yaml`.
+CI runs ruff + pytest on Python **3.13 only** (`.github/workflows/ci.yaml`;
+3.12 was dropped in `e9833db`), with a **70% coverage floor** via
+`--cov-fail-under=70`. Ruff is configured `select = ["E4","E7","E9","F"]`, so
+async and blocking-call rules are **not** enforced — don't assume a clean ruff
+run means no blocking I/O in the event loop.
 
 ## Architecture Overview
 
@@ -47,7 +51,14 @@ This is a Home Assistant custom component (`domain: bosch`) that integrates Bosc
 **Path 2 — POINTTAPI (cloud JSON API, EasyControl only):**
 - Custom HTTP client (`pointtapi_client.py`) hitting `https://pointt-api.bosch-thermotechnology.com/pointt-api/api/v1/gateways/{device_id}/resource/`
 - OAuth with PKCE (`pointtapi_oauth.py`) — access + refresh tokens stored in config entry data; `ensure_valid_token()` auto-refreshes before every request
-- `PoinTTAPIDataUpdateCoordinator` (`pointtapi_coordinator.py`) polls ~6 root paths + one level of references every 60s, caching results as a `{path: response}` dict in `coordinator.data`
+- `PoinTTAPIDataUpdateCoordinator` (`pointtapi_coordinator.py`) runs on a 60s
+  `update_interval` and issues **bulk POSTs**, not per-path GETs. The discovered
+  path set is split into fast and slow tiers: `SLOW_RESOURCE_PREFIXES`
+  (`/gateway`, `/energy`, `/solarCircuits`, `/devices`, `/programs`,
+  `/system/appliance`) refresh every `SLOW_RESOURCE_REFRESH_INTERVAL` (5 min)
+  and are served from `_slow_data` in between; hourly energy history has its own
+  30-min interval; the reference walk re-discovers daily (`REDISCOVERY_INTERVAL`).
+  Results cache as a `{path: response}` dict in `coordinator.data`
 - Entities are `CoordinatorEntity` subclasses (`pointtapi_entities.py`) that read from `coordinator.data` in `_handle_coordinator_update()`
 - 401/403 raises `ConfigEntryAuthFailed` → triggers the reauth flow in `config_flow.py` without deleting the entry
 
@@ -59,7 +70,11 @@ This is a Home Assistant custom component (`domain: bosch`) that integrates Bosc
 
 ### Config Flow (`config_flow.py`)
 
-Steps for POINTTAPI: `choose_type` → `easycontrol_protocol` → `pointtapi_device_id` (serial without dashes) → `pointtapi_oauth_open` (show login URL) → `pointtapi_oauth` (paste callback URL) → exchange code for tokens → `create_entry`.
+Steps for POINTTAPI: `user` → `easycontrol_protocol` → `pointtapi_oauth_open`
+(show login URL) → `pointtapi_oauth` (paste callback URL) → `pointtapi_gateway`
+(auto-discovery: the token lists the account's gateways) → `create_entry`.
+`pointtapi_device_id` (serial without dashes) is the **fallback** when discovery
+finds nothing, not the first step. There is no `choose_type` step any more.
 
 Steps for XMPP/HTTP: `choose_type` → protocol → credentials form → `configure_gateway()` in executor (validates connection, extracts UUID) → `create_entry`.
 
@@ -73,7 +88,19 @@ Tokens and all credentials are stored in `entry.data`, not `entry.options`.
 - `REGULAR` → `BoschSensor`
 - `"notification"` → `NotificationSensor`
 - Circuit sensors (DHW, HC, SC, ZN, DV) → `CircuitSensor`
-- POINTTAPI → `BoschPoinTTAPISensorEntity` (6 curated paths: outdoor temp, humidity, valve position, pressure, RSSI, update state)
+- POINTTAPI → `BoschPoinTTAPISensorEntity` (~50 descriptions; see the entity
+  matrix in README.md, which is the maintained list)
+
+### OpenSpec scope
+
+`openspec/specs/` covers the **POINTTAPI path only**. The XMPP/HTTP path is
+inherited from pszafer's upstream component and is deliberately unspecified —
+a spec there would be archaeology, not design. Absence of `NEFIT`/`IVT` specs
+is a boundary, not drift.
+
+Note also that `config_flow.async_step_user` hardcodes `EASYCONTROL`, so the
+`NEFIT`/`IVT`/`IVT_MBLAN` device types listed above cannot currently be added
+through the UI even though their sensor routing still exists.
 
 ### Constants (`const.py`)
 
@@ -90,6 +117,11 @@ All platform signals, circuit names (`DHW`, `HC`, `SC`, `ZN`, `DV`), protocol id
 
 ## Version & Dependency Notes
 
-- Current integration version: `1.0.0` (in `manifest.json` — bump this on releases)
+- Current integration version: see `manifest.json` (`version`). Bump it on releases;
+  don't restate it here — this file said `1.0.0` for five minor releases.
 - `bosch-thermostat-client` is not used by and does not support POINTTAPI; the POINTTAPI path is entirely custom
+- `.gitmodules` pulls in `deric-bosch-client`, a vendored fork of the upstream
+  client kept for reference when diffing protocol behaviour. Nothing in
+  `custom_components/` imports it; a plain `git clone` without `--recursive` is
+  fine.
 - `iot_class` is `cloud_polling` (covers both paths; XMPP is technically local but the manifest reflects the primary EasyControl cloud use case)
