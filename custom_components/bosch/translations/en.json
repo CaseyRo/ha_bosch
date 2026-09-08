@@ -192,14 +192,14 @@
       "storage_temperature": {
         "name": "Storage temperature"
       },
-       "heat_demand_type": {
-         "name": "Demand type",
-         "state": {
-           "off": "No demand",
-           "ch": "Heating",
-           "dhw": "Domestic hot water"
-         }
-       },
+      "heat_demand_type": {
+        "name": "Demand type",
+        "state": {
+          "off": "No demand",
+          "ch": "Heating",
+          "dhw": "Domestic hot water"
+        }
+      },
       "pump_modulation": {
         "name": "Pump modulation"
       },
@@ -334,11 +334,17 @@
       }
     },
     "binary_sensor": {
-      "dhw_heating": {
-        "name": "Status",
+      "burner_flame": {
+        "name": "Flame"
+      },
+      "dhw_burner": {
+        "name": "Hot water burner"
+      },
+      "dhw_enabled": {
+        "name": "Hot water enabled",
         "state": {
-          "off": "Off",
-          "on": "Heating"
+          "on": "Enabled",
+          "off": "Disabled"
         }
       },
       "open_window_detected": {
@@ -347,9 +353,6 @@
           "off": "Closed",
           "on": "Open"
         }
-      },
-      "burner_flame": {
-        "name": "Flame"
       },
       "refill_needed": {
         "name": "Refill needed"
@@ -472,7 +475,7 @@
       },
       "pointtapi_oauth": {
         "title": "Complete sign-in",
-        "description": "Paste the **callback URL** or just the **code** below. After you sign in, your browser jumps to an address starting with `com.bosch.tt.dashtt.pointt://app/login?code=` and usually shows a cannot-open-page or blank screen — that is expected. Copy the whole address, or only the value after `code=`.\n\n**Having trouble?** Some browsers don't show the URL clearly after login. Use the `run_playwright_ha.sh` helper script from the repository — it opens a browser, you log in once, and it prints the exact URL to paste here. See `POINTTAPI_OAUTH_TESTING.md` for instructions.",
+        "description": "Paste the **callback URL** or just the **code** below. After you sign in, your browser jumps to an address starting with `com.bosch.tt.dashtt.pointt://app/login?code=` and usually shows a cannot-open-page or blank screen — that is expected. Copy the whole address, or only the value after `code=`.\n\n**Having trouble?** If the address bar looks empty after signing in, open your browser history — the failed `com.bosch.tt.dashtt.pointt://` entry is recorded there and the address can be copied from it.",
         "data": {
           "oauth_callback_url": "Callback URL or code"
         }
@@ -490,7 +493,9 @@
       "invalid_device_id": "Device ID must be digits only (serial number without dashes).",
       "oauth_callback_empty": "Please paste the URL from the browser address bar.",
       "oauth_callback_invalid": "Could not read the login code from that URL. Make sure you copied the full URL after the page showed \"Cannot open page\".",
-      "oauth_token_failed": "Failed to complete sign-in with Bosch. The login code may have expired — please try again from the start."
+      "oauth_token_failed": "Failed to complete sign-in with Bosch. The login code may have expired — please try again from the start.",
+      "faulty_credentials": "Could not connect. Check the device address and access token, then try again.",
+      "unknown": "Unexpected error. Check the Home Assistant logs for details."
     },
     "abort": {
       "faulty_credentials": "Bad user credentials or wrong IP",
@@ -508,6 +513,14 @@
           "new_stats_api": "Use new statistic API",
           "optimistic_mode": "Use optimistic mode for some functions (currently Easycontrol Operation mode set)."
         }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "pointtapi": "Cloud / Bosch account",
+        "xmpp": "Local connection (XMPP)"
       }
     }
   }

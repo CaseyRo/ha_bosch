@@ -3387,11 +3387,46 @@ class BoschPoinTTAPIBinarySensorEntity(
         return super().available
 
 
+def _dhw_burner_state(data: dict[str, Any]) -> bool | None:
+    """True while the burner is firing *for hot water*.
+
+    /dhwCircuits/dhw1/state is an enabled/permitted flag, not a burner signal —
+    confirmed on a Nefit Easy by toggling DHW off and back on and watching the
+    flag follow the setting while the flame stayed off (#33). The burner fact
+    has to be derived: something is firing, and what it is firing for is dhw.
+    """
+    firing = _burner_flame_state(data)
+    if firing is None:
+        return None
+    return bool(firing) and _heat_demand_type_state(data) == "dhw"
+
+
+def _dhw_burner_available(data: dict[str, Any]) -> bool:
+    """Both inputs must exist; not every appliance exposes /heatSources."""
+    return (
+        _val(data, "/heatSources/actualModulation") is not None
+        and _val(data, "/heatSources/flameIndication") is not None
+    )
+
+
 POINTTAPI_BINARY_SENSOR_DESCRIPTIONS: tuple[BoschPoinTTAPIBinarySensorEntityDescription, ...] = (
     BoschPoinTTAPIBinarySensorEntityDescription(
         key="/dhwCircuits/dhw1/state",
-        translation_key="dhw_heating",
+        translation_key="dhw_enabled",
+        # Not device_class HEAT: this reports whether hot water is *permitted*,
+        # not whether the burner is heating it, so "Heating/Not heating" was a
+        # lie whenever DHW was enabled and idle. Plain on/off is honest.
+        device_class=None,
+    ),
+    BoschPoinTTAPIBinarySensorEntityDescription(
+        # Derived, not a POINTT path — the protocol has no burner-for-DHW
+        # signal, so this is flame AND demand type. Two users built it by hand
+        # before it existed here (#31, #33).
+        key="/heatSources/dhwBurner",
+        translation_key="dhw_burner",
         device_class=BinarySensorDeviceClass.HEAT,
+        value_fn=_dhw_burner_state,
+        available_fn=_dhw_burner_available,
     ),
     BoschPoinTTAPIBinarySensorEntityDescription(
         key="/heatSources/flameIndication",

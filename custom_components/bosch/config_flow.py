@@ -70,19 +70,12 @@ class BoschFlowHandler(config_entries.ConfigFlow):
         """Handle EasyControl protocol choice: XMPP or POINTTAPI."""
         errors = {}
         if user_input is not None:
-            self._protocol = user_input[CONF_PROTOCOL]
+            # The selector's option values are the translation keys, which
+            # hassfest requires to be lowercase — but XMPP is stored uppercase
+            # in entry.data, so map rather than change what is persisted.
+            self._protocol = XMPP if user_input[CONF_PROTOCOL] == "xmpp" else POINTTAPI
             if self._protocol == XMPP:
-                return self.async_show_form(
-                    step_id="xmpp_config",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required(CONF_ADDRESS): str,
-                            vol.Required(CONF_ACCESS_TOKEN): str,
-                            vol.Optional(CONF_PASSWORD): str,
-                        }
-                    ),
-                    errors=errors,
-                )
+                return self._show_xmpp_form(errors)
             # OAuth-first: the authorize URL is device-independent, and the
             # token lets us list the account's gateways for auto-discovery.
             return await self.async_step_pointtapi_oauth_open()
@@ -92,11 +85,9 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 {
                     vol.Required(CONF_PROTOCOL): SelectSelector(
                         SelectSelectorConfig(
-                            options=[
-                                {"value": XMPP, "label": "Local connection (XMPP)"},
-                                {"value": POINTTAPI, "label": "Cloud / Bosch Account"},
-                            ],
+                            options=["xmpp", POINTTAPI],
                             mode=SelectSelectorMode.LIST,
+                            translation_key="protocol",
                         )
                     ),
                 }
@@ -256,21 +247,39 @@ class BoschFlowHandler(config_entries.ConfigFlow):
             errors=errors,
         )
 
+    def _show_xmpp_form(self, errors=None):
+        """Render the local-connection form. Reused for retries after a bad token."""
+        return self.async_show_form(
+            step_id="xmpp_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADDRESS): str,
+                    vol.Required(CONF_ACCESS_TOKEN): str,
+                    vol.Optional(CONF_PASSWORD): str,
+                }
+            ),
+            errors=errors or {},
+        )
+
     async def async_step_xmpp_config(self, user_input=None):
-        if user_input is not None:
-            self._host = user_input[CONF_ADDRESS]
-            self._access_token = user_input[CONF_ACCESS_TOKEN]
-            self._password = user_input.get(CONF_PASSWORD)
-            if "127.0.0.1" in user_input[CONF_ADDRESS]:
-                return await self.configure_gateway(
-                    device_type=self._choose_type,
-                    session=async_get_clientsession(self.hass, verify_ssl=False),
-                    session_type=HTTP,
-                    host=self._host,
-                    access_token=self._access_token,
-                    password=self._password,
-                )
-            return await self.configure_gateway(
+        if user_input is None:
+            # Reached by the flow manager on a back/retry. Without this the step
+            # returned None, which data-entry-flow cannot handle.
+            return self._show_xmpp_form()
+        self._host = user_input[CONF_ADDRESS]
+        self._access_token = user_input[CONF_ACCESS_TOKEN]
+        self._password = user_input.get(CONF_PASSWORD)
+        if "127.0.0.1" in user_input[CONF_ADDRESS]:
+            result = await self.configure_gateway(
+                device_type=self._choose_type,
+                session=async_get_clientsession(self.hass, verify_ssl=False),
+                session_type=HTTP,
+                host=self._host,
+                access_token=self._access_token,
+                password=self._password,
+            )
+        else:
+            result = await self.configure_gateway(
                 device_type=self._choose_type,
                 session_type=self._protocol,
                 host=self._host,
@@ -278,6 +287,12 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 password=self._password,
                 session=self.hass.loop,
             )
+        # configure_gateway hands back an error key rather than aborting, so a
+        # mistyped access token re-shows the form with what the user entered
+        # instead of dead-ending the whole flow.
+        if isinstance(result, str):
+            return self._show_xmpp_form({"base": result})
+        return result
 
     async def configure_gateway(
         self, device_type, session_type, host, access_token, password=None, session=None
@@ -316,7 +331,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 err,
                 exc_info=_LOGGER.isEnabledFor(logging.DEBUG),
             )
-            return self.async_abort(reason="faulty_credentials")
+            return "faulty_credentials"
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error(
                 "Unexpected error connecting to Bosch: host=%s, device_type=%s, protocol=%s, error=%s",
@@ -326,7 +341,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 err,
                 exc_info=True,
             )
-            return self.async_abort(reason="unknown")
+            return "unknown"
         else:
             _LOGGER.info(
                 "Successfully configured Bosch device: device_name=%s, uuid=%s, host=%s, protocol=%s",

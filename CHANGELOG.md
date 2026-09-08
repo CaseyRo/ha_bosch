@@ -16,6 +16,29 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 - **Dedicated Heating Circuit (`hc1`) device partition** — Moved circuit-level heating settings away from individual room thermostat devices to a dedicated **Heating Installation** (`/heatingCircuits/hc1`) device to accurately reflect hardware topology.
   - **Before:** Global circuit settings (e.g. supply limits, heating slope, boost duration/temperature) were incorrectly attached to the `zn1` room device (Zone 1 / Thermostat), duplicating or misattributing installation-wide properties.
   - **After:** Supply limits (`supplyTemperatureLimitMax`, `supplyTemperatureLimitMin`), heating dynamics (`heatupCoolingSlope`, `buildingHeatup`), and global Boost settings (`boostTemperature`, `boostDuration`, `boostRemainingTime`) are properly assigned to the Heating Circuit (`/heatingCircuits/hc1`) device, ensuring clean device separation in Home Assistant (#34).
+- **`binary_sensor.*_dhw_burner`** — is the burner firing *for hot water* right
+  now. Derived (flame on **and** demand type `dhw`), because the POINTT
+  protocol carries no such signal; two users had built it by hand first
+  (#31, #33).
+- **Dashboard section in the README** — the card-mod recipe that colours the
+  thermostat ring by `hvac_action` instead of `hvac_mode`, validated by
+  @SiemEcho across all four mode x action cases; plus which of the two hot-water
+  binary sensors to use for what.
+### Changed
+- **Read-only number paths** — Number entities for POINTTAPI resources that are read-only (`writeable: 0` or `False`) are now hidden/unavailable, ensuring number entities only represent interactive setpoints and controls (#34).
+- The sensor platform is imported for real by the test harness instead of being
+  stubbed, so its setup path can be tested at all. Coverage 70.6% → 72%.
+- **`dhw_heating` is now `dhw_enabled`**, with `device_class` dropped and states
+  reading Enabled/Disabled. `/dhwCircuits/dhw1/state` reports whether hot water
+  is *permitted*, not whether it is being heated — confirmed on a Nefit Easy by
+  toggling DHW off and on and watching the flag follow the setting while the
+  flame stayed off (#33). It previously shipped as name "Status", states
+  "Off"/"Heating" and `device_class: HEAT`: three different claims about one
+  value, and it read "Heating" whenever hot water was merely switched on.
+  Existing entity ids are left alone, so automations keep working; only the
+  displayed name and states change.
+- **Protocol choice is translatable.** The two options in the first setup step
+  were hardcoded English in Python and could never be translated.
 ### Fixed
 - **Local (XMPP/HTTP) entities are no longer all disabled on a fresh install.**
   Every sensor, binary sensor, switch, select and number gated its
@@ -33,10 +56,20 @@ All notable changes to this Bosch Home Assistant custom component will be docume
   written as manual mode at the minimum temperature; restoring the mode without
   the setpoint left the zone at 5 °C, so the next poll re-detected `Off` and
   reverted the card. The pre-`Off` setpoint is now restored with the mode.
-### Changed
-- **Read-only number paths** — Number entities for POINTTAPI resources that are read-only (`writeable: 0` or `False`) are now hidden/unavailable, ensuring number entities only represent interactive setpoints and controls (#34).
-- The sensor platform is imported for real by the test harness instead of being
-  stubbed, so its setup path can be tested at all. Coverage 70.6% → 72%.
+- **A typo in the local-connection form no longer ends the flow.** Bad
+  credentials aborted outright, so a mistyped access token meant restarting from
+  "Add integration" and retyping the serial, token and password. The form now
+  comes back with an error on it. The step also had no path for being re-entered
+  with no input, where it returned `None` and the flow manager could not proceed.
+- **Six languages caught up with English.** de/fr/it/nl/pl/sk were missing both
+  new setup steps, all four OAuth error messages and both abort reasons, and
+  still carried three steps that no longer exist — so a German user got a German
+  OAuth screen, an English protocol picker and English-only errors.
+- **The OAuth step no longer tells end users to run a shell script.** It
+  suggested running `run_playwright_ha.sh` "from the repository" and reading a
+  developer testing document — on the step most likely to fail, to people
+  running HAOS with no checkout and no shell. Replaced with browser-history
+  advice that a non-developer can act on.
 
 ## [1.5.1-beta.1] — 2026-08-31
 

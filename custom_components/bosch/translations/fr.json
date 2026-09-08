@@ -78,9 +78,9 @@
       "appliance_status": {
         "name": "Etat de la chaudière",
         "state": {
-            "unknown": "Inconnu",
-            "locking_fault_code_active": "Code de défaut verrouillant actif",
-            "blocking_fault_code_active": "Code de défaut bloquant actif",
+          "unknown": "Inconnu",
+          "locking_fault_code_active": "Code de défaut verrouillant actif",
+          "blocking_fault_code_active": "Code de défaut bloquant actif",
           "standby_no_heat_demand": "En veille - aucune demande de chaleur",
           "heating_operation": "Chauffage en fonctionnement",
           "hot_water_operation": "Production d'eau chaude sanitaire",
@@ -99,7 +99,7 @@
           "fan_stopped_during_safety_time": "Ventilateur arrêté pendant le temps de sécurité",
           "fan_stopped_during_operation": "Ventilateur arrêté pendant la marche",
           "fan_speed_too_high": "Vitesse du ventilateur trop élevée",
-           "fan_speed_too_low": "Ventilateur trop lent",
+          "fan_speed_too_low": "Ventilateur trop lent",
           "fan_malfunction": "Ventilateur ne fonctionne pas correctement",
           "air_pressure_monitor_fault": "Pressostat ou contrôle de pression d'air",
           "supply_temp_too_high": "Température de départ trop élevée",
@@ -115,7 +115,7 @@
           "unexpected_flame_signal": "Signal de flamme présent alors qu'aucune flamme n'est attendue",
           "ionization_signal_lost": "Perte du signal d'ionisation pendant le fonctionnement",
           "invalid_ionization_signal": "Signal d'ionisation incorrect",
-           "flame_detected_after_gas_shutdown": "Flamme détectée après coupure du gaz",
+          "flame_detected_after_gas_shutdown": "Flamme détectée après coupure du gaz",
           "mains_voltage_fault_or_power_loss": "Défaut de tension réseau ou coupure de courant",
           "first_safety_time_fault": "Défaut horaire du premier délai de sécurité",
           "restart_attempt_time_fault": "Défaut horaire de la tentative de redémarrage",
@@ -124,7 +124,7 @@
           "gas_valve_communication_fault": "Défaut de communication avec le bloc gaz",
           "gas_valve_not_recognized": "Bloc gaz non reconnu",
           "internal_electronics_fault": "Défaut électronique interne",
-           "kim_not_recognized": "KIM non reconnu",
+          "kim_not_recognized": "KIM non reconnu",
           "equipment_fault_relay_error": "Erreur de relais de défaut équipement",
           "device_internal_fault": "Défaut interne de l'appareil",
           "return_sensor_short_circuit": "Court-circuit de la sonde de retour",
@@ -313,11 +313,17 @@
       }
     },
     "binary_sensor": {
-      "dhw_heating": {
-        "name": "Statut",
+      "burner_flame": {
+        "name": "Flamme"
+      },
+      "dhw_burner": {
+        "name": "Brûleur eau chaude"
+      },
+      "dhw_enabled": {
+        "name": "Eau chaude activée",
         "state": {
-          "off": "Arrêt",
-          "on": "En chauffe"
+          "on": "Activée",
+          "off": "Désactivée"
         }
       },
       "open_window_detected": {
@@ -326,9 +332,6 @@
           "off": "Fermée",
           "on": "Ouverte"
         }
-      },
-      "burner_flame": {
-        "name": "Flamme"
       },
       "refill_needed": {
         "name": "Remplissage nécessaire"
@@ -423,20 +426,6 @@
   "config": {
     "title": "Bosch thermostat",
     "step": {
-      "choose_type": {
-        "title": "Choisir le type d'appareil.",
-        "data": {
-          "device_type": "Choisissez votre type d'appareil."
-        }
-      },
-      "http_config": {
-        "title": "Thermostat Bosch configuration HTTP",
-        "data": {
-          "address": "Adresse IP",
-          "access_token": "Jeton d'accès",
-          "password": "Mot de passe"
-        }
-      },
       "xmpp_config": {
         "title": "Thermostat Bosch configuration XMPP",
         "data": {
@@ -445,19 +434,13 @@
           "password": "Mot de passe"
         }
       },
-      "protocol": {
-        "title": "Protocole Bosch IVT. HTTP pour une connexion locale. XMPP via le cloud!",
-        "data": {
-          "Protocol": "Soit HTTP soit XMPP"
-        }
-      },
       "pointtapi_oauth_open": {
         "title": "Connectez-vous avec votre compte Bosch",
         "description": "Cliquez sur **[ce lien]({auth_url})** pour ouvrir la page de connexion Bosch dans un nouvel onglet, puis connectez-vous avec votre compte Bosch.\n\nAprès la connexion, votre navigateur affichera une erreur « Impossible d'ouvrir la page » — **c'est normal**. Laissez cet onglet ouvert et cliquez sur **Envoyer** ci-dessous."
       },
       "pointtapi_oauth": {
         "title": "Finaliser la connexion",
-        "description": "Collez ci-dessous l'**URL de rappel** ou simplement le **code**. Après la connexion, votre navigateur accède à une adresse commençant par `com.bosch.tt.dashtt.pointt://app/login?code=` et affiche généralement une page d'erreur ou vide — c'est normal. Copiez l'adresse entière, ou seulement la valeur après `code=`.",
+        "description": "Collez ci-dessous l'**URL de rappel** ou simplement le **code**. Après la connexion, votre navigateur accède à une adresse commençant par `com.bosch.tt.dashtt.pointt://app/login?code=` et affiche généralement une page d'erreur ou vide — c'est normal. Copiez l'adresse entière, ou seulement la valeur après `code=`.\n\n**Un problème ?** Si la barre d'adresse semble vide après la connexion, ouvrez l'historique du navigateur — l'entrée `com.bosch.tt.dashtt.pointt://` qui a échoué s'y trouve et l'adresse peut y être copiée.",
         "data": {
           "oauth_callback_url": "URL de rappel ou code"
         }
@@ -468,15 +451,37 @@
         "data": {
           "device_id": "Passerelle"
         }
+      },
+      "easycontrol_protocol": {
+        "title": "Connexion EasyControl",
+        "description": "XMPP se connecte directement à votre appareil sur le réseau local. La connexion cloud utilise votre compte Bosch et fonctionne à distance.",
+        "data": {
+          "protocol": "Type de connexion"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "Numéro de série de votre EasyControl",
+        "description": "Saisissez le numéro de série de l'appareil (avec ou sans tirets). Vous le trouverez sur l'étiquette de l'appareil ou dans l'application Bosch EasyControl sous Réglages → Informations sur l'appareil.",
+        "data": {
+          "device_id": "Numéro de série"
+        }
       }
     },
     "error": {
-      "service_unavailable": "Service indisponible"
+      "service_unavailable": "Service indisponible",
+      "invalid_device_id": "L'identifiant de l'appareil ne doit contenir que des chiffres (numéro de série sans tirets).",
+      "oauth_callback_empty": "Veuillez coller l'URL depuis la barre d'adresse du navigateur.",
+      "oauth_callback_invalid": "Impossible de lire le code de connexion dans cette URL. Assurez-vous d'avoir copié l'URL complète après l'affichage du message « Impossible d'ouvrir la page ».",
+      "oauth_token_failed": "Échec de la connexion à Bosch. Le code de connexion a peut-être expiré — veuillez recommencer depuis le début.",
+      "faulty_credentials": "Connexion impossible. Vérifiez l'adresse et le jeton d'accès de l'appareil, puis réessayez.",
+      "unknown": "Erreur inattendue. Consultez les journaux de Home Assistant pour plus de détails."
     },
     "abort": {
       "faulty_credentials": "Informations d'authentification incorrectes ou mauvaise adresse IP",
       "already_configured": "Le controleur est déjà configuré",
-      "unknown": "Erreur inconnue. Veuillez vérifier les LOGS."
+      "unknown": "Erreur inconnue. Veuillez vérifier les LOGS.",
+      "reauth_invalid": "La ré-authentification ne s'applique qu'aux entrées POINTTAPI.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
   "options": {
@@ -487,6 +492,14 @@
           "new_stats_api": "Utiliser la nouvelle API pour les statistiques",
           "optimistic_mode": "Utiliser le mode optimiste pour certaines fonctions (actuellement, le mode de fonctionnement Easycontrol est défini)."
         }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "pointtapi": "Cloud / compte Bosch",
+        "xmpp": "Connexion locale (XMPP)"
       }
     }
   }

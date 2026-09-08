@@ -611,3 +611,41 @@ class TestClimateOffToHeatRestoresSetpoint:
 
         written = [c.args[0] for c in coord.client.put.call_args_list]
         assert "/zones/zn1/manualTemperatureHeating" not in written
+
+
+class TestDhwBurnerDerivation:
+    """The protocol has no burner-for-DHW signal, so it is derived: something
+    is firing AND what it is firing for is dhw. /dhwCircuits/dhw1/state is an
+    enabled flag and deliberately plays no part (#33).
+    """
+
+    @staticmethod
+    def _data(modulation, flame, tank="on"):
+        return {
+            "/heatSources/actualModulation": {"value": modulation},
+            "/heatSources/flameIndication": {"value": flame},
+            "/dhwCircuits/dhw1/state": {"value": tank},
+        }
+
+    def test_firing_for_dhw_is_on(self):
+        from custom_components.bosch.pointtapi_entities import _dhw_burner_state
+        assert _dhw_burner_state(self._data(60.0, "dhw")) is True
+
+    def test_firing_for_central_heating_is_off(self):
+        from custom_components.bosch.pointtapi_entities import _dhw_burner_state
+        assert _dhw_burner_state(self._data(60.0, "ch")) is False
+
+    def test_idle_burner_is_off_even_with_the_tank_flag_on(self):
+        # The exact case that made dhw_heating misleading: DHW permitted,
+        # nothing burning.
+        from custom_components.bosch.pointtapi_entities import _dhw_burner_state
+        assert _dhw_burner_state(self._data(0.0, "off", tank="on")) is False
+
+    def test_unknown_modulation_is_unknown_not_false(self):
+        from custom_components.bosch.pointtapi_entities import _dhw_burner_state
+        assert _dhw_burner_state({"/heatSources/flameIndication": {"value": "dhw"}}) is None
+
+    def test_unavailable_without_heat_sources(self):
+        from custom_components.bosch.pointtapi_entities import _dhw_burner_available
+        assert _dhw_burner_available(self._data(60.0, "dhw")) is True
+        assert _dhw_burner_available({"/dhwCircuits/dhw1/state": {"value": "on"}}) is False

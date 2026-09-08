@@ -94,7 +94,7 @@
           "safety_supply_temp_rising_too_fast": "Veiligheids-/aanvoertemperatuur stijgt te snel",
           "heating_gradient_limitation": "Gradiëntbegrenzing in verwarmingsmodus",
           "supply_return_temp_difference_too_high": "Verschil tussen aanvoer- en retourtemperatuur te groot",
-           "dhw_gradient_limitation": "Gradiëntbegrenzing bij warm tapwater",
+          "dhw_gradient_limitation": "Gradiëntbegrenzing bij warm tapwater",
           "pump_no_pressure_difference": "De circulatiepomp genereert geen drukverschil",
           "fan_stopped_during_safety_time": "Ventilator gestopt tijdens veiligheidstijd",
           "fan_stopped_during_operation": "Ventilator gestopt tijdens bedrijf",
@@ -145,8 +145,8 @@
           "fan_starting": "Ventilatorstart",
           "startup_delay": "Opstartvertraging",
           "pump_or_flow_insufficient": "Pomp of doorstroming onvoldoende",
-           "purge_function_active": "Ontluchtingsfunctie actief",
-           "pump_or_three_way_valve_anti_seizure": "Blokkeerbeveiliging pomp/3-wegklep actief",
+          "purge_function_active": "Ontluchtingsfunctie actief",
+          "pump_or_three_way_valve_anti_seizure": "Blokkeerbeveiliging pomp/3-wegklep actief",
           "internal_error_service_required": "Interne fout - service vereist",
           "burner_starting": "Brander start op",
           "heat_demand_below_min_power": "Warmtevraag onder minimumvermogen",
@@ -156,7 +156,7 @@
           "supply_temp_above_setpoint": "Aanvoertemperatuur boven setpoint",
           "main_controller_fault": "Fout van hoofdregelaar",
           "regulation_system_fault": "Fout van regelsysteem",
-           "dhw_sensor_temp_too_high": "Temperatuur van de warmtapwatersensor te hoog",
+          "dhw_sensor_temp_too_high": "Temperatuur van de warmtapwatersensor te hoog",
           "internal_fault": "Interne fout",
           "electronic_fault": "Elektronische fout",
           "internal_system_fault": "Interne systeemfout"
@@ -313,11 +313,17 @@
       }
     },
     "binary_sensor": {
-      "dhw_heating": {
-        "name": "Status",
+      "burner_flame": {
+        "name": "Vlam"
+      },
+      "dhw_burner": {
+        "name": "Warmwaterbrander"
+      },
+      "dhw_enabled": {
+        "name": "Warm water ingeschakeld",
         "state": {
-          "off": "Uit",
-          "on": "Verwarmt"
+          "on": "Ingeschakeld",
+          "off": "Uitgeschakeld"
         }
       },
       "open_window_detected": {
@@ -326,9 +332,6 @@
           "off": "Gesloten",
           "on": "Open"
         }
-      },
-      "burner_flame": {
-        "name": "Vlam"
       },
       "refill_needed": {
         "name": "Bijvullen nodig"
@@ -423,20 +426,6 @@
   "config": {
     "title": "Bosch thermostaat",
     "step": {
-      "choose_type": {
-        "title": "Kies apparaattype.",
-        "data": {
-          "device_type": "Kies het type van uw apparaat."
-        }
-      },
-      "http_config": {
-        "title": "Bosch thermostaat HTTP configuratie",
-        "data": {
-          "address": "IP adres",
-          "access_token": "Toegangstoken",
-          "password": "Wachtwoord"
-        }
-      },
       "xmpp_config": {
         "title": "Bosch thermostaat XMPP configuratie",
         "data": {
@@ -445,19 +434,13 @@
           "password": "Wachtwoord"
         }
       },
-      "protocol": {
-        "title": "Bosch IVT Protocol. HTTP is lokaal. XMPP is cloud!",
-        "data": {
-          "Protocol": "Een van beide http of xmpp"
-        }
-      },
       "pointtapi_oauth_open": {
         "title": "Log in met uw Bosch-account",
         "description": "Klik op **[deze link]({auth_url})** om de Bosch-inlogpagina in een nieuw browsertabblad te openen en log in met uw Bosch-account.\n\nNa het inloggen toont uw browser een foutmelding ‘Kan pagina niet openen’ — **dat is normaal**. Laat dat tabblad open en klik hieronder op **Verzenden**."
       },
       "pointtapi_oauth": {
         "title": "Aanmelding voltooien",
-        "description": "Plak hieronder de **callback-URL** of alleen de **code**. Na het inloggen gaat uw browser naar een adres dat begint met `com.bosch.tt.dashtt.pointt://app/login?code=` en toont meestal een foutpagina of een lege pagina — dat is normaal. Kopieer het volledige adres, of alleen de waarde na `code=`.",
+        "description": "Plak hieronder de **callback-URL** of alleen de **code**. Na het inloggen gaat uw browser naar een adres dat begint met `com.bosch.tt.dashtt.pointt://app/login?code=` en toont meestal een foutpagina of een lege pagina — dat is normaal. Kopieer het volledige adres, of alleen de waarde na `code=`.\n\n**Lukt het niet?** Als de adresbalk na het aanmelden leeg lijkt, open dan je browsergeschiedenis — het mislukte `com.bosch.tt.dashtt.pointt://`-item staat daar en het adres kun je daaruit kopiëren.",
         "data": {
           "oauth_callback_url": "Callback-URL of code"
         }
@@ -468,15 +451,37 @@
         "data": {
           "device_id": "Gateway"
         }
+      },
+      "easycontrol_protocol": {
+        "title": "EasyControl-verbinding",
+        "description": "XMPP maakt rechtstreeks verbinding met je apparaat op het lokale netwerk. Cloud-aanmelding gebruikt je Bosch-account en werkt ook op afstand.",
+        "data": {
+          "protocol": "Verbindingstype"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "Serienummer van je EasyControl",
+        "description": "Voer het serienummer van je apparaat in (met of zonder streepjes). Je vindt het op het label op het apparaat of in de Bosch EasyControl-app onder Instellingen → Apparaatinformatie.",
+        "data": {
+          "device_id": "Serienummer"
+        }
       }
     },
     "error": {
-      "service_unavailable": "Geen dienst beschikbaar"
+      "service_unavailable": "Geen dienst beschikbaar",
+      "invalid_device_id": "De apparaat-ID mag alleen cijfers bevatten (serienummer zonder streepjes).",
+      "oauth_callback_empty": "Plak de URL uit de adresbalk van je browser.",
+      "oauth_callback_invalid": "Kon de aanmeldcode niet uit die URL lezen. Zorg dat je de volledige URL hebt gekopieerd nadat de pagina 'Kan pagina niet openen' toonde.",
+      "oauth_token_failed": "Aanmelden bij Bosch is mislukt. De aanmeldcode is mogelijk verlopen — probeer het opnieuw vanaf het begin.",
+      "faulty_credentials": "Verbinden mislukt. Controleer het adres en het toegangstoken van het apparaat en probeer het opnieuw.",
+      "unknown": "Onverwachte fout. Bekijk de Home Assistant-logboeken voor details."
     },
     "abort": {
       "faulty_credentials": "Ongeldige logingegevens of verkeerd IP-adres",
       "already_configured": "Controllersite is al geconfigureerd",
-      "unknown": "Onbekende reden. Controleer LOGS."
+      "unknown": "Onbekende reden. Controleer LOGS.",
+      "reauth_invalid": "Opnieuw verifiëren geldt alleen voor POINTTAPI-vermeldingen.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
   "options": {
@@ -487,6 +492,14 @@
           "new_stats_api": "Gebruik nieuwe statistische API",
           "optimistic_mode": "Optimistische modus gebruiken voor sommige functies (momenteel ingestelde Easycontrol-bedrijfsmodus)."
         }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "pointtapi": "Cloud / Bosch-account",
+        "xmpp": "Lokale verbinding (XMPP)"
       }
     }
   }

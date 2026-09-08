@@ -746,12 +746,19 @@ class TestTranslationCatalog:
         state = STRINGS["entity"]["sensor"]["thermal_disinfect_last_result"]["state"]
         assert state["running"] == "In progress"
 
-    def test_dhw_heating_binary_sensor_uses_on_off_state_keys(self):
-        state = STRINGS["entity"]["binary_sensor"]["dhw_heating"]["state"]
-        assert state["on"] == "Heating"
-        assert state["off"] == "Off"
+    def test_dhw_enabled_binary_sensor_uses_on_off_state_keys(self):
+        # /dhwCircuits/dhw1/state is an enabled flag, so it must not claim to
+        # be heating — that was the #33 mislabelling.
+        state = STRINGS["entity"]["binary_sensor"]["dhw_enabled"]["state"]
+        assert state["on"] == "Enabled"
+        assert state["off"] == "Disabled"
         assert "false" not in state
         assert "true" not in state
+
+    def test_dhw_burner_is_the_one_that_claims_heat(self):
+        assert STRINGS["entity"]["binary_sensor"]["dhw_burner"]["name"] == (
+            "Hot water burner"
+        )
 
 
 class TestComfortControlDescriptions:
