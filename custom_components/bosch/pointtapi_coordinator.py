@@ -715,7 +715,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _native_boost_off(self, route: str, zones: list[int]) -> bool:
         """Update native Boost selection without touching zone user modes."""
-        from .pointtapi_entities import ROUTE_SHORTCUT, _val
+        from .pointtapi_entities import ROUTE_DIRECT, ROUTE_SHORTCUT, _val
 
         try:
             if route == ROUTE_SHORTCUT:
@@ -760,6 +760,10 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         await self.client.put(
                             "/heatingCircuits/hc1/boostMode", "off"
                         )
+                    self.boost_probe_result = {
+                        **(self.boost_probe_result or {}),
+                        "route": ROUTE_DIRECT,
+                    }
                     return True
                 except ConfigEntryAuthFailed:
                     pass

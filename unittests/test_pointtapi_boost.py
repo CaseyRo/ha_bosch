@@ -427,6 +427,37 @@ class TestNativeBoostProbe:
             "/heatingCircuits/hc1/boostMode",
         ]
         assert coord.client.put.await_args_list[-1].args[1] == "on"
+        assert coord.boost_probe_result["route"] == "boostMode"
+
+    @pytest.mark.asyncio
+    async def test_shortcut_forbidden_is_not_retried_for_next_zone_turn_off(self):
+        """A shortcut 403 switches subsequent partial turn-offs to direct mode."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2, 3], "allowedZones": [1, 2, 3]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+
+        async def put(path, value):
+            if path == "/heatingCircuits/hc1/boostShortcut":
+                raise ConfigEntryAuthFailed("HTTP 403")
+            return True
+
+        coord.client.put = AsyncMock(side_effect=put)
+        await coord.async_set_zone_boost(1, False)
+        coord.client.put.reset_mock()
+        await coord.async_set_zone_boost(2, False)
+
+        paths = [call.args[0] for call in coord.client.put.await_args_list]
+        assert paths == [
+            "/heatingCircuits/hc1/boostZones",
+            "/heatingCircuits/hc1/boostMode",
+        ]
 
     @pytest.mark.asyncio
     async def test_native_off_never_touches_usermode(self):
@@ -706,6 +737,7 @@ async def test_version_5_clears_custom_boost_registry_names():
         unique_id="test_entry_123_pointtapi_boost_zone_1",
         entity_id="switch.salon_boost",
         name="Heating boost",
+        original_name="Heating boost",
     )
     mock_er = MagicMock()
     mock_er.entities = {entity.entity_id: entity}
@@ -714,6 +746,6 @@ async def test_version_5_clears_custom_boost_registry_names():
         assert await async_migrate_entry(hass, entry) is True
 
     mock_er.async_update_entity.assert_called_once_with(
-        "switch.salon_boost", name=None
+        "switch.salon_boost", name=None, original_name=None
     )
     hass.config_entries.async_update_entry.assert_called_once_with(entry, version=5)

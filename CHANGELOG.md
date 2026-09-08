@@ -4,6 +4,15 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha17] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost turn-off** — Remembers the direct Boost route after a
+  `boostShortcut` HTTP 403, avoiding repeated failures when other zones remain
+  active.
+- **Boost switch registry migration** — Clears both stored registry names and
+  declares config-entry migration version 5 so translated names are restored.
+
 ## [1.6.0-alpha16] — 2026-09-08
 
 ### Fixed

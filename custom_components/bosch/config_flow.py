@@ -49,7 +49,7 @@ _LOGGER = logging.getLogger(__name__)
 class BoschFlowHandler(config_entries.ConfigFlow):
     """Handle a bosch config flow."""
 
-    VERSION = 2
+    VERSION = 5
 
     def __init__(self):
         """Initialize Bosch flow."""

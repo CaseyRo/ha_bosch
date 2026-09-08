@@ -397,10 +397,17 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     entity.config_entry_id == entry.entry_id
                     and entity.domain == "switch"
                     and entity.unique_id.startswith(prefix)
-                    and getattr(entity, "name", None) is not None
+                    and (
+                        getattr(entity, "name", None) is not None
+                        or getattr(entity, "original_name", None) is not None
+                    )
                 ):
                     try:
-                        registry.async_update_entity(entity.entity_id, name=None)
+                        registry.async_update_entity(
+                            entity.entity_id,
+                            name=None,
+                            original_name=None,
+                        )
                         cleared += 1
                     except Exception as err:  # pylint: disable=broad-except
                         _LOGGER.warning(
