@@ -335,6 +335,9 @@
       }
     },
     "switch": {
+      "boost_mode": {
+        "name": "Boost"
+      },
       "boost_zone": {
         "name": "Verwarmingsboost"
       },

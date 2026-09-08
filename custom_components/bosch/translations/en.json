@@ -305,6 +305,12 @@
       "min_supply_temperature": {
         "name": "Min supply temperature"
       },
+      "heat_curve_minimum": {
+        "name": "Minimum heating curve"
+      },
+      "heat_curve_maximum": {
+        "name": "Maximum heating curve"
+      },
       "night_setback_threshold": {
         "name": "Night setback threshold"
       },
@@ -356,6 +362,9 @@
       }
     },
     "switch": {
+      "boost_mode": {
+        "name": "Boost"
+      },
       "boost_zone": {
         "name": "Heating boost"
       },

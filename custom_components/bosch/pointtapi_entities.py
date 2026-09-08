@@ -279,6 +279,8 @@ _HEATING_INSTALLATION_RESOURCES = {
     "boostMode",
     "boostRemainingTime",
     "boostTemperature",
+    "heatCurveMax",
+    "heatCurveMin",
     "maxSupply",
     "minSupply",
     "nightSwitchMode",
@@ -539,6 +541,14 @@ def _resolve_device_info(
             via_device=(DOMAIN, uuid),
         )
 
+    if p in {
+        "/gateway/pirSensitivity",
+        "/gateway/notificationLight/enabled",
+    }:
+        return _resolve_device_info(
+            uuid, "/zones/zn1", language=language, data=data
+        )
+
     # Path-based routing — first match wins.
     if p.startswith("/solarCircuits"):
         return DeviceInfo(
@@ -572,7 +582,7 @@ def _resolve_device_info(
             model="EasyControl",
             via_device=(DOMAIN, uuid),
         )
-    circuit_id = _heating_installation_circuit_id(p)
+    circuit_id = "hc1" if p == "/system/awayMode/enabled" else _heating_installation_circuit_id(p)
     if circuit_id:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_heating_installation_{circuit_id}")},
@@ -2455,6 +2465,24 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
     ),
     NumberEntityDescription(
+        key="/heatingCircuits/hc1/heatCurveMin",
+        translation_key="heat_curve_minimum",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=20.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/heatCurveMax",
+        translation_key="heat_curve_maximum",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=40.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
         key="/heatingCircuits/hc1/nightThreshold",
         translation_key="night_setback_threshold",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -2892,6 +2920,12 @@ class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
 
 
 POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
+    BoschPoinTTAPISwitchEntityDescription(
+        key="/heatingCircuits/hc1/boostMode",
+        translation_key="boost_mode",
+        on_value="on",
+        off_value="off",
+    ),
     BoschPoinTTAPISwitchEntityDescription(
         key="/gateway/update/enabled",
         translation_key="auto_firmware_update",

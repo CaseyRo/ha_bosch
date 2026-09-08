@@ -40,6 +40,8 @@ UUID = "101506113"
         ("/zones/zn1/temperatureActual", f"{UUID}_zn1"),
         ("/zones/zn1/actualValvePosition", f"{UUID}_zn1"),
         ("/heatingCircuits/hc1/maxSupply", f"{UUID}_heating_installation_hc1"),
+        ("/system/awayMode/enabled", f"{UUID}_heating_installation_hc1"),
+        ("/gateway/pirSensitivity", f"{UUID}_zn1"),
         ("/heatingCircuits/hc1/nightThreshold", f"{UUID}_heating_installation_hc1"),
         ("/heatingCircuits/hc1/roomInfluence", f"{UUID}_heating_installation_hc1"),
         ("/system/sensors/temperatures/outdoor_t1", f"{UUID}_zn1"),
@@ -49,7 +51,7 @@ UUID = "101506113"
         ("/gateway/wifi/rssi", UUID),
         ("/gateway/versionFirmware", UUID),
         ("/gateway/update/enabled", UUID),
-        ("/gateway/notificationLight/enabled", UUID),
+        ("/gateway/notificationLight/enabled", f"{UUID}_zn1"),
     ],
 )
 def test_resolve_device_info_routes_path_to_expected_device(path: str, expected_id: str) -> None:

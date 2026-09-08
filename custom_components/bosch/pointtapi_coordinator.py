@@ -93,6 +93,8 @@ DISCOVERY_ALLOWED_PATTERNS = {
     ),
     "/heatingCircuits/hc1": (
         "/heatingCircuits/hc1/boost*",
+        "/heatingCircuits/hc1/heatCurveMax",
+        "/heatingCircuits/hc1/heatCurveMin",
         "/heatingCircuits/hc1/maxSupply",
         "/heatingCircuits/hc1/minSupply",
         "/heatingCircuits/hc1/nightSwitchMode",

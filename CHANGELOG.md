@@ -4,6 +4,18 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha21] — 2026-09-08
+
+### Added
+- **Heating curve settings** — Adds minimum and maximum heating-curve
+  controls to the heating installation settings device.
+
+### Fixed
+- **Thermostat-specific switches** — Moves away mode, motion sensitivity, and
+  notification light controls from the gateway to the appropriate thermostat
+  or heating-installation device, with registry migrations for existing
+  entities.
+
 ## [1.6.0-alpha20] — 2026-09-08
 
 ### Fixed

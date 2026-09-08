@@ -762,7 +762,9 @@ async def test_version_4_migrates_boost_registry_entries():
     with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
         res = await async_migrate_entry(hass, entry)
         assert res is True
-        mock_er.async_get_entity_id.assert_called_once_with("switch", "bosch", "test_entry_123_pointtapi_boost")
+        mock_er.async_get_entity_id.assert_any_call(
+            "switch", "bosch", "test_entry_123_pointtapi_boost"
+        )
         mock_er.async_update_entity.assert_any_call(
             "switch.heating_boost", new_unique_id="test_entry_123_pointtapi_boost_zone_1"
         )
@@ -793,6 +795,7 @@ async def test_version_5_clears_custom_boost_registry_names():
     )
     mock_er = MagicMock()
     mock_er.entities = {entity.entity_id: entity}
+    mock_er.async_get_entity_id.return_value = "switch.away_mode"
 
     with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
         assert await async_migrate_entry(hass, entry) is True
@@ -838,7 +841,7 @@ async def test_version_6_moves_thermostat_child_lock_to_zone_device():
     ):
         assert await async_migrate_entry(hass, entry) is True
 
-    mock_dr.async_get_or_create.assert_called_once_with(
+    mock_dr.async_get_or_create.assert_any_call(
         config_entry_id="test_entry_123",
         identifiers={("bosch", "uuid-1_zn1")},
         name="Heating Zone",
@@ -887,7 +890,7 @@ async def test_version_7_clears_all_legacy_boost_registry_names():
     with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
         assert await async_migrate_entry(hass, entry) is True
 
-    assert mock_er.async_update_entity.call_count == 4
+    assert mock_er.async_update_entity.call_count == 5
     mock_er.async_update_entity.assert_any_call(
         "switch.old_boost", name=None, original_name=None
     )
@@ -896,3 +899,95 @@ async def test_version_7_clears_all_legacy_boost_registry_names():
     )
     hass.config_entries.async_update_entry.assert_any_call(entry, version=7)
     hass.config_entries.async_update_entry.assert_any_call(entry, version=8)
+
+
+@pytest.mark.asyncio
+async def test_version_10_moves_away_mode_to_heating_installation_device():
+    """Migrating to v10 moves only the POINTTAPI away-mode switch."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+    from custom_components.bosch.const import CONF_PROTOCOL, POINTTAPI, UUID
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 9
+    entry.entry_id = "test_entry_123"
+    entry.data = {CONF_PROTOCOL: POINTTAPI, UUID: "uuid-1"}
+
+    entity = SimpleNamespace(
+        config_entry_id="test_entry_123",
+        domain="switch",
+        unique_id="test_entry_123_pointtapi_switch_system_awayMode_enabled",
+        entity_id="switch.away_mode",
+        device_id="gateway-device",
+    )
+    mock_er = MagicMock()
+    mock_er.entities = {entity.entity_id: entity}
+    mock_er.async_get_entity_id.return_value = "switch.away_mode"
+    mock_dr = MagicMock()
+    mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
+    mock_dr.async_get_or_create.return_value = SimpleNamespace(id="installation-device")
+
+    with (
+        patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er),
+        patch("homeassistant.helpers.device_registry.async_get", return_value=mock_dr),
+    ):
+        assert await async_migrate_entry(hass, entry) is True
+
+    mock_er.async_get_entity_id.assert_called_once_with(
+        "switch", "bosch", entity.unique_id
+    )
+    mock_er.async_update_entity.assert_called_once_with(
+        "switch.away_mode", device_id="installation-device"
+    )
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=10)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=11)
+
+
+@pytest.mark.asyncio
+async def test_version_11_moves_thermostat_gateway_switches_to_zone_device():
+    """Migrating to v11 moves motion sensitivity and notification light switches."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+    from custom_components.bosch.const import CONF_PROTOCOL, POINTTAPI, UUID
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 10
+    entry.entry_id = "test_entry_123"
+    entry.data = {CONF_PROTOCOL: POINTTAPI, UUID: "uuid-1"}
+    entities = {
+        "switch.motion": SimpleNamespace(
+            config_entry_id=entry.entry_id,
+            domain="switch",
+            unique_id="test_entry_123_pointtapi_switch_gateway_pirSensitivity",
+            entity_id="switch.motion",
+        ),
+        "switch.light": SimpleNamespace(
+            config_entry_id=entry.entry_id,
+            domain="switch",
+            unique_id=(
+                "test_entry_123_pointtapi_switch_gateway_"
+                "notificationLight_enabled"
+            ),
+            entity_id="switch.light",
+        ),
+    }
+    mock_er = MagicMock()
+    mock_er.entities = entities
+    mock_dr = MagicMock()
+    mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
+    mock_dr.async_get_or_create.return_value = SimpleNamespace(id="zone1-device")
+
+    with (
+        patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er),
+        patch("homeassistant.helpers.device_registry.async_get", return_value=mock_dr),
+    ):
+        assert await async_migrate_entry(hass, entry) is True
+
+    assert mock_er.async_update_entity.call_count == 2
+    mock_er.async_update_entity.assert_any_call(
+        "switch.motion", device_id="zone1-device"
+    )
+    mock_er.async_update_entity.assert_any_call(
+        "switch.light", device_id="zone1-device"
+    )
+    hass.config_entries.async_update_entry.assert_called_once_with(entry, version=11)

@@ -308,8 +308,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         - v6 -> v7: clear all legacy and current Boost switch registry names
         - v7 -> v8: refresh Boost entity naming metadata
         - v8 -> v9: remove obsolete POINTTAPI Boost switch entities
+        - v9 -> v10: move away-mode switch to heating installation settings
+        - v10 -> v11: move thermostat-specific gateway switches to zone 1
     """
-    if entry.version >= 8:
+    if entry.version >= 11:
         return True
 
     if entry.version < 2:
@@ -570,6 +572,89 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 removed,
             )
         hass.config_entries.async_update_entry(entry, version=9)
+
+    if entry.version < 10:
+        from homeassistant.helpers import entity_registry as er
+
+        registry = er.async_get(hass)
+        away_unique_id = (
+            f"{entry.entry_id}_pointtapi_switch_system_awayMode_enabled"
+        )
+        away_entity_id = registry.async_get_entity_id(
+            "switch", DOMAIN, away_unique_id
+        )
+        if away_entity_id:
+            device_registry = dr.async_get(hass)
+            uuid = entry.data.get(UUID)
+            parent_device = device_registry.async_get_device(
+                identifiers={(DOMAIN, uuid)}
+            )
+            device_kwargs = {
+                "config_entry_id": entry.entry_id,
+                "identifiers": {(DOMAIN, f"{uuid}_heating_installation_hc1")},
+                "name": "Heating Installation Settings",
+                "manufacturer": "Bosch",
+                "model": "EasyControl",
+            }
+            if parent_device is not None:
+                device_kwargs["via_device_id"] = parent_device.id
+            installation_device = device_registry.async_get_or_create(
+                **device_kwargs,
+            )
+            try:
+                registry.async_update_entity(
+                    away_entity_id,
+                    device_id=installation_device.id,
+                )
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning(
+                    "Migration could not move away-mode entity %s: %s",
+                    away_entity_id,
+                    err,
+                )
+        hass.config_entries.async_update_entry(entry, version=10)
+
+    if entry.version < 11:
+        from homeassistant.helpers import entity_registry as er
+
+        registry = er.async_get(hass)
+        device_registry = dr.async_get(hass)
+        uuid = entry.data.get(UUID)
+        parent_device = device_registry.async_get_device(
+            identifiers={(DOMAIN, uuid)}
+        )
+        device_kwargs = {
+            "config_entry_id": entry.entry_id,
+            "identifiers": {(DOMAIN, f"{uuid}_zn1")},
+            "name": "Heating Zone",
+            "manufacturer": "Bosch",
+            "model": "EasyControl",
+        }
+        if parent_device is not None:
+            device_kwargs["via_device_id"] = parent_device.id
+        zone_device = device_registry.async_get_or_create(**device_kwargs)
+        suffixes = (
+            "_pointtapi_switch_gateway_pirSensitivity",
+            "_pointtapi_switch_gateway_notificationLight_enabled",
+        )
+        for entity in list(registry.entities.values()):
+            if (
+                entity.config_entry_id == entry.entry_id
+                and entity.domain == "switch"
+                and entity.unique_id.endswith(suffixes)
+            ):
+                try:
+                    registry.async_update_entity(
+                        entity.entity_id,
+                        device_id=zone_device.id,
+                    )
+                except Exception as err:  # pylint: disable=broad-except
+                    _LOGGER.warning(
+                        "Migration could not move thermostat switch %s: %s",
+                        entity.entity_id,
+                        err,
+                    )
+        hass.config_entries.async_update_entry(entry, version=11)
 
     return True
 

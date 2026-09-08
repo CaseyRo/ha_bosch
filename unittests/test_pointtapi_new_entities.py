@@ -79,6 +79,9 @@ class TestNotificationsHelpers:
         [
             ("/heatingCircuits/hc1/maxSupply", "uuid-1_heating_installation_hc1"),
             ("/heatingCircuits/hc1/minSupply", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/boostMode", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/heatCurveMin", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/heatCurveMax", "uuid-1_heating_installation_hc1"),
             ("/heatingCircuits/hc1/boostDuration", "uuid-1_heating_installation_hc1"),
             ("/heatingCircuits/hc1/boostTemperature", "uuid-1_heating_installation_hc1"),
             ("/heatingCircuits/hc1/boostRemainingTime", "uuid-1_heating_installation_hc1"),
@@ -846,11 +849,42 @@ class TestComfortControlDescriptions:
         assert d.on_value == "true"
         assert d.off_value == "false"
 
+    def test_boost_mode_switch_is_described_for_heating_installation(self):
+        descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
+        d = descs["/heatingCircuits/hc1/boostMode"]
+        assert d.translation_key == "boost_mode"
+        assert d.on_value == "on"
+        assert d.off_value == "off"
+
     def test_extra_dhw_switch_uses_on_off(self):
         descs = {d.key: d for d in POINTTAPI_SWITCH_DESCRIPTIONS}
         d = descs["/dhwCircuits/dhw1/extraDhw"]
         assert d.on_value == "on"
         assert d.off_value == "off"
+
+    def test_heat_curve_numbers_use_api_constraints(self):
+        data = {
+            "/heatingCircuits/hc1/heatCurveMin": {
+                "value": 20,
+                "writeable": 1,
+                "minValue": 20,
+                "maxValue": 90,
+                "stepSize": 1,
+            },
+            "/heatingCircuits/hc1/heatCurveMax": {
+                "value": 75,
+                "writeable": 1,
+                "minValue": 40,
+                "maxValue": 90,
+                "stepSize": 1,
+            },
+        }
+        descriptions = {
+            d.key: d for d in _pointtapi_number_descriptions(data)
+        }
+
+        assert descriptions["/heatingCircuits/hc1/heatCurveMin"].native_min_value == 20
+        assert descriptions["/heatingCircuits/hc1/heatCurveMax"].native_min_value == 40
 
     def test_extra_dhw_duration_constraints(self):
         """Probe-confirmed: 15–2880 minutes, step 15."""
