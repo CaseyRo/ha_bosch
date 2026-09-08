@@ -307,6 +307,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         - v5 -> v6: move the regular thermostat child-lock switch to zone 1
         - v6 -> v7: clear all legacy and current Boost switch registry names
         - v7 -> v8: refresh Boost entity naming metadata
+        - v8 -> v9: remove obsolete POINTTAPI Boost switch entities
     """
     if entry.version >= 8:
         return True
@@ -431,12 +432,19 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             registry = er.async_get(hass)
             device_registry = dr.async_get(hass)
             uuid = entry.data.get(UUID)
+            parent_device = device_registry.async_get_device(
+                identifiers={(DOMAIN, uuid)}
+            )
+            zone_device_kwargs = {
+                "config_entry_id": entry.entry_id,
+                "identifiers": {(DOMAIN, f"{uuid}_zn1")},
+                "name": "Heating Zone",
+                "manufacturer": "Bosch",
+            }
+            if parent_device is not None:
+                zone_device_kwargs["via_device_id"] = parent_device.id
             zone_device = device_registry.async_get_or_create(
-                config_entry_id=entry.entry_id,
-                identifiers={(DOMAIN, f"{uuid}_zn1")},
-                name="Heating Zone",
-                manufacturer="Bosch",
-                via_device=(DOMAIN, uuid),
+                **zone_device_kwargs,
             )
             child_lock_suffix = (
                 "_pointtapi_switch_devices_device1_thermostat_childLock_enabled"
@@ -534,6 +542,34 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 cleared,
             )
         hass.config_entries.async_update_entry(entry, version=8)
+
+    if entry.version < 9:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
+            prefix = f"{entry.entry_id}_pointtapi_boost"
+            removed = 0
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.startswith(prefix)
+                ):
+                    try:
+                        registry.async_remove(entity.entity_id)
+                        removed += 1
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not remove obsolete Boost switch %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 8 to 9 (%d obsolete Boost switches removed)",
+                removed,
+            )
+        hass.config_entries.async_update_entry(entry, version=9)
 
     return True
 

@@ -157,7 +157,7 @@ def test_boost_switches_are_created_for_all_configured_zones() -> None:
 
 
 @pytest.mark.asyncio
-async def test_switch_setup_creates_one_boost_switch_per_zone():
+async def test_switch_setup_does_not_create_boost_switches():
     coord = _mock_coordinator({
         **_BOOST_DATA,
         "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
@@ -177,7 +177,7 @@ async def test_switch_setup_creates_one_boost_switch_per_zone():
     boost_switches = [
         entity for entity in entities if isinstance(entity, BoschPoinTTAPIBoostSwitchEntity)
     ]
-    assert [switch._zone_id for switch in boost_switches] == [1, 2, 3]
+    assert boost_switches == []
 
 
 def test_boost_switch_unavailable_when_zone_is_not_allowed() -> None:
@@ -766,7 +766,7 @@ async def test_version_4_migrates_boost_registry_entries():
         mock_er.async_update_entity.assert_any_call(
             "switch.heating_boost", new_unique_id="test_entry_123_pointtapi_boost_zone_1"
         )
-        mock_er.async_remove.assert_called_once_with(
+        mock_er.async_remove.assert_any_call(
             "switch.bibliotheque_thermostat_bibliotheque"
         )
         hass.config_entries.async_update_entry.assert_any_call(entry, version=4)
@@ -829,6 +829,7 @@ async def test_version_6_moves_thermostat_child_lock_to_zone_device():
     mock_er.entities = {entity.entity_id: entity}
     zone_device = SimpleNamespace(id="zone1-device")
     mock_dr = MagicMock()
+    mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
     mock_dr.async_get_or_create.return_value = zone_device
 
     with (
@@ -842,7 +843,7 @@ async def test_version_6_moves_thermostat_child_lock_to_zone_device():
         identifiers={("bosch", "uuid-1_zn1")},
         name="Heating Zone",
         manufacturer="Bosch",
-        via_device=("bosch", "uuid-1"),
+        via_device_id="gateway-device",
     )
     mock_er.async_update_entity.assert_any_call(
         "switch.thermostat_child_lock", device_id="zone1-device"

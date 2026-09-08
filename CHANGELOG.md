@@ -4,6 +4,19 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha20] — 2026-09-08
+
+### Fixed
+- **POINTTAPI statistics import** — Supplies `mean_type=NONE` for sum-only
+  gas statistics imports, with compatibility for older Home Assistant cores.
+- **Device registry compatibility** — Uses `via_device_id` for the direct
+  registry API call.
+
+### Removed
+- **POINTTAPI Boost switches** — Removes per-zone Boost switch entities and
+  cleans them from the entity registry; Boost remains available as a climate
+  preset.
+
 ## [1.6.0-alpha19] — 2026-09-08
 
 ### Fixed
