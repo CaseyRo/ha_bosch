@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha9] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup performance** — Fetches nested discovery references in
+  parallel with a concurrency limit of 10, avoiding the previous cumulative
+  delay from hundreds of sequential resource requests.
+
 ## [1.6.0-alpha8] — 2026-09-08
 
 ### Fixed

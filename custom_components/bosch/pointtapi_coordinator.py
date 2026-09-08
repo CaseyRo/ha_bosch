@@ -225,6 +225,52 @@ async def _device_roots(
     )
 
 
+async def _fetch_reference_tree(
+    client: PoinTTAPIClient,
+    response: dict[str, Any],
+    data: dict[str, Any],
+    seen_references: set[str],
+    semaphore: asyncio.Semaphore,
+    *,
+    deadline: float,
+    timings: list[tuple[str, float]] | None = None,
+) -> None:
+    """Fetch nested references concurrently, capped by the discovery semaphore."""
+    async def fetch_reference(ref_id: str, depth: int) -> None:
+        if not ref_id or ref_id in seen_references:
+            return
+        seen_references.add(ref_id)
+        try:
+            async with semaphore:
+                child = await _get_discovery_path(
+                    client, ref_id, deadline=deadline, timings=timings
+                )
+            if not isinstance(child, dict):
+                return
+            data[ref_id] = child
+            if child.get("type") != "refEnum" or depth >= 3:
+                return
+            children = [
+                item.get(ID_KEY)
+                for item in child.get(REFERENCES_KEY) or []
+                if isinstance(item, dict) and item.get(ID_KEY)
+            ]
+            await asyncio.gather(
+                *(fetch_reference(child_id, depth + 1) for child_id in children)
+            )
+        except ConfigEntryAuthFailed:
+            _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
+        except Exception:
+            _LOGGER.debug("POINTTAPI optional ref %s unavailable", ref_id)
+
+    references = [
+        item.get(ID_KEY)
+        for item in response.get(REFERENCES_KEY) or []
+        if isinstance(item, dict) and item.get(ID_KEY)
+    ]
+    await asyncio.gather(*(fetch_reference(ref_id, 1) for ref_id in references))
+
+
 async def _fetch_paths(
     client: PoinTTAPIClient,
     *,
@@ -239,6 +285,7 @@ async def _fetch_paths(
     """
     data: dict[str, Any] = {}
     deadline = asyncio.get_running_loop().time() + DISCOVERY_TOTAL_TIMEOUT
+    semaphore = asyncio.Semaphore(10)
     roots: list[str] = []
     for r in POINTTAPI_COORDINATOR_ROOTS:
         if r == "/zones":
@@ -284,60 +331,15 @@ async def _fetch_paths(
             if not isinstance(resp, dict):
                 continue
             data[root] = resp
-            refs = resp.get(REFERENCES_KEY) or []
-            for ref in refs:
-                ref_id = ref.get(ID_KEY) if isinstance(ref, dict) else None
-                if not ref_id or ref_id in seen_references:
-                    continue
-                seen_references.add(ref_id)
-                try:
-                    sub = await _get_discovery_path(
-                        client, ref_id, deadline=deadline, timings=timings
-                    )
-                    if isinstance(sub, dict):
-                        data[ref_id] = sub
-                        # Fetch nested refEnum leaves such as
-                        # device -> etrv -> childLock -> enabled.
-                        if sub.get("type") == "refEnum":
-                            for r2 in sub.get(REFERENCES_KEY) or []:
-                                r2_id = r2.get(ID_KEY) if isinstance(r2, dict) else None
-                                if not r2_id or r2_id in data:
-                                    continue
-                                try:
-                                    sub2 = await _get_discovery_path(
-                                        client,
-                                        r2_id,
-                                        deadline=deadline,
-                                        timings=timings,
-                                    )
-                                    if isinstance(sub2, dict):
-                                        data[r2_id] = sub2
-                                        if sub2.get("type") == "refEnum":
-                                            for r3 in sub2.get(REFERENCES_KEY) or []:
-                                                r3_id = r3.get(ID_KEY) if isinstance(r3, dict) else None
-                                                if not r3_id or r3_id in data:
-                                                    continue
-                                                try:
-                                                    leaf = await _get_discovery_path(
-                                                        client,
-                                                        r3_id,
-                                                        deadline=deadline,
-                                                        timings=timings,
-                                                    )
-                                                    if isinstance(leaf, dict):
-                                                        data[r3_id] = leaf
-                                                except ConfigEntryAuthFailed:
-                                                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r3_id)
-                                                except Exception:
-                                                    continue
-                                except ConfigEntryAuthFailed:
-                                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r2_id)
-                                except Exception:
-                                    continue
-                except ConfigEntryAuthFailed:
-                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
-                except Exception:  # skip single path failure
-                    continue
+            await _fetch_reference_tree(
+                client,
+                resp,
+                data,
+                seen_references,
+                semaphore,
+                deadline=deadline,
+                timings=timings,
+            )
         except ConfigEntryAuthFailed:
             if root == "/gateway":
                 raise  # Token is genuinely bad
