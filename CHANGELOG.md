@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha11] — 2026-09-08
+
+### Changed
+- **POINTTAPI discovery budget** — Reduces the total startup discovery timeout
+  from 120 seconds to 60 seconds so a slow or incomplete discovery cannot delay
+  initialization for more than one minute.
+
 ## [1.6.0-alpha10] — 2026-09-08
 
 ### Fixed

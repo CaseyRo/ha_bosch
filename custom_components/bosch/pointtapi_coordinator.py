@@ -76,7 +76,7 @@ REDISCOVERY_INTERVAL = 24 * 3600
 # Throttle the bulk-failure WARNING to once per hour; repeats log at DEBUG.
 BULK_WARN_INTERVAL = 3600
 DISCOVERY_OPTIONAL_TIMEOUT = 8
-DISCOVERY_TOTAL_TIMEOUT = 120
+DISCOVERY_TOTAL_TIMEOUT = 60
 DISCOVERY_UNUSED_PREFIXES = (
     # Gateway metadata is not exposed by any POINTTAPI entity. Keep the
     # product, firmware, Wi-Fi, update, notification and UI paths instead.
