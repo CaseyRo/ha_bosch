@@ -205,7 +205,8 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Select | Thermal disinfect weekday | thermal_disinfect_weekday | /dhwCircuits/dhw1/thermalDisinfect/weekDay | 1 entity |
 | Sensor | DHW actual temperature | dhw_actual_temperature | /dhwCircuits/dhw1/actualTemp | 1 entity |
 | Sensor | Thermal disinfect last result | thermal_disinfect_last_result | /dhwCircuits/dhw1/thermalDisinfect/lastResult | 1 entity |
-| Binary sensor | DHW heating | dhw_heating | /dhwCircuits/dhw1/state | 1 entity |
+| Binary sensor | Hot water enabled | dhw_enabled | /dhwCircuits/dhw1/state | 1 entity |
+| Binary sensor | Hot water burner | dhw_burner | derived: flame AND demand = dhw | 1 entity |
 
 #### Solar (optional)
 
@@ -239,6 +240,60 @@ Both protocol paths share these, addressed by device id:
 - `bosch.debug_scan` — **XMPP/HTTP entries only**. On a cloud entry, use the diagnostics download plus `send_custom_get` instead.
 
 The recording and hot-water services (`bosch.update_recordings_sensor`, `bosch.fetch_recordings_sensor_range`, `bosch.set_dhw_charge`) are XMPP/HTTP concerns and behave as before.
+
+## Dashboard
+
+### Colour the thermostat dial by what the boiler is doing
+
+Home Assistant's thermostat card paints the ring from **`hvac_mode`** (`heat` →
+orange, `auto` → green, `off` → grey) and uses **`hvac_action`** only for the
+faint glow behind the dial and the label underneath. So a zone in manual mode
+shows an orange ring even while the burner is off — the card paints mode, not
+action, and no integration change can fix that without lying about the mode.
+
+The dashboard-layer answer is [card-mod](https://github.com/thomasloven/lovelace-card-mod),
+repainting the CSS variables per card from the action:
+
+```yaml
+type: thermostat
+entity: climate.zone_zn1
+card_mod:
+  style: |
+    ha-card {
+      {% if state_attr(config.entity, 'hvac_action') == 'heating' %}
+        --state-climate-heat-color: var(--deep-orange-color);
+        --state-climate-auto-color: var(--deep-orange-color);
+      {% else %}
+        --state-climate-heat-color: var(--green-color);
+        --state-climate-auto-color: var(--green-color);
+      {% endif %}
+    }
+```
+
+Validated by @SiemEcho on card-mod 4.2.1 / HA 2026.9.0 across all four
+mode × action combinations ([#33](https://github.com/CaseyRo/ha_bosch/issues/33)).
+
+Expect up to a minute between the burner lighting and the dial changing: the
+boiler's `actualModulation` has to rise above zero and `/heatSources` is on the
+60-second poll.
+
+### Hot water: which sensor is which
+
+Two binary sensors look similar and mean different things:
+
+| entity | source | means |
+|---|---|---|
+| `binary_sensor.*_dhw_enabled` | `/dhwCircuits/dhw1/state` | hot water is **permitted** — it follows the on/off setting, not the flame |
+| `binary_sensor.*_dhw_burner` | derived | the burner is **firing for hot water** right now |
+
+Use `dhw_burner` for "is it heating water"; `dhw_enabled` only tells you whether
+the circuit is switched on. If you want a flame indicator that covers both
+central heating and hot water, use `binary_sensor.*_burner_flame`.
+
+### Zone mode
+
+The integration ships a **Zone mode** select (`select.*_zone_mode`, backed by
+`/zones/{id}/userMode`) — drop it on the card instead of overloading presets.
 
 ## Installation
 

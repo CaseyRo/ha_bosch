@@ -382,13 +382,13 @@ async def test_xmpp_configure_gateway_success(mock_hass):
 
 
 @pytest.mark.asyncio
-async def test_xmpp_bad_credentials_aborts(mock_hass):
-    """configure_gateway with bad credentials aborts with faulty_credentials."""
+async def test_xmpp_bad_credentials_returns_error_key(mock_hass):
+    """Bad credentials yield an error key, not an abort — the step re-shows the
+    form so a mistyped token does not throw away the whole flow."""
     from bosch_thermostat_client.exceptions import DeviceException
 
     flow = _make_flow(mock_hass)
     flow._choose_type = "EASYCONTROL"
-    flow.async_abort = MagicMock(return_value={"type": "abort", "reason": "faulty_credentials"})
 
     mock_hass.async_add_executor_job = AsyncMock(side_effect=DeviceException)
 
@@ -403,8 +403,7 @@ async def test_xmpp_bad_credentials_aborts(mock_hass):
             access_token="bad_token",
         )
 
-    assert result["type"] == "abort"
-    assert result["reason"] == "faulty_credentials"
+    assert result == "faulty_credentials"
 
 
 # ── Reauth flow ──────────────────────────────────────────────────────────────
@@ -669,9 +668,8 @@ async def test_configure_gateway_executor_runs_gateway_constructor(mock_hass):
 
 
 @pytest.mark.asyncio
-async def test_configure_gateway_unexpected_error_aborts_unknown(mock_hass):
+async def test_configure_gateway_unexpected_error_returns_unknown(mock_hass):
     flow = _make_flow(mock_hass)
-    flow.async_abort = MagicMock(return_value={"type": "abort", "reason": "unknown"})
     mock_hass.async_add_executor_job = AsyncMock(side_effect=RuntimeError("boom"))
 
     with patch("custom_components.bosch.config_flow.gateway_chooser", return_value=MagicMock()):
@@ -682,7 +680,7 @@ async def test_configure_gateway_unexpected_error_aborts_unknown(mock_hass):
             access_token="token",
         )
 
-    assert result == {"type": "abort", "reason": "unknown"}
+    assert result == "unknown"
 
 
 @pytest.mark.asyncio
@@ -723,3 +721,33 @@ def test_async_get_options_flow_returns_options_handler():
     entry = MagicMock()
     options_flow = BoschFlowHandler.async_get_options_flow(entry)
     assert isinstance(options_flow, OptionsFlowHandler)
+
+
+@pytest.mark.asyncio
+async def test_xmpp_step_without_input_shows_the_form(mock_hass):
+    """The step used to fall off the end and return None, which the flow
+    manager cannot handle."""
+    flow = _make_flow(mock_hass)
+    flow.async_show_form = MagicMock(return_value={"type": "form", "step_id": "xmpp_config"})
+
+    result = await flow.async_step_xmpp_config(None)
+
+    assert result["type"] == "form"
+    assert flow.async_show_form.call_args.kwargs["step_id"] == "xmpp_config"
+
+
+@pytest.mark.asyncio
+async def test_xmpp_bad_token_returns_to_the_form_with_an_error(mock_hass):
+    """A typo in the access token must not dead-end the flow."""
+    flow = _make_flow(mock_hass)
+    flow._choose_type = "EASYCONTROL"
+    flow._protocol = "XMPP"
+    flow.async_show_form = MagicMock(return_value={"type": "form", "step_id": "xmpp_config"})
+    flow.configure_gateway = AsyncMock(return_value="faulty_credentials")
+
+    result = await flow.async_step_xmpp_config(
+        {"address": "192.168.1.100", "access_token": "typo", "password": None}
+    )
+
+    assert result["type"] == "form"
+    assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "faulty_credentials"}

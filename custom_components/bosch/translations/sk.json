@@ -94,7 +94,7 @@
           "safety_supply_temp_rising_too_fast": "Bezpečnostná/prívodná teplota stúpa príliš rýchlo",
           "heating_gradient_limitation": "Obmedzenie gradientu v režime vykurovania",
           "supply_return_temp_difference_too_high": "Rozdiel teploty prívodu a spiatočky je príliš veľký",
-           "dhw_gradient_limitation": "Obmedzenie gradientu v režime TÚV",
+          "dhw_gradient_limitation": "Obmedzenie gradientu v režime TÚV",
           "pump_no_pressure_difference": "Obehové čerpadlo nevytvára žiadny rozdiel tlaku",
           "fan_stopped_during_safety_time": "Ventilátor sa zastavil počas bezpečnostného času",
           "fan_stopped_during_operation": "Ventilátor sa zastavil počas prevádzky",
@@ -145,8 +145,8 @@
           "fan_starting": "Spúšťanie ventilátora",
           "startup_delay": "Oneskorenie spustenia",
           "pump_or_flow_insufficient": "Nedostatočná činnosť čerpadla alebo prietok",
-           "purge_function_active": "Funkcia odvzdušnenia je aktívna",
-           "pump_or_three_way_valve_anti_seizure": "Aktívna ochrana proti zablokovaniu čerpadla/trojcestného ventilu",
+          "purge_function_active": "Funkcia odvzdušnenia je aktívna",
+          "pump_or_three_way_valve_anti_seizure": "Aktívna ochrana proti zablokovaniu čerpadla/trojcestného ventilu",
           "internal_error_service_required": "Interná chyba - vyžaduje sa servisný zásah",
           "burner_starting": "Horák sa spúšťa",
           "heat_demand_below_min_power": "Požiadavka na teplo pod minimálnym výkonom",
@@ -156,7 +156,7 @@
           "supply_temp_above_setpoint": "Teplota prívodu nad nastavenou hodnotou",
           "main_controller_fault": "Porucha hlavného regulátora",
           "regulation_system_fault": "Porucha regulačného systému",
-           "dhw_sensor_temp_too_high": "Teplota snímača TÚV je príliš vysoká",
+          "dhw_sensor_temp_too_high": "Teplota snímača TÚV je príliš vysoká",
           "internal_fault": "Interná porucha",
           "electronic_fault": "Elektronická porucha",
           "internal_system_fault": "Interná porucha systému"
@@ -313,11 +313,17 @@
       }
     },
     "binary_sensor": {
-      "dhw_heating": {
-        "name": "Stav",
+      "burner_flame": {
+        "name": "Plameň"
+      },
+      "dhw_burner": {
+        "name": "Horák teplej vody"
+      },
+      "dhw_enabled": {
+        "name": "Teplá voda povolená",
         "state": {
-          "off": "Vypnuté",
-          "on": "Vykurovanie"
+          "on": "Povolená",
+          "off": "Zakázaná"
         }
       },
       "open_window_detected": {
@@ -326,9 +332,6 @@
           "off": "Zatvorené",
           "on": "Otvorené"
         }
-      },
-      "burner_flame": {
-        "name": "Plameň"
       },
       "refill_needed": {
         "name": "Potrebné doplnenie"
@@ -423,20 +426,6 @@
   "config": {
     "title": "Bosch thermostat",
     "step": {
-      "choose_type": {
-        "title": "Zvoľte typ zariadenia.",
-        "data": {
-          "device_type": "Zvoľte typ vášho zariadenia."
-        }
-      },
-      "http_config": {
-        "title": "Bosch thermostat HTTP config",
-        "data": {
-          "address": "IP adresa",
-          "access_token": "Prístupový token",
-          "password": "Heslo"
-        }
-      },
       "xmpp_config": {
         "title": "Bosch thermostat XMPP config",
         "data": {
@@ -445,19 +434,13 @@
           "password": "Heslo"
         }
       },
-      "protocol": {
-        "title": "Bosch IVT Protokol. HTTP je lokálne. XMPP je cloud!",
-        "data": {
-          "Protocol": "Buď http alebo xmpp"
-        }
-      },
       "pointtapi_oauth_open": {
         "title": "Prihláste sa svojím účtom Bosch",
         "description": "Kliknite na **[tento odkaz]({auth_url})**, aby ste otvorili prihlasovaciu stránku Bosch na novej karte prehliadača, a prihláste sa svojím účtom Bosch.\n\nPo prihlásení prehliadač zobrazí chybu „Stránku nemožno otvoriť“ — **to je v poriadku**. Nechajte kartu otvorenú a kliknite nižšie na **Odoslať**."
       },
       "pointtapi_oauth": {
         "title": "Dokončiť prihlásenie",
-        "description": "Nižšie vložte **callback URL** alebo iba **kód**. Po prihlásení prehliadač prejde na adresu začínajúcu `com.bosch.tt.dashtt.pointt://app/login?code=` a zvyčajne zobrazí chybovú alebo prázdnu stránku — to je normálne. Skopírujte celú adresu alebo iba hodnotu za `code=`.",
+        "description": "Nižšie vložte **callback URL** alebo iba **kód**. Po prihlásení prehliadač prejde na adresu začínajúcu `com.bosch.tt.dashtt.pointt://app/login?code=` a zvyčajne zobrazí chybovú alebo prázdnu stránku — to je normálne. Skopírujte celú adresu alebo iba hodnotu za `code=`.\n\n**Problémy?** Ak sa po prihlásení zdá adresný riadok prázdny, otvorte históriu prehliadača — neúspešná položka `com.bosch.tt.dashtt.pointt://` je tam zaznamenaná a adresu z nej môžete skopírovať.",
         "data": {
           "oauth_callback_url": "Callback URL alebo kód"
         }
@@ -468,15 +451,37 @@
         "data": {
           "device_id": "Brána"
         }
+      },
+      "easycontrol_protocol": {
+        "title": "Pripojenie EasyControl",
+        "description": "XMPP sa pripája priamo k zariadeniu v lokálnej sieti. Cloudové prihlásenie používa váš účet Bosch a funguje aj na diaľku.",
+        "data": {
+          "protocol": "Typ pripojenia"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "Sériové číslo vášho EasyControl",
+        "description": "Zadajte sériové číslo zariadenia (s pomlčkami alebo bez). Nájdete ho na štítku na zariadení alebo v aplikácii Bosch EasyControl v Nastavenia → Informácie o zariadení.",
+        "data": {
+          "device_id": "Sériové číslo"
+        }
       }
     },
     "error": {
-      "service_unavailable": "Služba nedostupná"
+      "service_unavailable": "Služba nedostupná",
+      "invalid_device_id": "ID zariadenia môže obsahovať iba číslice (sériové číslo bez pomlčiek).",
+      "oauth_callback_empty": "Vložte URL z adresného riadka prehliadača.",
+      "oauth_callback_invalid": "Z tejto URL sa nepodarilo prečítať prihlasovací kód. Skontrolujte, či ste skopírovali celú URL po tom, čo stránka zobrazila „Stránku nie je možné otvoriť“.",
+      "oauth_token_failed": "Prihlásenie do Bosch sa nepodarilo dokončiť. Prihlasovací kód mohol vypršať – skúste to znova od začiatku.",
+      "faulty_credentials": "Pripojenie zlyhalo. Skontrolujte adresu zariadenia a prístupový token a skúste to znova.",
+      "unknown": "Neočakávaná chyba. Podrobnosti nájdete v protokoloch Home Assistant."
     },
     "abort": {
       "faulty_credentials": "Zlé poverenia používateľa alebo nesprávna adresa IP",
       "already_configured": "Stránka ovládača je už nakonfigurovaná",
-      "unknown": "Neznámy dôvod. Skontrolujte LOGS."
+      "unknown": "Neznámy dôvod. Skontrolujte LOGS.",
+      "reauth_invalid": "Opätovné overenie sa vzťahuje iba na položky POINTTAPI.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
   "options": {
@@ -487,6 +492,14 @@
           "new_stats_api": "Použite novú štatistiku API",
           "optimistic_mode": "Pre niektoré funkcie použite optimistický režim (momentálne je nastavený prevádzkový režim Easycontrol)."
         }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "XMPP": "Lokálne pripojenie (XMPP)",
+        "pointtapi": "Cloud / účet Bosch"
       }
     }
   }

@@ -313,11 +313,17 @@
       }
     },
     "binary_sensor": {
-      "dhw_heating": {
-        "name": "Stato",
+      "burner_flame": {
+        "name": "Fiamma"
+      },
+      "dhw_burner": {
+        "name": "Bruciatore acqua calda"
+      },
+      "dhw_enabled": {
+        "name": "Acqua calda abilitata",
         "state": {
-          "off": "Spento",
-          "on": "In riscaldamento"
+          "on": "Abilitata",
+          "off": "Disabilitata"
         }
       },
       "open_window_detected": {
@@ -326,9 +332,6 @@
           "off": "Chiusa",
           "on": "Aperta"
         }
-      },
-      "burner_flame": {
-        "name": "Fiamma"
       },
       "refill_needed": {
         "name": "Riempimento necessario"
@@ -423,20 +426,6 @@
   "config": {
     "title": "Termostato Bosch",
     "step": {
-      "choose_type": {
-        "title": "Selezione dispositivo.",
-        "data": {
-          "device_type": "Seleziona il tipo di dispositivo."
-        }
-      },
-      "http_config": {
-        "title": "Configurazione HTTP",
-        "data": {
-          "address": "Indirizzo IP",
-          "access_token": "Token di accesso",
-          "password": "Password"
-        }
-      },
       "xmpp_config": {
         "title": "Configurazione XMPP",
         "data": {
@@ -445,19 +434,13 @@
           "password": "Password"
         }
       },
-      "protocol": {
-        "title": "Protocollo IVT Bosch. HTTP utilizza comunicazioni nella rete locale. XMPP invece utilizza il cloud!",
-        "data": {
-          "Protocol": "HTTP oppure XMPP"
-        }
-      },
       "pointtapi_oauth_open": {
         "title": "Accedi con il tuo account Bosch",
         "description": "Fai clic su **[questo link]({auth_url})** per aprire la pagina di accesso Bosch in una nuova scheda del browser, quindi accedi con il tuo account Bosch.\n\nDopo l'accesso, il browser mostrerà un errore « Impossibile aprire la pagina » — **è previsto**. Lascia la scheda aperta e fai clic su **Invia** qui sotto."
       },
       "pointtapi_oauth": {
         "title": "Completa l'accesso",
-        "description": "Incolla qui sotto l'**URL di callback** o solo il **codice**. Dopo l'accesso, il browser passa a un indirizzo che inizia con `com.bosch.tt.dashtt.pointt://app/login?code=` e di solito mostra una pagina di errore o vuota — è normale. Copia l'intero indirizzo, oppure solo il valore dopo `code=`.",
+        "description": "Incolla qui sotto l'**URL di callback** o solo il **codice**. Dopo l'accesso, il browser passa a un indirizzo che inizia con `com.bosch.tt.dashtt.pointt://app/login?code=` e di solito mostra una pagina di errore o vuota — è normale. Copia l'intero indirizzo, oppure solo il valore dopo `code=`.\n\n**Problemi?** Se dopo l'accesso la barra degli indirizzi sembra vuota, apri la cronologia del browser: la voce `com.bosch.tt.dashtt.pointt://` non riuscita è registrata lì e l'indirizzo può essere copiato da quella.",
         "data": {
           "oauth_callback_url": "URL di callback o codice"
         }
@@ -468,15 +451,37 @@
         "data": {
           "device_id": "Gateway"
         }
+      },
+      "easycontrol_protocol": {
+        "title": "Connessione EasyControl",
+        "description": "XMPP si collega direttamente al dispositivo sulla rete locale. L'accesso cloud usa il tuo account Bosch e funziona da remoto.",
+        "data": {
+          "protocol": "Tipo di connessione"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "Numero di serie del tuo EasyControl",
+        "description": "Inserisci il numero di serie del dispositivo (con o senza trattini). Lo trovi sull'etichetta del dispositivo o nell'app Bosch EasyControl in Impostazioni → Informazioni dispositivo.",
+        "data": {
+          "device_id": "Numero di serie"
+        }
       }
     },
     "error": {
-      "service_unavailable": "Nessun servizio disponibile"
+      "service_unavailable": "Nessun servizio disponibile",
+      "invalid_device_id": "L'ID dispositivo deve contenere solo cifre (numero di serie senza trattini).",
+      "oauth_callback_empty": "Incolla l'URL dalla barra degli indirizzi del browser.",
+      "oauth_callback_invalid": "Impossibile leggere il codice di accesso da questo URL. Assicurati di aver copiato l'URL completo dopo che la pagina ha mostrato \"Impossibile aprire la pagina\".",
+      "oauth_token_failed": "Accesso a Bosch non riuscito. Il codice di accesso potrebbe essere scaduto: riprova dall'inizio.",
+      "faulty_credentials": "Connessione non riuscita. Controlla indirizzo e token di accesso del dispositivo, poi riprova.",
+      "unknown": "Errore imprevisto. Controlla i log di Home Assistant per i dettagli."
     },
     "abort": {
       "faulty_credentials": "Credenziali utente errate oppure IP errato",
       "already_configured": "La zona del controller è gia configurata",
-      "unknown": "Causa sconosciuta. Controllare i log."
+      "unknown": "Causa sconosciuta. Controllare i log.",
+      "reauth_invalid": "La ri-autenticazione si applica solo alle voci POINTTAPI.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
   "options": {
@@ -487,6 +492,14 @@
           "new_stats_api": "Utilizza la nuova API statistica (New statistic API)",
           "optimistic_mode": "Utilizza modalità \"ottimista\" per alcune funzioni (impostazione di default per EasyControl)."
         }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "XMPP": "Connessione locale (XMPP)",
+        "pointtapi": "Cloud / account Bosch"
       }
     }
   }
