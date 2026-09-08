@@ -304,8 +304,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         - v3 -> v4: remove stale per-zone Boost registry entries so HA recreates
             them with the corrected entity name
         - v4 -> v5: clear custom Boost switch names so HA uses translations
+        - v5 -> v6: move the regular thermostat child-lock switch to zone 1
+        - v6 -> v7: clear all legacy and current Boost switch registry names
     """
-    if entry.version >= 5:
+    if entry.version >= 7:
         return True
 
     if entry.version < 2:
@@ -420,6 +422,85 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 cleared,
             )
         hass.config_entries.async_update_entry(entry, version=5)
+
+    if entry.version < 6:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
+            device_registry = dr.async_get(hass)
+            uuid = entry.data.get(UUID)
+            zone_device = device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={(DOMAIN, f"{uuid}_zn1")},
+                name="Heating Zone",
+                manufacturer="Bosch",
+                via_device=(DOMAIN, uuid),
+            )
+            child_lock_suffix = (
+                "_pointtapi_switch_devices_device1_thermostat_childLock_enabled"
+            )
+            moved = 0
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.endswith(child_lock_suffix)
+                    and entity.device_id != zone_device.id
+                ):
+                    try:
+                        registry.async_update_entity(
+                            entity.entity_id,
+                            device_id=zone_device.id,
+                        )
+                        moved += 1
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not move child-lock entity %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 5 to 6 (%d child-lock entities moved)",
+                moved,
+            )
+        hass.config_entries.async_update_entry(entry, version=6)
+
+    if entry.version < 7:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
+            prefix = f"{entry.entry_id}_pointtapi_boost"
+            cleared = 0
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.startswith(prefix)
+                    and (
+                        getattr(entity, "name", None) is not None
+                        or getattr(entity, "original_name", None) is not None
+                    )
+                ):
+                    try:
+                        registry.async_update_entity(
+                            entity.entity_id,
+                            name=None,
+                            original_name=None,
+                        )
+                        cleared += 1
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not clear legacy Boost name %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 6 to 7 (%d Boost names cleared)",
+                cleared,
+            )
+        hass.config_entries.async_update_entry(entry, version=7)
 
     return True
 

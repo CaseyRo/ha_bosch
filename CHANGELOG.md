@@ -4,6 +4,17 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha18] — 2026-09-08
+
+### Fixed
+- **Boost switch registry migration** — Adds migration v7 to clean legacy and
+  current registry names so translated Boost switch labels are restored.
+- **Thermostat child-lock device** — Moves the main thermostat child-lock
+  switch from the gateway device to the zone 1 thermostat device.
+- **POINTTAPI Boost turn-off** — Clears and reapplies partial zone selections,
+  preserves user selections across stale refreshes, and uses `boostMode=off`
+  when the last active zone is removed.
+
 ## [1.6.0-alpha17] — 2026-09-08
 
 ### Fixed

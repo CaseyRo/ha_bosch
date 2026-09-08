@@ -816,6 +816,10 @@ def _thermostat_valve_device_info_for_path(
         return _thermostat_valve_device_info(uuid, data, valve_id, language)
     if _thermostat_device_type(data, valve_id) == THERMOSTAT_VALVE_TYPE:
         return _thermostat_valve_device_info(uuid, data, valve_id, language)
+    if _thermostat_device_type(data, valve_id) == "thermostat":
+        return _resolve_device_info(
+            uuid, "/zones/zn1", language=language, data=data
+        )
     return _resolve_device_info(uuid, path, language=language, data=data)
 
 

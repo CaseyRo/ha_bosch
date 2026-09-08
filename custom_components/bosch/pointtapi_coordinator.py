@@ -720,16 +720,33 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             if route == ROUTE_SHORTCUT:
                 data = self.data or {}
+                path = "/heatingCircuits/hc1/boostShortcut"
+                temperature = float(
+                    _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+                )
+                duration = int(
+                    float(_val(data, "/heatingCircuits/hc1/boostDuration") or 2.0)
+                )
+                if not zones:
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostMode", "off"
+                    )
+                    return True
                 await self.client.put(
-                    "/heatingCircuits/hc1/boostShortcut",
+                    path,
                     [{
-                        "mode": "on" if zones else "off",
-                        "temperature": float(
-                            _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
-                        ),
-                        "duration": int(
-                            float(_val(data, "/heatingCircuits/hc1/boostDuration") or 2.0)
-                        ),
+                        "mode": "off",
+                        "temperature": temperature,
+                        "duration": duration,
+                        "zones": [],
+                    }],
+                )
+                await self.client.put(
+                    path,
+                    [{
+                        "mode": "on",
+                        "temperature": temperature,
+                        "duration": duration,
                         "zones": zones,
                     }],
                 )
@@ -850,9 +867,6 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
                     self._boost_selected_zones = set(target_zones)
                     await self.async_request_refresh()
-                    self._boost_selected_zones = _boost_zone_values(
-                        self.data or {}, "zones"
-                    )
                     return
 
                 # Fallback: manual mode workaround
@@ -917,9 +931,6 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if await self._native_boost_off(route, target_zones):
                         self._boost_selected_zones = set(target_zones)
                         await self.async_request_refresh()
-                        self._boost_selected_zones = _boost_zone_values(
-                            self.data or {}, "zones"
-                        )
                         return
 
                 # Fallback disable
