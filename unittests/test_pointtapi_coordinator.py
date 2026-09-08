@@ -556,6 +556,7 @@ class TestBulkSteadyState:
         })
 
         data = await coord._fetch()
+        await coord._history_hourly_task
 
         client.bulk.assert_awaited_once_with(coord._fast_bulk_paths)
         assert data["/heatingCircuits/hc1"]["value"] == "bulk"
@@ -565,7 +566,9 @@ class TestBulkSteadyState:
             call.args[0].startswith("/energy/historyHourly")
             for call in client.get.await_args_list
         )
-        assert data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
+        assert HISTORY_HOURLY_PATH not in data
+        next_data = await coord._fetch()
+        assert next_data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
 
     @pytest.mark.asyncio
     async def test_history_hourly_refreshes_after_cache_interval(self):
@@ -580,6 +583,7 @@ class TestBulkSteadyState:
             }
         )
         await coord._fetch()
+        await coord._history_hourly_task
 
         assert any(
             call.args[0].startswith("/energy/historyHourly")

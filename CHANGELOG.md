@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha8] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup responsiveness** — Publishes current device data without
+  waiting for paginated `historyHourly` loading; historical energy data now
+  refreshes in the background and is included in a later coordinator update.
+
 ## [1.6.0-alpha7] — 2026-09-08
 
 ### Fixed

@@ -393,6 +393,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._bulk_warned_at: float | None = None
         self._history_hourly_data: dict[str, Any] | None = None
         self._last_history_hourly_fetch: float = 0.0
+        self._history_hourly_task: asyncio.Task[None] | None = None
         self._slow_bulk_paths: list[str] = []
         self._fast_bulk_paths: list[str] = []
         self._slow_data: dict[str, Any] = {}
@@ -767,6 +768,46 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.warning("POINTTAPI coordinator update failed: %s", err)
             raise UpdateFailed(f"POINTTAPI update failed: {err}") from err
 
+    async def _refresh_history_hourly_background(self) -> None:
+        """Load hourly history without delaying current-state coordinator updates."""
+        try:
+            merged = await _fetch_history_hourly_all(self._client)
+            if isinstance(merged, dict):
+                self._history_hourly_data = merged
+                self._last_history_hourly_fetch = time.monotonic()
+        except ConfigEntryAuthFailed:
+            _LOGGER.debug(
+                "POINTTAPI 401/403 on %s, keeping cached data",
+                HISTORY_HOURLY_PATH,
+            )
+        except Exception as err:
+            _LOGGER.debug(
+                "POINTTAPI optional path %s not available: %s",
+                HISTORY_HOURLY_PATH,
+                err,
+            )
+        finally:
+            self._history_hourly_task = None
+
+    def _schedule_history_hourly_refresh(self, now: float) -> None:
+        """Start history loading once it is due, without blocking the poll."""
+        history_task = getattr(self, "_history_hourly_task", None)
+        if (history_task is None or history_task.done()) and (
+            self._history_hourly_data is None
+            or now - self._last_history_hourly_fetch
+            >= HISTORY_HOURLY_REFRESH_INTERVAL
+        ):
+            hass = getattr(self, "hass", None)
+            create_task = getattr(hass, "async_create_task", None)
+            if create_task is None:
+                self._history_hourly_task = asyncio.create_task(
+                    self._refresh_history_hourly_background()
+                )
+            else:
+                self._history_hourly_task = create_task(
+                    self._refresh_history_hourly_background()
+                )
+
     async def _fetch(self) -> dict[str, Any]:
         """Discovery walk (first refresh / every 24h) or bulk steady state.
 
@@ -833,23 +874,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             len(data), len(self._bulk_paths),
         )
 
-        if (
-            self._history_hourly_data is None
-            or now - self._last_history_hourly_fetch
-            >= HISTORY_HOURLY_REFRESH_INTERVAL
-        ):
-            try:
-                merged = await _fetch_history_hourly_all(self._client)
-                if isinstance(merged, dict):
-                    self._history_hourly_data = merged
-                    self._last_history_hourly_fetch = now
-            except ConfigEntryAuthFailed:
-                _LOGGER.debug("POINTTAPI 401/403 on %s, keeping cached data", HISTORY_HOURLY_PATH)
-            except Exception as err:
-                _LOGGER.debug(
-                    "POINTTAPI optional path %s not available: %s",
-                    HISTORY_HOURLY_PATH, err,
-                )
+        self._schedule_history_hourly_refresh(now)
         if self._history_hourly_data is not None:
             data[HISTORY_HOURLY_PATH] = self._history_hourly_data
         return data
