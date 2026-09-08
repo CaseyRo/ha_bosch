@@ -4,6 +4,12 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha12] — 2026-09-08
+
+### Changed
+- **POINTTAPI startup diagnostics** — Logs the total first-refresh duration and
+  every measured discovery path on every startup, including fast starts.
+
 ## [1.6.0-alpha11] — 2026-09-08
 
 ### Changed

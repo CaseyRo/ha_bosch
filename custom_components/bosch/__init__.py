@@ -475,16 +475,15 @@ class BoschGatewayEntry:
             startup_started = time.monotonic()
             await coordinator.async_config_entry_first_refresh()
             startup_elapsed = time.monotonic() - startup_started
-            if startup_elapsed > 30:
-                timing_summary = "; ".join(
-                    f"{path}={duration:.3f}s"
-                    for path, duration in coordinator.discovery_timings
-                ) or "no discovery path timings recorded"
-                _LOGGER.warning(
-                    "POINTTAPI startup first refresh took %.3fs; discovery paths: %s",
-                    startup_elapsed,
-                    timing_summary,
-                )
+            timing_summary = "; ".join(
+                f"{path}={duration:.3f}s"
+                for path, duration in getattr(coordinator, "discovery_timings", [])
+            ) or "no discovery path timings recorded"
+            _LOGGER.warning(
+                "POINTTAPI startup first refresh took %.3fs; discovery paths: %s",
+                startup_elapsed,
+                timing_summary,
+            )
             manufacturer, model = _gateway_product_info(
                 getattr(coordinator, "data", None)
             )
