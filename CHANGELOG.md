@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha5] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup performance** — Defers paginated `historyHourly`
+  loading until the first regular poll so current thermostat data and controls
+  become available without waiting for the historical energy walk.
+
 ## [1.6.0-alpha4] — 2026-09-08
 
 ### Fixed

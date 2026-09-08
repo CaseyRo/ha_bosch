@@ -164,7 +164,9 @@ async def _device_roots(client: PoinTTAPIClient) -> list[str]:
     return await _discover_roots(client, "/devices", "/devices")
 
 
-async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
+async def _fetch_paths(
+    client: PoinTTAPIClient, *, include_history_hourly: bool = True
+) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
     Only /gateway auth failures are treated as real token problems (re-raised as
@@ -187,6 +189,8 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     roots = list(dict.fromkeys(roots))
     seen_references: set[str] = set()
     for root in roots:
+        if root == "/energy/historyHourly" and not include_history_hourly:
+            continue
         if root == "/energy/historyHourly":
             try:
                 merged = await _fetch_history_hourly_all(client)
@@ -675,7 +679,11 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
         now = time.monotonic()
         if not self._bulk_paths or now - self._last_discovery >= REDISCOVERY_INTERVAL:
-            data = await _fetch_paths(self._client)
+            # Keep startup focused on current device state. Historical hourly
+            # energy data is fetched by the next regular poll.
+            data = await _fetch_paths(
+                self._client, include_history_hourly=False
+            )
             # The paginated historyHourly resource stays on sequential GETs
             # (bulk resourcePaths carry no query strings).
             self._bulk_paths = [p for p in data if p != HISTORY_HOURLY_PATH]

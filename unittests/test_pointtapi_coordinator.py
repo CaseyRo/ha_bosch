@@ -539,6 +539,7 @@ class TestBulkSteadyState:
         client.bulk.assert_not_called()
         assert "/gateway" in data
         assert "/gateway/DateTime" in data
+        assert HISTORY_HOURLY_PATH not in data
         # historyHourly is excluded from the bulk path set (paginated)
         assert HISTORY_HOURLY_PATH not in coord._bulk_paths
         assert "/gateway" in coord._bulk_paths
@@ -559,8 +560,11 @@ class TestBulkSteadyState:
         client.bulk.assert_awaited_once_with(coord._fast_bulk_paths)
         assert data["/heatingCircuits/hc1"]["value"] == "bulk"
         assert data["/gateway"]["references"]
-        # Hourly history is served from the discovery cache inside its interval.
-        client.get.assert_not_called()
+        # Hourly history is loaded on the first regular poll after startup.
+        assert any(
+            call.args[0].startswith("/energy/historyHourly")
+            for call in client.get.await_args_list
+        )
         assert data[HISTORY_HOURLY_PATH]["value"][0]["entries"] == []
 
     @pytest.mark.asyncio
