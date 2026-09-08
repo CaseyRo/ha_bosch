@@ -306,8 +306,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         - v4 -> v5: clear custom Boost switch names so HA uses translations
         - v5 -> v6: move the regular thermostat child-lock switch to zone 1
         - v6 -> v7: clear all legacy and current Boost switch registry names
+        - v7 -> v8: refresh Boost entity naming metadata
     """
-    if entry.version >= 7:
+    if entry.version >= 8:
         return True
 
     if entry.version < 2:
@@ -501,6 +502,38 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 cleared,
             )
         hass.config_entries.async_update_entry(entry, version=7)
+
+    if entry.version < 8:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
+            prefix = f"{entry.entry_id}_pointtapi_boost"
+            cleared = 0
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.startswith(prefix)
+                ):
+                    try:
+                        registry.async_update_entity(
+                            entity.entity_id,
+                            name=None,
+                            original_name=None,
+                        )
+                        cleared += 1
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not refresh Boost name %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 7 to 8 (%d Boost names refreshed)",
+                cleared,
+            )
+        hass.config_entries.async_update_entry(entry, version=8)
 
     return True
 

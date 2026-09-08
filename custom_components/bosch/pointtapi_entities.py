@@ -1857,6 +1857,23 @@ def _pointtapi_zone_program_select_descriptions(
     )
 
 
+def _pointtapi_zone_mode_select_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISelectEntityDescription", ...]:
+    """Return one translated zone-mode select for every discovered zone."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISelectEntityDescription(
+            key=f"/zones/{zone_id}/userMode",
+            translation_key="zone_mode",
+            options=("clock", "manual"),
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
 def _pointtapi_zone_assigned_program_sensor_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
@@ -2759,7 +2776,7 @@ class BoschPoinTTAPIBoostSwitchEntity(
     is rejected.
     """
 
-    _attr_has_entity_name = False
+    _attr_has_entity_name = True
     _attr_translation_key = "boost_zone"
     _attr_name = None
 
@@ -3020,11 +3037,6 @@ def _normalize_select_option(raw_option: Any, supported_options: set[str]) -> st
 
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
-        key="/zones/zn1/userMode",
-        translation_key="zone_mode",
-        options=("clock", "manual"),
-    ),
-    BoschPoinTTAPISelectEntityDescription(
         key="/gateway/pirSensitivity",
         translation_key="pir_sensitivity",
         options=("high", "medium", "low"),
@@ -3057,7 +3069,11 @@ def _pointtapi_select_descriptions(
 ) -> tuple[BoschPoinTTAPISelectEntityDescription, ...]:
     """Return all POINTTAPI select descriptions, including dynamic per-zone ones."""
     data = data or {}
-    return POINTTAPI_SELECT_DESCRIPTIONS + _pointtapi_zone_program_select_descriptions(data)
+    return (
+        _pointtapi_zone_mode_select_descriptions(data)
+        + POINTTAPI_SELECT_DESCRIPTIONS
+        + _pointtapi_zone_program_select_descriptions(data)
+    )
 
 
 class BoschPoinTTAPISelectEntity(

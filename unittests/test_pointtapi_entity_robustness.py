@@ -29,7 +29,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_NUMBER_DESCRIPTIONS,
-    POINTTAPI_SELECT_DESCRIPTIONS,
     POINTTAPI_SWITCH_DESCRIPTIONS,
     BoschPoinTTAPIClimateEntity,
     BoschPoinTTAPIBoostSwitchEntity,
@@ -39,6 +38,7 @@ from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPISensorEntity,
     BoschPoinTTAPIWaterHeaterEntity,
     _path_available,
+    _pointtapi_select_descriptions,
     _pointtapi_sensor_descriptions,
     _solar_data_available,
 )
@@ -72,7 +72,7 @@ def _number(coord, key):
 
 
 def _select(coord, key):
-    desc = next(d for d in POINTTAPI_SELECT_DESCRIPTIONS if d.key == key)
+    desc = next(d for d in _pointtapi_select_descriptions(coord.data) if d.key == key)
     ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
     ent.async_write_ha_state = MagicMock()
     return ent

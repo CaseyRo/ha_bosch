@@ -1452,6 +1452,20 @@ class TestComfortControlDescriptions:
         assert d.options_fn is not None
         assert set(d.options_fn(data)) == {"Salon", "Salle de bains"}
 
+    def test_zone_mode_selects_are_discovered_for_all_zones(self):
+        data = {
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn2/temperatureHeatingSetpoint": {"value": 20.0},
+            "/zones/zn2/userMode": {"value": "manual"},
+        }
+
+        descs = {d.key: d for d in _pointtapi_select_descriptions(data)}
+
+        assert descs["/zones/zn1/userMode"].translation_key == "zone_mode"
+        assert descs["/zones/zn2/userMode"].translation_key == "zone_mode"
+        assert descs["/zones/zn2/userMode"].options == ("clock", "manual")
+
     def test_zone_program_select_reads_decoded_program_name(self):
         data = {
             "/zones/zn2": {"id": "/zones/zn2"},

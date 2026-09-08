@@ -763,7 +763,7 @@ async def test_version_4_migrates_boost_registry_entries():
         res = await async_migrate_entry(hass, entry)
         assert res is True
         mock_er.async_get_entity_id.assert_called_once_with("switch", "bosch", "test_entry_123_pointtapi_boost")
-        mock_er.async_update_entity.assert_called_once_with(
+        mock_er.async_update_entity.assert_any_call(
             "switch.heating_boost", new_unique_id="test_entry_123_pointtapi_boost_zone_1"
         )
         mock_er.async_remove.assert_called_once_with(
@@ -886,11 +886,12 @@ async def test_version_7_clears_all_legacy_boost_registry_names():
     with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
         assert await async_migrate_entry(hass, entry) is True
 
-    assert mock_er.async_update_entity.call_count == 2
+    assert mock_er.async_update_entity.call_count == 4
     mock_er.async_update_entity.assert_any_call(
         "switch.old_boost", name=None, original_name=None
     )
     mock_er.async_update_entity.assert_any_call(
         "switch.zone_boost", name=None, original_name=None
     )
-    hass.config_entries.async_update_entry.assert_called_once_with(entry, version=7)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=7)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=8)

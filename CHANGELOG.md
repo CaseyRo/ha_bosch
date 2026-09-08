@@ -4,6 +4,12 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha19] — 2026-09-08
+
+### Fixed
+- **Boost switch naming** — Uses the translated entity name instead of the
+  zone device name, with migration v8 cleaning persisted registry overrides.
+
 ## [1.6.0-alpha18] — 2026-09-08
 
 ### Fixed
