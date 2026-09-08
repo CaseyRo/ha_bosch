@@ -7,7 +7,6 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .bosch_entity import BoschEntity
 from .const import (
-    BINARY_SENSOR,
     CONF_PROTOCOL,
     POINTTAPI,
     SIGNAL_BINARY_SENSOR_UPDATE_BOSCH,
@@ -58,7 +57,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     uuid = config_entry.data[UUID]
     rt_data = config_entry.runtime_data
     gateway = rt_data.gateway
-    enabled_sensors = config_entry.data.get(BINARY_SENSOR, [])
     rt_data.binary_sensor = []
 
     for bosch_sensor in gateway.sensors:
@@ -71,7 +69,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                     gateway=gateway,
                     name=bosch_sensor.name,
                     attr_uri=bosch_sensor.attr_id,
-                    is_enabled=bosch_sensor.attr_id in enabled_sensors,
+                    is_enabled=True,
                 )
             )
 

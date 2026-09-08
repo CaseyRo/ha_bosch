@@ -4,14 +4,39 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Security
+- **Diagnostics no longer leak the appliance serial.** POINTTAPI stores the
+  serial under `address`, `device_id` *and* `uuid` in the config entry, none of
+  which were redacted, and `/gateway/uuid`'s value passed through untouched
+  because the redactor matched a top-level `uuid` **key** that real
+  `{"id": ..., "value": ...}` responses never have. Four plaintext copies in a
+  file testers routinely paste into public issues.
 ### Added
 - **Native-first Boost controls** — Redesigned POINTTAPI Boost controls with dedicated per-zone switches (`switch.*_boost`), serialized multi-zone activation via `asyncio.Lock` to prevent race conditions on rapid toggles, and integration into climate preset modes (`boost` / `none`) across all locales (#34).
 - **Dedicated Heating Circuit (`hc1`) device partition** — Moved circuit-level heating settings away from individual room thermostat devices to a dedicated **Heating Installation** (`/heatingCircuits/hc1`) device to accurately reflect hardware topology.
   - **Before:** Global circuit settings (e.g. supply limits, heating slope, boost duration/temperature) were incorrectly attached to the `zn1` room device (Zone 1 / Thermostat), duplicating or misattributing installation-wide properties.
   - **After:** Supply limits (`supplyTemperatureLimitMax`, `supplyTemperatureLimitMin`), heating dynamics (`heatupCoolingSlope`, `buildingHeatup`), and global Boost settings (`boostTemperature`, `boostDuration`, `boostRemainingTime`) are properly assigned to the Heating Circuit (`/heatingCircuits/hc1`) device, ensuring clean device separation in Home Assistant (#34).
-
+### Fixed
+- **Local (XMPP/HTTP) entities are no longer all disabled on a fresh install.**
+  Every sensor, binary sensor, switch, select and number gated its
+  registry-enabled default on a per-entity opt-in list read from the config
+  entry — which nothing has ever written, in any released version. New local
+  installs showed a climate and water-heater entity and hid the rest. Existing
+  installs keep whatever they already have; only newly registered entities are
+  affected.
+- **Solar devices survive a failed refresh.** A missing `/solarCircuits` key
+  removed the solar device *and every entity registry entry on it* — entity
+  ids, customisations and history association, irrecoverably. The coordinator
+  swallows per-path fetch failures, so one timeout during startup was enough.
+  Removal now requires a refresh that actually succeeded and returned data.
+- **Turning a zone back on after Off no longer snaps back to Off.** `Off` is
+  written as manual mode at the minimum temperature; restoring the mode without
+  the setpoint left the zone at 5 °C, so the next poll re-detected `Off` and
+  reverted the card. The pre-`Off` setpoint is now restored with the mode.
 ### Changed
 - **Read-only number paths** — Number entities for POINTTAPI resources that are read-only (`writeable: 0` or `False`) are now hidden/unavailable, ensuring number entities only represent interactive setpoints and controls (#34).
+- The sensor platform is imported for real by the test harness instead of being
+  stubbed, so its setup path can be tested at all. Coverage 70.6% → 72%.
 
 ## [1.5.1-beta.1] — 2026-08-31
 

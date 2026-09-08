@@ -1360,6 +1360,9 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         self._uuid = uuid
         self._language = _coordinator_language(coordinator)
         self._zone_id = zone_id
+        # Setpoint in force before HVACMode.OFF wrote min_temp, so OFF -> HEAT
+        # can put it back. None when we did not observe the transition.
+        self._pre_off_target: float | None = None
         self._attr_unique_id = f"{entry_id}_pointtapi_{zone_id}"
         self._attr_device_info = _resolve_device_info(
             uuid,
@@ -1500,6 +1503,8 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         """
         if hvac_mode == HVACMode.OFF:
             try:
+                if self._hvac_mode != HVACMode.OFF and self._target is not None:
+                    self._pre_off_target = float(self._target)
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
                 await self.coordinator.client.put(f"/zones/{self._zone_id}/manualTemperatureHeating", self.min_temp)
                 self._hvac_mode = hvac_mode
@@ -1514,6 +1519,7 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
                 ) from err
             return
 
+        was_off = self._hvac_mode == HVACMode.OFF
         if hvac_mode == HVACMode.AUTO:
             path = f"/zones/{self._zone_id}/userMode"
             value = "clock"
@@ -1522,6 +1528,21 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
             value = "manual"
         try:
             await self.coordinator.client.put(path, value)
+            # Leaving OFF needs the setpoint back as well: OFF is stored as
+            # manual + min_temp, so restoring only the mode leaves the zone at
+            # min_temp and the next poll re-detects OFF and reverts the UI.
+            if was_off:
+                restored = (
+                    self._pre_off_target
+                    if self._pre_off_target is not None
+                    and self._pre_off_target > self.min_temp
+                    else self.min_temp + 0.5
+                )
+                await self.coordinator.client.put(
+                    f"/zones/{self._zone_id}/manualTemperatureHeating", restored
+                )
+                self._target = restored
+                self._pre_off_target = None
             self._hvac_mode = hvac_mode
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
