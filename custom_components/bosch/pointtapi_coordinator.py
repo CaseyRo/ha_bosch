@@ -75,6 +75,23 @@ FAST_DEVICE_RESOURCE_MARKERS = (
 REDISCOVERY_INTERVAL = 24 * 3600
 # Throttle the bulk-failure WARNING to once per hour; repeats log at DEBUG.
 BULK_WARN_INTERVAL = 3600
+DISCOVERY_OPTIONAL_TIMEOUT = 8
+
+
+async def _get_discovery_path(
+    client: PoinTTAPIClient, path: str, *, timeout: float = DISCOVERY_OPTIONAL_TIMEOUT
+) -> Any:
+    """Fetch a discovery path without letting an optional resource stall startup."""
+    try:
+        async with asyncio.timeout(timeout):
+            return await client.get(path)
+    except TimeoutError:
+        _LOGGER.warning(
+            "POINTTAPI discovery path %s timed out after %ss; skipping it for this refresh",
+            path,
+            timeout,
+        )
+        return None
 
 
 def _is_slow_resource(path: str) -> bool:
@@ -131,7 +148,7 @@ async def _discover_roots(
 ) -> list[str]:
     """Return reference roots from a listing, or its static fallback."""
     try:
-        resp = await client.get(root)
+        resp = await _get_discovery_path(client, root)
         if isinstance(resp, dict):
             roots = [
                 r[ID_KEY]
@@ -202,7 +219,8 @@ async def _fetch_paths(
                 _LOGGER.debug("POINTTAPI optional path %s not available: %s", root, err)
             continue
         try:
-            resp = await client.get(root)
+            root_timeout = 30 if root == "/gateway" else DISCOVERY_OPTIONAL_TIMEOUT
+            resp = await _get_discovery_path(client, root, timeout=root_timeout)
             if not isinstance(resp, dict):
                 continue
             data[root] = resp
@@ -213,7 +231,7 @@ async def _fetch_paths(
                     continue
                 seen_references.add(ref_id)
                 try:
-                    sub = await client.get(ref_id)
+                    sub = await _get_discovery_path(client, ref_id)
                     if isinstance(sub, dict):
                         data[ref_id] = sub
                         # Fetch nested refEnum leaves such as
@@ -224,7 +242,7 @@ async def _fetch_paths(
                                 if not r2_id or r2_id in data:
                                     continue
                                 try:
-                                    sub2 = await client.get(r2_id)
+                                    sub2 = await _get_discovery_path(client, r2_id)
                                     if isinstance(sub2, dict):
                                         data[r2_id] = sub2
                                         if sub2.get("type") == "refEnum":
@@ -233,7 +251,7 @@ async def _fetch_paths(
                                                 if not r3_id or r3_id in data:
                                                     continue
                                                 try:
-                                                    leaf = await client.get(r3_id)
+                                                    leaf = await _get_discovery_path(client, r3_id)
                                                     if isinstance(leaf, dict):
                                                         data[r3_id] = leaf
                                                 except ConfigEntryAuthFailed:

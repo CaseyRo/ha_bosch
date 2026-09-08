@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha6] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup diagnostics** — Optional discovery requests now time out
+  after 8 seconds instead of blocking startup for up to 30 seconds each, and
+  skipped requests are reported at warning level with their resource path.
+
 ## [1.6.0-alpha5] — 2026-09-08
 
 ### Fixed
