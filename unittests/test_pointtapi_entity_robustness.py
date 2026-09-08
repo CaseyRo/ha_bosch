@@ -383,6 +383,61 @@ class TestClimateRobustness:
         coord.async_set_zone_boost.assert_awaited_once_with(1, True)
 
     @pytest.mark.asyncio
+    async def test_boost_preset_is_immediately_optimistic(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [], "allowedZones": [1]}]
+            },
+            "/heatingCircuits/hc1/boostShortcut": {
+                "used": "true", "available": "true", "writeable": 1
+            },
+        })
+        pending: dict[int, bool] = {}
+        coord.set_pending_boost_intent.side_effect = pending.__setitem__
+        coord.pending_boost_intent.side_effect = pending.get
+        ent = _climate(coord)
+
+        await ent.async_set_preset_mode("boost")
+
+        assert ent.preset_mode == "boost"
+        assert pending == {1: True}
+
+    def test_failed_boost_poll_does_not_clear_pending_intent(self):
+        coord = _coord({})
+        pending = {1: True}
+        coord.pending_boost_intent.side_effect = pending.get
+        coord.reconcile_pending_boost_intent.side_effect = (
+            lambda zone_id, observed: pending.pop(zone_id, None)
+            if observed is not None
+            else None
+        )
+        ent = _climate(coord)
+
+        ent._handle_coordinator_update()
+
+        assert pending == {1: True}
+        assert ent.preset_mode == "boost"
+
+    def test_successful_boost_poll_reconciles_pending_intent(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostMode": {"value": "on"},
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [1], "allowedZones": [1]}]
+            },
+        })
+        pending = {1: True}
+        coord.pending_boost_intent.side_effect = pending.get
+        coord.reconcile_pending_boost_intent.side_effect = (
+            lambda zone_id, observed: pending.pop(zone_id, None)
+        )
+        ent = _climate(coord)
+
+        ent._handle_coordinator_update()
+
+        assert pending == {}
+        assert ent.preset_mode == "boost"
+
+    @pytest.mark.asyncio
     async def test_set_boost_preset_rejects_when_not_allowed(self):
         ent = _climate(_coord({}))
 

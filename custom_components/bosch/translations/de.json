@@ -168,6 +168,13 @@
       "return_temperature": {
         "name": "Rücklauftemperatur"
       },
+      "indoor_air_temperature": {"name": "Innenlufttemperatur"},
+      "indoor_chip_temperature": {"name": "Interne Chiptemperatur"},
+      "indoor_pcb_temperature": {"name": "Interne PCB-Temperatur"},
+      "ch_pump_modulation": {"name": "Heizkreispumpenmodulation"},
+      "burner_starts": {"name": "Brennerstarts"},
+      "total_working_time": {"name": "Gesamtbetriebszeit"},
+      "refill_needed": {"name": "Nachfüllen erforderlich"},
       "assigned_program": {
         "name": "Zugewiesenes Programm"
       },
@@ -284,6 +291,8 @@
       "min_supply_temperature": {
         "name": "Minimale Vorlauftemperatur"
       },
+      "heat_curve_minimum": {"name": "Minimale Heizkurve"},
+      "heat_curve_maximum": {"name": "Maximale Heizkurve"},
       "night_setback_threshold": {
         "name": "Schwellenwert für Nachtabsenkung"
       },

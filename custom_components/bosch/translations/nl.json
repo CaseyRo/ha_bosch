@@ -168,6 +168,13 @@
       "return_temperature": {
         "name": "Retourtemperatuur"
       },
+      "indoor_air_temperature": {"name": "Binnentemperatuur"},
+      "indoor_chip_temperature": {"name": "Temperatuur interne chip"},
+      "indoor_pcb_temperature": {"name": "Temperatuur interne PCB"},
+      "ch_pump_modulation": {"name": "Modulatie verwarmingspomp"},
+      "burner_starts": {"name": "Branderstarts"},
+      "total_working_time": {"name": "Totale bedrijfstijd"},
+      "refill_needed": {"name": "Bijvullen nodig"},
       "assigned_program": {
         "name": "Toegewezen programma"
       },
@@ -284,6 +291,8 @@
       "min_supply_temperature": {
         "name": "Minimale aanvoertemperatuur"
       },
+      "heat_curve_minimum": {"name": "Minimale stooklijn"},
+      "heat_curve_maximum": {"name": "Maximale stooklijn"},
       "night_setback_threshold": {
         "name": "Drempel voor nachtverlaging"
       },

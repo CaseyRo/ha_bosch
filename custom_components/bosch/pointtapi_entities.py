@@ -1407,6 +1407,18 @@ class BoschPoinTTAPIClimateEntity(_BoschPoinTTAPICoordinatorEntity, ClimateEntit
         the OFF indicator stable across coordinator polls.
         """
         data = self.coordinator.data or {}
+        boost_zone_id = self._boost_zone_id
+        observed_boost = None
+        if boost_zone_id is not None:
+            boost_mode = _val(data, "/heatingCircuits/hc1/boostMode")
+            if boost_mode is not None:
+                observed_boost = (
+                    boost_mode == "on"
+                    and boost_zone_id in _boost_zone_values(data, "zones")
+                )
+                self.coordinator.reconcile_pending_boost_intent(
+                    boost_zone_id, observed_boost
+                )
         self._current = _val(data, f"/zones/{self._zone_id}/temperatureActual")
         self._target = _val(data, f"/zones/{self._zone_id}/temperatureHeatingSetpoint")
         if self._target is None:
@@ -1470,6 +1482,12 @@ class BoschPoinTTAPIClimateEntity(_BoschPoinTTAPICoordinatorEntity, ClimateEntit
         """Return PRESET_BOOST when this zone is in the native selected-zone list, else PRESET_NONE."""
         zone_id = self._boost_zone_id
         data = self.coordinator.data or {}
+        if zone_id is not None:
+            pending = self.coordinator.pending_boost_intent(zone_id)
+            if pending is True:
+                return PRESET_BOOST
+            if pending is False:
+                return PRESET_NONE
         if (
             zone_id is not None
             and _val(data, "/heatingCircuits/hc1/boostMode") == "on"
@@ -1585,10 +1603,24 @@ class BoschPoinTTAPIClimateEntity(_BoschPoinTTAPICoordinatorEntity, ClimateEntit
         if preset_mode == PRESET_BOOST:
             if PRESET_BOOST not in self.preset_modes:
                 raise HomeAssistantError("Boost is unavailable for this zone")
-            await self.coordinator.async_set_zone_boost(zone_id, True)
+            self.coordinator.set_pending_boost_intent(zone_id, True)
+            self.async_write_ha_state()
+            try:
+                await self.coordinator.async_set_zone_boost(zone_id, True)
+            except Exception:
+                self.coordinator.clear_pending_boost_intent(zone_id)
+                self.async_write_ha_state()
+                raise
             return
         if preset_mode in {PRESET_NONE, None}:
-            await self.coordinator.async_set_zone_boost(zone_id, False)
+            self.coordinator.set_pending_boost_intent(zone_id, False)
+            self.async_write_ha_state()
+            try:
+                await self.coordinator.async_set_zone_boost(zone_id, False)
+            except Exception:
+                self.coordinator.clear_pending_boost_intent(zone_id)
+                self.async_write_ha_state()
+                raise
             return
         raise HomeAssistantError(f"Unsupported POINTTAPI preset mode: {preset_mode}")
 

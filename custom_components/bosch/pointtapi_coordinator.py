@@ -555,6 +555,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Lock for serializing boost zone updates across rapid toggles.
         self._boost_lock = asyncio.Lock()
         self._boost_selected_zones: set[int] | None = None
+        self._pending_boost_intents: dict[int, bool] = {}
         # Tracks an in-flight HA-triggered boost session. The boost switch sets
         # this on turn-on and clears it on turn-off; the boost_remaining_time
         # sensor reads it to derive a synthetic countdown.
@@ -583,6 +584,26 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def client(self) -> PoinTTAPIClient:
         """Return the POINTTAPI client for PUT calls from entities."""
         return self._client
+
+    def set_pending_boost_intent(self, zone_id: int, enabled: bool) -> None:
+        """Record a user Boost intent until a successful poll reconciles it."""
+        self._pending_boost_intents[zone_id] = enabled
+
+    def pending_boost_intent(self, zone_id: int) -> bool | None:
+        """Return the pending user Boost intent for a zone, if any."""
+        return self._pending_boost_intents.get(zone_id)
+
+    def clear_pending_boost_intent(self, zone_id: int) -> None:
+        """Clear a pending Boost intent after a command failure."""
+        self._pending_boost_intents.pop(zone_id, None)
+
+    def reconcile_pending_boost_intent(
+        self, zone_id: int, observed_enabled: bool | None
+    ) -> None:
+        """Clear a pending intent only after a usable poll confirms or contradicts it."""
+        if observed_enabled is None:
+            return
+        self._pending_boost_intents.pop(zone_id, None)
 
     async def async_refresh_boost_state(self) -> None:
         """Re-read Boost capabilities after Bosch applies a zone mode change."""

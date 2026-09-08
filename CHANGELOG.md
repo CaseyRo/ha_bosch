@@ -4,17 +4,41 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha22] — 2026-09-08
+
+### Fixed
+- **Boost responsiveness** — Shows the user's Boost intent immediately on
+  climate entities, preserves it across incomplete polls, and reconciles it
+  with the next explicit Bosch state.
+- **Translations** — Synchronizes all supported locales with the base strings,
+  including heating-curve controls and previously missing diagnostic sensors.
+
 ## [1.6.0-alpha21] — 2026-09-08
 
 ### Added
 - **Heating curve settings** — Adds minimum and maximum heating-curve
-  controls to the heating installation settings device.
+  controls to the heating installation settings device ([#22](https://github.com/CaseyRo/ha_bosch/issues/22)).
 
 ### Fixed
 - **Thermostat-specific switches** — Moves away mode, motion sensitivity, and
   notification light controls from the gateway to the appropriate thermostat
   or heating-installation device, with registry migrations for existing
-  entities.
+  entities ([#22](https://github.com/CaseyRo/ha_bosch/issues/22)).
+- **Boost control semantics** — Keeps Boost as a climate preset, corrects
+  multi-zone native selection and turn-off behavior, handles Bosch's distinct
+  last-zone shutdown command, and removes misleading per-zone Boost switches
+  ([#21](https://github.com/CaseyRo/ha_bosch/issues/21)).
+- **Home Assistant compatibility** — Adds `mean_type=NONE` to sum-only
+  POINTTAPI statistics imports and uses `via_device_id` where the registry API
+  requires it ([#47](https://github.com/CaseyRo/ha_bosch/issues/47)).
+
+### Performance
+- **POINTTAPI startup and polling** — Replaces broad/sequential discovery with
+  domain allowlists, bounded parallel reference fetching, fast/slow resource
+  tiers, background history loading, and immediate entity synchronization from
+  already-loaded coordinator data. On a complex installation with ETRV valves,
+  measured startup time was reduced by **74%** versus the pre-optimization
+  implementation.
 
 ## [1.6.0-alpha20] — 2026-09-08
 
