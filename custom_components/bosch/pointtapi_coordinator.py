@@ -37,6 +37,7 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/zones",  # expanded to one walk root per discovered zone in _fetch_paths
     "/energy",
     "/energy/history",
+    "/energy/historyEntries",
     "/energy/historyHourly",
     "/heatSources",
     "/solarCircuits/sc1",
@@ -78,114 +79,121 @@ REDISCOVERY_INTERVAL = 24 * 3600
 BULK_WARN_INTERVAL = 3600
 DISCOVERY_OPTIONAL_TIMEOUT = 8
 DISCOVERY_TOTAL_TIMEOUT = 60
-DISCOVERY_UNUSED_PREFIXES = (
-    # Gateway metadata is not exposed by any POINTTAPI entity. Keep the
-    # product, firmware, Wi-Fi, update, notification and UI paths instead.
-    "/gateway/DateTime",
-    "/gateway/brand",
-    "/gateway/displayType",
-    "/gateway/eco",
-    "/gateway/gwlogging",
-    "/gateway/hmip",
-    "/gateway/housingType",
-    "/gateway/identificationKey",
-    "/gateway/installer",
-    "/gateway/localisation",
-    "/gateway/logging",
-    "/gateway/operatingMode",
-    "/gateway/region",
-    "/gateway/serialnumber",
-    "/gateway/time",
-    "/gateway/tosAccepted",
-    "/gateway/user",
-    "/gateway/wizardStepsDone",
-    "/gateway/notificationLight/activate",
-    "/gateway/productType",
-    "/gateway/uuid",
-    "/gateway/versionHardware",
-    "/gateway/versionFirmwareBuild",
-    "/gateway/ui/icons",
-    "/gateway/ui/splashScreen",
-    "/heatingCircuits/hc1/cooling",
-    "/heatingCircuits/hc1/heatCurveMax",
-    "/heatingCircuits/hc1/heatCurveMin",
-    "/heatingCircuits/hc1/buildingHeatup",
-    "/heatingCircuits/hc1/control",
-    "/heatingCircuits/hc1/minOutdoorTemp",
-    "/heatingCircuits/hc1/operatingSeason",
-    "/heatingCircuits/hc1/seasonOptMode",
-    "/heatingCircuits/hc1/setpointOptimization",
-    "/heatingCircuits/hc1/type",
-    "/heatingCircuits/hc1/typeRoomControl",
-    "/dhwCircuits/dhw1/programs",
-    "/dhwCircuits/dhw1/hotWaterSystem",
-    "/system/appliance/firstMaintenanceRequest",
-    "/energy/history",
-    "/energy/currency",
-    "/energy/export",
-    "/energy/exportCoefficient",
-    "/energy/exportStatus",
-    "/energy/offset",
-    "/energy/electricity/price",
-    "/energy/gas/price",
-    "/energy/gas/type",
-    "/energy/gas/unit",
-    "/energy/oil",
-    "/programs/*/monday",
-    "/programs/*/tuesday",
-    "/programs/*/wednesday",
-    "/programs/*/thursday",
-    "/programs/*/friday",
-    "/programs/*/saturday",
-    "/programs/*/sunday",
-    "/zones/*/humidity",
-    "/zones/*/icon",
-    "/zones/*/heatingType",
-    "/zones/*/clockOverride",
-    "/zones/*/nextSetpoint",
-    "/zones/*/optimumStartHeatupRate",
-    "/zones/*/timeToNextSetpoint",
-    "/devices/*/etrv/maxValvePosition",
-    "/devices/*/etrv/openWindowDetection",
-    "/devices/*/etrv/status",
-    "/devices/*/etrv/temperatureGradient",
-    "/devices/*/etrv/valveState",
-    "/devices/*/etrv/whisperMode",
-    "/devices/*/thermostat/maxValvePosition",
-    "/devices/*/thermostat/openWindowDetection",
-    "/devices/*/thermostat/status",
-    "/devices/*/thermostat/temperatureGradient",
-    "/devices/*/thermostat/valveState",
-    "/devices/*/thermostat/whisperMode",
-    "/devices/*/battery",
-    "/devices/*/signal",
-    "/devices/*/name",
-    "/devices/*/protocol",
-    "/devices/*/zone",
-    "/devices/*/versionFirmware",
-    "/devices/*/homematicip",
-)
+DISCOVERY_ALLOWED_PATTERNS = {
+    "/gateway": (
+        "/gateway/notificationLight*",
+        "/gateway/productID",
+        "/gateway/pirSensitivity",
+        "/gateway/ui",
+        "/gateway/ui/eco",
+        "/gateway/update*",
+        "/gateway/versionFirmware",
+        "/gateway/wifi*",
+        "/gateway/zigbee*",
+    ),
+    "/heatingCircuits/hc1": (
+        "/heatingCircuits/hc1/boost*",
+        "/heatingCircuits/hc1/maxSupply",
+        "/heatingCircuits/hc1/minSupply",
+        "/heatingCircuits/hc1/nightSwitchMode",
+        "/heatingCircuits/hc1/nightThreshold",
+        "/heatingCircuits/hc1/powerSetpoint",
+        "/heatingCircuits/hc1/roomInfluence",
+        "/heatingCircuits/hc1/suWiSwitchMode",
+        "/heatingCircuits/hc1/suWiThreshold",
+        "/heatingCircuits/hc1/supplyTemperatureSetpoint",
+    ),
+    "/dhwCircuits/dhw1": (
+        "/dhwCircuits/dhw1/actualTemp",
+        "/dhwCircuits/dhw1/extraDhw*",
+        "/dhwCircuits/dhw1/operationMode",
+        "/dhwCircuits/dhw1/state",
+        "/dhwCircuits/dhw1/temperatureLevels",
+        "/dhwCircuits/dhw1/temperatureLevels/high",
+        "/dhwCircuits/dhw1/thermalDisinfect*",
+    ),
+    "/system/sensors": (
+        "/system/sensors/humidity/indoor_h1",
+        "/system/sensors/temperatures/outdoor_t1",
+        "/system/sensors/temperatures/offset",
+    ),
+    "/system/appliance": (
+        "/system/appliance/blockingError",
+        "/system/appliance/causeCode",
+        "/system/appliance/displayCode",
+        "/system/appliance/lockingError",
+        "/system/appliance/maintenanceRequest",
+        "/system/appliance/systemPressure",
+    ),
+    "/zones": (
+        "/zones/zn*/actualValvePosition",
+        "/zones/zn*/clockProgram",
+        "/zones/zn*/manualTemperatureHeating",
+        "/zones/zn*/name",
+        "/zones/zn*/openWindowDetection*",
+        "/zones/zn*/optimumStartState",
+        "/zones/zn*/status",
+        "/zones/zn*/temperatureActual",
+        "/zones/zn*/temperatureHeatingSetpoint",
+        "/zones/zn*/userMode",
+    ),
+    "/energy": (
+        "/energy/electricity/annualGoal",
+        "/energy/electricity/dayAverage",
+        "/energy/electricity/monthAverage",
+        "/energy/gas/annualGoal",
+        "/energy/history",
+        "/energy/historyHourly",
+    ),
+    "/heatSources": (
+        "/heatSources/actualModulation",
+        "/heatSources/actualSupplyTemperature",
+        "/heatSources/flameIndication",
+        "/heatSources/numberOfStarts",
+        "/heatSources/refillNeeded",
+        "/heatSources/returnTemperature",
+    ),
+    "/solarCircuits/sc1": (
+        "/solarCircuits/sc1/collectorTemperature",
+        "/solarCircuits/sc1/dhwTankBottomTemperature",
+        "/solarCircuits/sc1/pumpModulation",
+        "/solarCircuits/sc1/totalSolarGain",
+    ),
+    "/programs": (
+        "/programs/pg*",
+        "/programs/pg*/name",
+    ),
+    "/devices": (
+        "/devices/list",
+        "/devices/device*",
+        "/devices/device*/type",
+        "/devices/device*/etrv",
+        "/devices/device*/etrv/childLock*",
+        "/devices/device*/etrv/offset",
+        "/devices/device*/etrv/temperatureActual",
+        "/devices/device*/etrv/valvePosition",
+        "/devices/device*/thermostat",
+        "/devices/device*/thermostat/childLock*",
+        "/devices/device*/thermostat/offset",
+        "/devices/device*/thermostat/temperatureActual",
+        "/devices/device*/thermostat/valvePosition",
+    ),
+}
 
 
 def _discovery_path_needed(path: str) -> bool:
     """Return whether a discovered path can feed the current entity surface."""
-    if any(
-        path == prefix
-        or path.startswith(prefix + "/")
-        or (
-            "*" in prefix
-            and (
-                fnmatch.fnmatch(path, prefix)
-                or fnmatch.fnmatch(path, prefix + "/*")
-            )
-        )
-        for prefix in DISCOVERY_UNUSED_PREFIXES
-    ):
+    if path.startswith("/zones/zn") and path.count("/") == 2:
+        return True
+    if path.startswith("/programs/pg") and path.count("/") == 2:
+        return True
+    if path.startswith("/devices/device") and path.count("/") == 2:
+        return True
+    if path.startswith("/programs/pg") and not path.endswith("/name"):
         return False
-    # Program names are used by the zone program selector; weekly schedule
-    # details are not consumed by any entity.
-    if path.startswith("/programs/") and "/week" in path:
-        return False
+    for root, patterns in DISCOVERY_ALLOWED_PATTERNS.items():
+        if path.startswith(root + "/"):
+            return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
     return True
 
 

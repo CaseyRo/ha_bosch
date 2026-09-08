@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-alpha14] — 2026-09-08
+
+### Changed
+- **POINTTAPI discovery allowlist** — Replaces the growing exclusion list with
+  domain-specific allowlists that fetch only resources consumed by the current
+  entity surface while retaining dynamic zone, program, and valve discovery.
+
 ## [1.6.0-alpha13] — 2026-09-08
 
 ### Fixed

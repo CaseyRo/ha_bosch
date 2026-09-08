@@ -278,18 +278,18 @@ class TestFetchPaths:
     async def test_refenum_nested_errors_are_skipped(self):
         async def mock_get(path):
             if path == "/gateway":
-                return {"references": [{"id": "/gateway/mode"}]}
-            if path == "/gateway/mode":
+                return {"references": [{"id": "/gateway/update"}]}
+            if path == "/gateway/update":
                 return {
                     "type": "refEnum",
                     "references": [
-                        {"id": "/gateway/mode/good"},
-                        {"id": "/gateway/mode/bad"},
+                        {"id": "/gateway/update/state"},
+                        {"id": "/gateway/update/bad"},
                     ],
                 }
-            if path == "/gateway/mode/good":
+            if path == "/gateway/update/state":
                 return {"value": "ok"}
-            if path == "/gateway/mode/bad":
+            if path == "/gateway/update/bad":
                 raise ValueError("optional ref failed")
             return {"value": "stub"}
 
@@ -298,16 +298,16 @@ class TestFetchPaths:
 
         data = await _fetch_paths(client)
 
-        assert "/gateway/mode/good" in data
-        assert "/gateway/mode/bad" not in data
+        assert "/gateway/update/state" in data
+        assert "/gateway/update/bad" not in data
 
     @pytest.mark.asyncio
     async def test_duplicate_references_are_fetched_once(self):
         async def mock_get(path):
             if path == "/gateway":
-                return {"references": [{"id": "/gateway/shared"}]}
+                return {"references": [{"id": "/gateway/update/state"}]}
             if path == "/heatingCircuits/hc1":
-                return {"references": [{"id": "/gateway/shared"}]}
+                return {"references": [{"id": "/gateway/update/state"}]}
             return {"id": path, "value": "stub"}
 
         client = AsyncMock()
@@ -316,7 +316,7 @@ class TestFetchPaths:
         await _fetch_paths(client)
 
         assert [call.args[0] for call in client.get.await_args_list].count(
-            "/gateway/shared"
+            "/gateway/update/state"
         ) == 1
 
     @pytest.mark.asyncio
@@ -372,14 +372,14 @@ class TestFetchPaths:
                 return {
                     "id": "/programs",
                     "type": "refEnum",
-                    "references": [{"id": "/programs/A"}, {"id": "/programs/B"}],
+                    "references": [{"id": "/programs/pg1"}, {"id": "/programs/pg2"}],
                 }
-            if path in ("/programs/A", "/programs/B"):
+            if path in ("/programs/pg1", "/programs/pg2"):
                 return {
                     "id": path,
-                    "references": [{"id": f"{path}/active"}],
+                    "references": [{"id": f"{path}/name"}],
                 }
-            if path in ("/programs/A/active", "/programs/B/active"):
+            if path in ("/programs/pg1/name", "/programs/pg2/name"):
                 return {"id": path, "value": "true"}
             return {"id": path, "value": "stub"}
 
@@ -387,8 +387,8 @@ class TestFetchPaths:
         client.get = AsyncMock(side_effect=mock_get)
 
         data = await _fetch_paths(client)
-        assert "/programs/A/active" in data
-        assert "/programs/B/active" in data
+        assert "/programs/pg1/name" in data
+        assert "/programs/pg2/name" in data
         # Expanded roots are fetched instead of the plain listing root.
         assert "/programs" not in data
 
@@ -439,9 +439,10 @@ class TestFetchPaths:
         client.get = AsyncMock(side_effect=mock_get)
 
         data = await _fetch_paths(client)
-        assert "/devices/dev1/rssi" in data
-        assert "/devices/dev2/rssi" in data
-        # Expanded roots are fetched instead of the plain listing root.
+        assert "/devices/dev1/rssi" not in data
+        assert "/devices/dev2/rssi" not in data
+        # Device telemetry is sourced from /devices/list; unused devN trees
+        # are intentionally not fetched.
         assert "/devices" not in data
 
     @pytest.mark.asyncio
