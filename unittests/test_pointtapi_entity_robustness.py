@@ -51,7 +51,7 @@ def _coord(data):
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
     coord.async_request_refresh = AsyncMock()
-    coord.boost_switches = {}
+    coord.async_set_zone_boost = AsyncMock()
     return coord
 
 
@@ -346,12 +346,12 @@ class TestClimateRobustness:
             },
         })
 
-        assert _climate(coord).preset_modes == ["boost"]
+        assert _climate(coord).preset_modes == ["none", "boost"]
         assert _climate(coord).preset_mode == "boost"
         assert _climate(coord).supported_features & ClimateEntityFeature.PRESET_MODE
 
     @pytest.mark.asyncio
-    async def test_set_boost_preset_delegates_to_zone_boost_switch(self):
+    async def test_set_boost_preset_delegates_to_coordinator(self):
         coord = _coord({
             "/heatingCircuits/hc1/boostZones": {
                 "value": [{"zones": [], "allowedZones": [1]}]
@@ -361,18 +361,14 @@ class TestClimateRobustness:
             },
         })
         ent = _climate(coord)
-        boost_switch = BoschPoinTTAPIBoostSwitchEntity(coord, "entry1", "uuid1", 1)
-
-        with patch.object(boost_switch, "async_turn_on", new_callable=AsyncMock) as turn_on:
-            await ent.async_set_preset_mode("boost")
-
-        turn_on.assert_awaited_once()
+        await ent.async_set_preset_mode("boost")
+        coord.async_set_zone_boost.assert_awaited_once_with(1, True)
 
     @pytest.mark.asyncio
-    async def test_set_boost_preset_rejects_when_switch_is_not_registered(self):
+    async def test_set_boost_preset_rejects_when_not_allowed(self):
         ent = _climate(_coord({}))
 
-        with pytest.raises(HomeAssistantError, match="Boost control is not ready"):
+        with pytest.raises(HomeAssistantError, match="Boost is unavailable for this zone"):
             await ent.async_set_preset_mode("boost")
 
     @pytest.mark.asyncio

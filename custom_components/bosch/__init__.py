@@ -296,44 +296,63 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate POINTTAPI entity_ids from v0.30.x to v0.31.0 device-partition scheme.
+    """Migrate POINTTAPI entry versions.
 
-    Idempotent: returns True immediately on already-migrated entries.
-    Fault-tolerant: per-rename try/except so one failure doesn't abort the batch.
-    Bumps entry.version 1 → 2 after all renames are attempted.
+    - v1 -> v2: entity_id renames (device-partition scheme)
+    - v2 -> v3: unique_id rename for boost switch (per-zone unique_id)
     """
-    if entry.version >= 2:
-        return True
-    if entry.data.get(CONF_PROTOCOL) != POINTTAPI:
-        hass.config_entries.async_update_entry(entry, version=2)
+    if entry.version >= 3:
         return True
 
-    from homeassistant.helpers import entity_registry as er
-    registry = er.async_get(hass)
-    renames = {
-        # solar_solar_* doubled prefix cleanup
-        "sensor.solar_solar_collector_temperature": "sensor.solar_collector_temperature",
-        "sensor.solar_solar_storage_temperature": "sensor.solar_storage_temperature",
-        "sensor.solar_solar_pump_modulation": "sensor.solar_pump_modulation",
-        "sensor.solar_total_solar_gain": "sensor.solar_total_gain",
-        # water_heater rename
-        "water_heater.water_heater": "water_heater.hot_water_tank",
-    }
-    renamed = 0
-    for old_id, new_id in renames.items():
-        try:
-            if registry.async_get(old_id) and not registry.async_get(new_id):
-                registry.async_update_entity(old_id, new_entity_id=new_id)
-                renamed += 1
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.warning(
-                "Migration could not rename %s -> %s: %s", old_id, new_id, err
+    if entry.version < 2:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+            registry = er.async_get(hass)
+            renames = {
+                # solar_solar_* doubled prefix cleanup
+                "sensor.solar_solar_collector_temperature": "sensor.solar_collector_temperature",
+                "sensor.solar_solar_storage_temperature": "sensor.solar_storage_temperature",
+                "sensor.solar_solar_pump_modulation": "sensor.solar_pump_modulation",
+                "sensor.solar_total_solar_gain": "sensor.solar_total_gain",
+                # water_heater rename
+                "water_heater.water_heater": "water_heater.hot_water_tank",
+            }
+            renamed = 0
+            for old_id, new_id in renames.items():
+                try:
+                    if registry.async_get(old_id) and not registry.async_get(new_id):
+                        registry.async_update_entity(old_id, new_entity_id=new_id)
+                        renamed += 1
+                except Exception as err:  # pylint: disable=broad-except
+                    _LOGGER.warning(
+                        "Migration could not rename %s -> %s: %s", old_id, new_id, err
+                    )
+            _LOGGER.info(
+                "Migrated POINTTAPI entry from version 1 to 2 (%d entity_ids renamed)",
+                renamed,
             )
-    hass.config_entries.async_update_entry(entry, version=2)
-    _LOGGER.info(
-        "Migrated POINTTAPI entry from version 1 to 2 (%d entity_ids renamed)",
-        renamed,
-    )
+        hass.config_entries.async_update_entry(entry, version=2)
+
+    if entry.version < 3:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+            registry = er.async_get(hass)
+            old_unique_id = f"{entry.entry_id}_pointtapi_boost"
+            new_unique_id = f"{entry.entry_id}_pointtapi_boost_zone_1"
+            try:
+                entity_id = registry.async_get_entity_id("switch", DOMAIN, old_unique_id)
+                if entity_id:
+                    registry.async_update_entity(entity_id, new_unique_id=new_unique_id)
+                    _LOGGER.info(
+                        "Migrated POINTTAPI boost switch unique_id %s -> %s for entity %s",
+                        old_unique_id, new_unique_id, entity_id,
+                    )
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning(
+                    "Migration could not update unique_id %s: %s", old_unique_id, err
+                )
+        hass.config_entries.async_update_entry(entry, version=3)
+
     return True
 
 

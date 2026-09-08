@@ -2,6 +2,17 @@
 
 All notable changes to this Bosch Home Assistant custom component will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Native-first Boost controls** — Redesigned POINTTAPI Boost controls with dedicated per-zone switches (`switch.*_boost`), serialized multi-zone activation via `asyncio.Lock` to prevent race conditions on rapid toggles, and integration into climate preset modes (`boost` / `none`) across all locales (#34).
+- **Dedicated Heating Circuit (`hc1`) device partition** — Moved circuit-level heating settings away from individual room thermostat devices to a dedicated **Heating Installation** (`/heatingCircuits/hc1`) device to accurately reflect hardware topology.
+  - **Before:** Global circuit settings (e.g. supply limits, heating slope, boost duration/temperature) were incorrectly attached to the `zn1` room device (Zone 1 / Thermostat), duplicating or misattributing installation-wide properties.
+  - **After:** Supply limits (`supplyTemperatureLimitMax`, `supplyTemperatureLimitMin`), heating dynamics (`heatupCoolingSlope`, `buildingHeatup`), and global Boost settings (`boostTemperature`, `boostDuration`, `boostRemainingTime`) are properly assigned to the Heating Circuit (`/heatingCircuits/hc1`) device, ensuring clean device separation in Home Assistant (#34).
+
+### Changed
+- **Read-only number paths** — Number entities for POINTTAPI resources that are read-only (`writeable: 0` or `False`) are now hidden/unavailable, ensuring number entities only represent interactive setpoints and controls (#34).
+
 ## [1.5.1-beta.1] — 2026-08-31
 
 ### Fixed
