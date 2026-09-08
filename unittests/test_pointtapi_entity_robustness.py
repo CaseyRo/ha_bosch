@@ -18,11 +18,11 @@ in test_pointtapi_new_entities / _routing / _boost are not repeated.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from homeassistant.components.climate import HVACMode
+from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 from homeassistant.components.climate.const import HVACAction
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
@@ -31,6 +31,7 @@ from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_SELECT_DESCRIPTIONS,
     POINTTAPI_SWITCH_DESCRIPTIONS,
     BoschPoinTTAPIClimateEntity,
+    BoschPoinTTAPIBoostSwitchEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     BoschPoinTTAPINumberEntity,
     BoschPoinTTAPISelectEntity,
@@ -50,6 +51,7 @@ def _coord(data):
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
     coord.async_request_refresh = AsyncMock()
+    coord.async_set_zone_boost = AsyncMock()
     return coord
 
 
@@ -194,7 +196,7 @@ class TestNumberRobustness:
 
     @pytest.mark.asyncio
     async def test_set_native_value_writes_optimistically_and_refreshes(self):
-        coord = _coord({self.KEY: {"value": 21.0}})
+        coord = _coord({self.KEY: {"value": 21.0, "used": "true", "available": "true", "writeable": 1}})
         ent = _number(coord, self.KEY)
         ent._handle_coordinator_update()
 
@@ -203,6 +205,28 @@ class TestNumberRobustness:
         coord.client.put.assert_awaited_once_with(self.KEY, 23.5)
         assert ent.native_value == 23.5  # optimistic
         coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.parametrize(
+        "resource",
+        [
+            {"value": 21.0, "used": "false", "available": "true", "writeable": 1},
+            {"value": 21.0, "used": "true", "available": "false", "writeable": 1},
+            {"value": 21.0, "used": "true", "available": "true", "writeable": 0},
+        ],
+    )
+    def test_non_operable_number_is_unavailable(self, resource):
+        assert _number(_coord({self.KEY: resource}), self.KEY).available is False
+
+    @pytest.mark.asyncio
+    async def test_non_writable_number_does_not_send_put(self):
+        coord = _coord({
+            self.KEY: {"value": 21.0, "used": "true", "available": "true", "writeable": 0}
+        })
+
+        with pytest.raises(HomeAssistantError, match="is unavailable"):
+            await _number(coord, self.KEY).async_set_native_value(23.5)
+
+        coord.client.put.assert_not_awaited()
 
 
 # ── Select (write + malformed) ─────────────────────────────────────────────────
@@ -310,6 +334,58 @@ class TestClimateRobustness:
         ent._handle_coordinator_update()
         assert ent.hvac_mode == HVACMode.OFF
         assert ent.hvac_action == HVACAction.OFF
+
+    def test_boost_preset_reflects_selected_and_allowed_zone(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostMode": {"value": "on"},
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [1], "allowedZones": [1, 2]}]
+            },
+            "/heatingCircuits/hc1/boostShortcut": {
+                "used": "true", "available": "true", "writeable": 1
+            },
+        })
+
+        assert _climate(coord).preset_modes == ["none", "boost"]
+        assert _climate(coord).preset_mode == "boost"
+        assert _climate(coord).supported_features & ClimateEntityFeature.PRESET_MODE
+
+    @pytest.mark.asyncio
+    async def test_set_boost_preset_delegates_to_coordinator(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [], "allowedZones": [1]}]
+            },
+            "/heatingCircuits/hc1/boostShortcut": {
+                "used": "true", "available": "true", "writeable": 1
+            },
+        })
+        ent = _climate(coord)
+        await ent.async_set_preset_mode("boost")
+        coord.async_set_zone_boost.assert_awaited_once_with(1, True)
+
+    @pytest.mark.asyncio
+    async def test_set_boost_preset_rejects_when_not_allowed(self):
+        ent = _climate(_coord({}))
+
+        with pytest.raises(HomeAssistantError, match="Boost is unavailable for this zone"):
+            await ent.async_set_preset_mode("boost")
+
+    @pytest.mark.asyncio
+    async def test_set_boost_preset_rejects_unavailable_zone(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [], "allowedZones": [2]}]
+            },
+            "/heatingCircuits/hc1/boostShortcut": {
+                "used": "true", "available": "true", "writeable": 1
+            },
+        })
+        ent = _climate(coord)
+        BoschPoinTTAPIBoostSwitchEntity(coord, "entry1", "uuid1", 1)
+
+        with pytest.raises(HomeAssistantError, match="Boost is unavailable"):
+            await ent.async_set_preset_mode("boost")
 
     @pytest.mark.asyncio
     async def test_set_temperature_switches_manual_then_writes_and_refreshes(self):

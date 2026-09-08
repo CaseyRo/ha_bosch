@@ -30,6 +30,7 @@ from custom_components.bosch.pointtapi_entities import (
     _pointtapi_thermostat_valve_switch_descriptions,
     _pointtapi_thermostat_valve_warning_binary_sensor_descriptions,
     _pointtapi_open_window_switch_descriptions,
+    _resolve_device_info,
     _pointtapi_select_descriptions,
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_actual_temperature_sensor_descriptions,
@@ -72,6 +73,30 @@ class TestNotificationsHelpers:
         data = {"/notifications": {"id": "/notifications", "value": []}}
         assert _notifications_count(data) == 0
         assert _notifications_attributes(data) == {"notifications": []}
+
+    @pytest.mark.parametrize(
+        ("path", "identifier"),
+        [
+            ("/heatingCircuits/hc1/maxSupply", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/minSupply", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/boostDuration", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/boostTemperature", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/boostRemainingTime", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/nightSwitchMode", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/nightThreshold", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/powerSetpoint", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/roomInfluence", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/supplyTemperatureSetpoint", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/suWiSwitchMode", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc1/suWiThreshold", "uuid-1_heating_installation_hc1"),
+            ("/heatingCircuits/hc2/maxSupply", "uuid-1_heating_installation_hc2"),
+        ],
+    )
+    def test_installation_settings_use_dedicated_circuit_device(self, path, identifier):
+        device_info = _resolve_device_info("uuid-1", path, language="en")
+
+        assert device_info["identifiers"] == {("bosch", identifier)}
+        assert device_info["name"] == "Heating Installation Settings"
 
     def test_zone_valve_sensors_are_discovered_from_zone_references(self):
         data = {
@@ -868,6 +893,23 @@ class TestComfortControlDescriptions:
         assert d.native_min_value == 0.0
         assert d.native_max_value == 1439.0
         assert d.native_step == 1.0
+
+    def test_number_constraints_use_pointtapi_resource_metadata(self):
+        descs = {
+            description.key: description
+            for description in _pointtapi_number_descriptions({
+                "/heatingCircuits/hc1/boostDuration": {
+                    "minValue": 1.0,
+                    "maxValue": 8.0,
+                    "stepSize": 1.0,
+                }
+            })
+        }
+
+        duration = descs["/heatingCircuits/hc1/boostDuration"]
+        assert duration.native_min_value == 1.0
+        assert duration.native_max_value == 8.0
+        assert duration.native_step == 1.0
 
     def test_thermostat_valve_temperature_offset_is_described_from_device_tree(self):
         data = {

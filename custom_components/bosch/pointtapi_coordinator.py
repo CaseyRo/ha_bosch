@@ -15,8 +15,10 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import homeassistant.util.dt as dt_util
 
 from .pointtapi_client import PoinTTAPIClient
 
@@ -272,11 +274,15 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             always_update=False,
         )
         self._client = client
+        # Lock for serializing boost zone updates across rapid toggles.
+        self._boost_lock = asyncio.Lock()
+        self._boost_selected_zones: set[int] | None = None
         # Tracks an in-flight HA-triggered boost session. The boost switch sets
         # this on turn-on and clears it on turn-off; the boost_remaining_time
         # sensor reads it to derive a synthetic countdown.
         # Typed as Any here to avoid a circular import with pointtapi_entities.
         self.boost_session: Any = None
+        self._auto_off_cancels: dict[int, Any] = {}
         # Native-boost probe verdict cache (set by the boost switch's probe
         # ladder; surfaced in diagnostics). None = not yet probed.
         self.boost_probe_result: dict[str, Any] | None = None
@@ -296,6 +302,304 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def client(self) -> PoinTTAPIClient:
         """Return the POINTTAPI client for PUT calls from entities."""
         return self._client
+
+    async def _confirm_native_active(self) -> bool:
+        """A native write counts only if the device reports boost active."""
+        from .pointtapi_entities import _val
+
+        await self.async_refresh()
+        data = self.data or {}
+        if _val(data, "/heatingCircuits/hc1/boostMode") == "on":
+            return True
+        rem = _val(data, "/heatingCircuits/hc1/boostRemainingTime")
+        return isinstance(rem, (int, float)) and rem > 0
+
+    async def _probe_native_boost(
+        self, boost_temp: float, duration_h: float, zones: list[int]
+    ) -> str:
+        """Run the probe ladder once; cache and return the working route."""
+        from .pointtapi_entities import ROUTE_DIRECT, ROUTE_FALLBACK, ROUTE_SHORTCUT
+
+        rungs: list[dict[str, Any]] = []
+        try:
+            await self.client.put(
+                "/heatingCircuits/hc1/boostShortcut",
+                [{
+                    "mode": "on",
+                    "temperature": float(boost_temp),
+                    "duration": int(duration_h),
+                    "zones": zones,
+                }],
+            )
+            active = await self._confirm_native_active()
+            rungs.append({"rung": ROUTE_SHORTCUT, "put": "accepted", "active": active})
+            _LOGGER.debug("Boost probe rung boostShortcut: accepted, active=%s", active)
+            if active:
+                self.boost_probe_result = {
+                    "route": ROUTE_SHORTCUT, "rungs": rungs,
+                }
+                return ROUTE_SHORTCUT
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            rungs.append({"rung": ROUTE_SHORTCUT, "error": str(err)})
+            _LOGGER.debug("Boost probe rung boostShortcut failed: %s", err)
+        try:
+            await self.client.put(
+                "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+            )
+            await self.client.put("/heatingCircuits/hc1/boostMode", "on")
+            active = await self._confirm_native_active()
+            rungs.append({"rung": ROUTE_DIRECT, "put": "accepted", "active": active})
+            _LOGGER.debug("Boost probe rung boostMode: accepted, active=%s", active)
+            if active:
+                self.boost_probe_result = {
+                    "route": ROUTE_DIRECT, "rungs": rungs,
+                }
+                return ROUTE_DIRECT
+            await self.client.put("/heatingCircuits/hc1/boostMode", "off")
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            rungs.append({"rung": ROUTE_DIRECT, "error": str(err)})
+            _LOGGER.debug("Boost probe rung boostMode failed: %s", err)
+
+        self.boost_probe_result = {
+            "route": ROUTE_FALLBACK, "rungs": rungs,
+        }
+        _LOGGER.info("Native boost unavailable, using manual-mode workaround")
+        return ROUTE_FALLBACK
+
+    async def _native_boost_on(
+        self, route: str, boost_temp: float, duration_h: float, zones: list[int]
+    ) -> bool:
+        """Activate boost via the cached native route. True when confirmed."""
+        from .pointtapi_entities import ROUTE_SHORTCUT
+
+        try:
+            if route == ROUTE_SHORTCUT:
+                await self.client.put(
+                    "/heatingCircuits/hc1/boostShortcut",
+                    [{
+                        "mode": "on",
+                        "temperature": float(boost_temp),
+                        "duration": int(duration_h),
+                        "zones": zones,
+                    }],
+                )
+            else:
+                await self.client.put(
+                    "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+                )
+                await self.client.put(
+                    "/heatingCircuits/hc1/boostMode", "on"
+                )
+            return await self._confirm_native_active()
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("Native boost ON via %s failed: %s", route, err)
+            return False
+
+    async def _native_boost_off(self, route: str, zones: list[int]) -> bool:
+        """Update native Boost selection without touching zone user modes."""
+        from .pointtapi_entities import ROUTE_SHORTCUT, _val
+
+        try:
+            if route == ROUTE_SHORTCUT:
+                data = self.data or {}
+                await self.client.put(
+                    "/heatingCircuits/hc1/boostShortcut",
+                    [{
+                        "mode": "on" if zones else "off",
+                        "temperature": float(
+                            _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+                        ),
+                        "duration": int(
+                            float(_val(data, "/heatingCircuits/hc1/boostDuration") or 2.0)
+                        ),
+                        "zones": zones,
+                    }],
+                )
+            else:
+                if zones:
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+                    )
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostMode", "on"
+                    )
+                else:
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostMode", "off"
+                    )
+            return True
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.warning("Native boost OFF via %s failed: %s", route, err)
+            return False
+
+    async def async_set_zone_boost(self, zone_id: int, enable: bool) -> None:
+        """Turn boost on or off for a specified zone, serialized with an asyncio.Lock."""
+        from .pointtapi_entities import (
+            ROUTE_FALLBACK,
+            ROUTE_SHORTCUT,
+            BoostSession,
+            _boost_zone_values,
+            _path_writable,
+            _val,
+        )
+
+        async with self._boost_lock:
+            data = self.data or {}
+            if enable and not (
+                _path_writable(data, "/heatingCircuits/hc1/boostShortcut")
+                and zone_id in _boost_zone_values(data, "allowedZones")
+            ):
+                raise HomeAssistantError("Boost is unavailable for this zone")
+
+            boost_temp = _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+            duration_h = float(
+                _val(data, "/heatingCircuits/hc1/boostDuration") or 2.0
+            )
+
+            if self._boost_selected_zones is not None:
+                base_zones = set(self._boost_selected_zones)
+            else:
+                base_zones = _boost_zone_values(data, "zones")
+
+            if enable:
+                target_zones = sorted(base_zones | {zone_id})
+                probe = self.boost_probe_result
+                try:
+                    if probe is None:
+                        route = await self._probe_native_boost(
+                            boost_temp, duration_h, target_zones
+                        )
+                        native_ok = route != ROUTE_FALLBACK
+                    elif probe.get("route") != ROUTE_FALLBACK:
+                        route = probe["route"]
+                        native_ok = await self._native_boost_on(
+                            route, boost_temp, duration_h, target_zones
+                        )
+                    else:
+                        native_ok = False
+                except ConfigEntryAuthFailed:
+                    raise
+                except Exception as err:
+                    _LOGGER.warning("Native boost attempt errored: %s", err)
+                    native_ok = False
+
+                if native_ok:
+                    self.boost_session = None
+                    _LOGGER.info(
+                        "POINTTAPI native boost ON at %.1f°C for %.0f h (zones %s)",
+                        float(boost_temp),
+                        duration_h,
+                        target_zones,
+                    )
+                    self._boost_selected_zones = set(target_zones)
+                    await self.async_request_refresh()
+                    self._boost_selected_zones = _boost_zone_values(
+                        self.data or {}, "zones"
+                    )
+                    return
+
+                # Fallback: manual mode workaround
+                try:
+                    zone_path = f"/zones/zn{zone_id}"
+                    current_mode = _val(data, f"{zone_path}/userMode") or "clock"
+                    if not hasattr(self, "_fallback_pre_boost_modes"):
+                        self._fallback_pre_boost_modes: dict[int, str] = {}
+                    self._fallback_pre_boost_modes[zone_id] = current_mode
+                    await self.client.put(f"{zone_path}/userMode", "manual")
+                    await self.client.put(
+                        f"{zone_path}/manualTemperatureHeating", float(boost_temp)
+                    )
+                    self.boost_session = BoostSession(
+                        started_at=dt_util.utcnow(),
+                        duration_hours=duration_h,
+                    )
+                    if zone_id in self._auto_off_cancels:
+                        self._auto_off_cancels.pop(zone_id)()
+
+                    def _auto_off_cb(_now):
+                        self._auto_off_cancels.pop(zone_id, None)
+                        self.hass.async_create_task(
+                            self.async_set_zone_boost(zone_id, False)
+                        )
+
+                    self._auto_off_cancels[zone_id] = async_call_later(
+                        self.hass,
+                        duration_h * 3600.0,
+                        _auto_off_cb,
+                    )
+                    _LOGGER.info(
+                        "POINTTAPI boost ON (fallback): zone=%s manual at %.1f°C",
+                        zone_id,
+                        float(boost_temp),
+                    )
+                    self._boost_selected_zones = set(target_zones)
+                    await self.async_request_refresh()
+                    self._boost_selected_zones = _boost_zone_values(
+                        self.data or {}, "zones"
+                    )
+                except ConfigEntryAuthFailed:
+                    raise
+                except Exception as err:
+                    await self.async_request_refresh()
+                    raise HomeAssistantError(
+                        f"POINTTAPI boost turn_on failed: {err}"
+                    ) from err
+            else:
+                target_zones = sorted(base_zones - {zone_id})
+                probe = self.boost_probe_result
+                route = None
+                if probe is not None and probe.get("route") != ROUTE_FALLBACK:
+                    route = probe.get("route")
+                elif (
+                    _val(data, "/heatingCircuits/hc1/boostMode") == "on"
+                    and _path_writable(data, "/heatingCircuits/hc1/boostShortcut")
+                ):
+                    route = ROUTE_SHORTCUT
+
+                if route is not None and self.boost_session is None:
+                    if await self._native_boost_off(route, target_zones):
+                        self._boost_selected_zones = set(target_zones)
+                        await self.async_request_refresh()
+                        self._boost_selected_zones = _boost_zone_values(
+                            self.data or {}, "zones"
+                        )
+                        return
+
+                # Fallback disable
+                if zone_id in self._auto_off_cancels:
+                    self._auto_off_cancels.pop(zone_id)()
+                self.boost_session = None
+                try:
+                    zone_path = f"/zones/zn{zone_id}"
+                    restore_mode = (
+                        getattr(self, "_fallback_pre_boost_modes", {}).pop(
+                            zone_id, None
+                        )
+                        or "clock"
+                    )
+                    await self.client.put(
+                        f"{zone_path}/userMode", restore_mode
+                    )
+                    self._boost_selected_zones = set(target_zones)
+                    await self.async_request_refresh()
+                    self._boost_selected_zones = _boost_zone_values(
+                        self.data or {}, "zones"
+                    )
+                except ConfigEntryAuthFailed:
+                    raise
+                except Exception as err:
+                    await self.async_request_refresh()
+                    raise HomeAssistantError(
+                        f"POINTTAPI boost turn_off failed: {err}"
+                    ) from err
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch path-keyed payload; raise ConfigEntryAuthFailed on 401/403, UpdateFailed on connection error."""

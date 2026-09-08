@@ -40,9 +40,9 @@ UUID = "101506113"
         # Heating Zone (zn1 → no suffix on name)
         ("/zones/zn1/temperatureActual", f"{UUID}_zn1"),
         ("/zones/zn1/actualValvePosition", f"{UUID}_zn1"),
-        ("/heatingCircuits/hc1/maxSupply", f"{UUID}_zn1"),
-        ("/heatingCircuits/hc1/nightThreshold", f"{UUID}_zn1"),
-        ("/heatingCircuits/hc1/roomInfluence", f"{UUID}_zn1"),
+        ("/heatingCircuits/hc1/maxSupply", f"{UUID}_heating_installation_hc1"),
+        ("/heatingCircuits/hc1/nightThreshold", f"{UUID}_heating_installation_hc1"),
+        ("/heatingCircuits/hc1/roomInfluence", f"{UUID}_heating_installation_hc1"),
         ("/system/sensors/temperatures/outdoor_t1", f"{UUID}_zn1"),
         ("/system/sensors/humidity/indoor_h1", f"{UUID}_zn1"),
         ("/system/sensors/temperatures/offset", f"{UUID}_zn1"),
