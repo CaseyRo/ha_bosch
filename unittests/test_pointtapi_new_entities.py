@@ -1385,6 +1385,24 @@ class TestComfortControlDescriptions:
         assert STRINGS["entity"]["sensor"]["optimum_start_state"]["state"]["idle"] == "Idle"
         assert json.loads((ROOT / "custom_components" / "bosch" / "translations" / "fr.json").read_text(encoding="utf-8"))["entity"]["sensor"]["optimum_start_state"]["state"]["idle"] == "Au repos"
 
+    def test_translation_files_do_not_contain_duplicate_keys(self):
+        for translation_path in sorted((ROOT / "custom_components" / "bosch" / "translations").glob("*.json")):
+            seen: set[str] = set()
+            duplicates: list[str] = []
+
+            def _check_object_pairs(pairs):
+                obj = {}
+                for key, value in pairs:
+                    if key in obj:
+                        duplicates.append(key)
+                    else:
+                        seen.add(key)
+                    obj[key] = value
+                return obj
+
+            json.loads(translation_path.read_text(encoding="utf-8"), object_pairs_hook=_check_object_pairs)
+            assert not duplicates, f"duplicate translation keys in {translation_path.name}: {duplicates}"
+
     def test_boiler_ignition_starts_rounds_float_like_55872_0_to_int(self):
         data = {
             "/heatSources/numberOfStarts": {"value": 55872.0},

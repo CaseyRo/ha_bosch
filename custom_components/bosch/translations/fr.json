@@ -291,8 +291,6 @@
       "min_supply_temperature": {
         "name": "Température minimale de départ"
       },
-      "heat_curve_minimum": {"name": "Courbe de chauffe minimale"},
-      "heat_curve_maximum": {"name": "Courbe de chauffe maximale"},
       "heat_curve_minimum": {
         "name": "Courbe de chauffe minimale"
       },

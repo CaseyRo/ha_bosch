@@ -520,7 +520,7 @@ async def _fetch_paths(
                 raise UpdateFailed(f"POINTTAPI fetch failed: {err}") from err
             _LOGGER.debug("POINTTAPI optional path %s not available, skipping: %s", root, err)
     if asyncio.get_running_loop().time() >= deadline:
-        _LOGGER.warning(
+        _LOGGER.debug(
             "POINTTAPI discovery budget of %ss exhausted; continuing with %s resources",
             DISCOVERY_TOTAL_TIMEOUT,
             len(data),
