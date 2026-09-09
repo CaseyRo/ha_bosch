@@ -66,6 +66,10 @@ def test_device_telemetry_uses_fast_polling_cadence():
     assert _is_slow_resource("/devices/device7/type")
 
 
+def test_coordinator_roots_do_not_include_unused_history_entries_path():
+    """Unused coordinator roots should not add maintenance cost or confusion."""
+    assert "/energy/historyEntries" not in POINTTAPI_COORDINATOR_ROOTS
+
 
 # ── _fetch_paths ─────────────────────────────────────────────────────────────
 

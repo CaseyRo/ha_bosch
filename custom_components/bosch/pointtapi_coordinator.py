@@ -37,7 +37,6 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/zones",  # expanded to one walk root per discovered zone in _fetch_paths
     "/energy",
     "/energy/history",
-    "/energy/historyEntries",
     "/energy/historyHourly",
     "/heatSources",
     "/solarCircuits/sc1",

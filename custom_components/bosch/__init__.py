@@ -756,7 +756,7 @@ class BoschGatewayEntry:
                 f"{path}={duration:.3f}s"
                 for path, duration in getattr(coordinator, "discovery_timings", [])
             ) or "no discovery path timings recorded"
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "POINTTAPI startup first refresh took %.3fs; historyHourly took %.3fs across %d calls; discovery paths: %s",
                 startup_elapsed,
                 next(
@@ -800,7 +800,7 @@ class BoschGatewayEntry:
             phase_summary = "; ".join(
                 f"{name}={elapsed:.3f}s" for name, elapsed in startup_phases
             )
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "POINTTAPI startup complete in %.3fs; phases: %s; device_id=%s",
                 time.monotonic() - setup_started,
                 phase_summary,
