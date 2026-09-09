@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import time
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.bosch.pointtapi_coordinator import (
@@ -131,6 +132,15 @@ class TestFetchPaths:
         data = await _fetch_paths(client)
         assert "/gateway" in data
         assert "/gateway/DateTime" not in data
+
+    @pytest.mark.asyncio
+    async def test_gateway_timeout_fails_fast(self):
+        """The required gateway root should fail the refresh instead of silently degrading."""
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=TimeoutError)
+
+        with pytest.raises(UpdateFailed, match="POINTTAPI fetch failed"):
+            await _fetch_paths(client)
 
     @pytest.mark.asyncio
     async def test_follows_refenum_second_level(self):
@@ -586,7 +596,287 @@ def _bare_coordinator(client):
     coord._fast_bulk_paths = []
     coord._slow_data = {}
     coord._last_slow_fetch = 0.0
+    coord._boost_lock = asyncio.Lock()
+    coord._boost_selected_zones = None
+    coord._pending_boost_intents = {}
+    coord.boost_session = None
+    coord._auto_off_cancels = {}
+    coord.boost_probe_result = None
+    coord.data = {}
     return coord
+
+
+class TestCoordinatorBoostState:
+    def test_pending_boost_intent_lifecycle(self):
+        coord = _bare_coordinator(AsyncMock())
+
+        coord.set_pending_boost_intent(2, True)
+        assert coord.pending_boost_intent(2) is True
+        coord.reconcile_pending_boost_intent(2, None)
+        assert coord.pending_boost_intent(2) is True
+        coord.reconcile_pending_boost_intent(2, False)
+        assert coord.pending_boost_intent(2) is None
+        coord.set_pending_boost_intent(2, True)
+        coord.clear_pending_boost_intent(2)
+        assert coord.pending_boost_intent(2) is None
+
+    @pytest.mark.asyncio
+    async def test_targeted_boost_refresh_merges_data(self):
+        client = AsyncMock()
+        client.bulk.return_value = {"/heatingCircuits/hc1/boostMode": {"value": "on"}}
+        coord = _bare_coordinator(client)
+        coord.data = {"/gateway": {"value": "ok"}}
+        coord.async_set_updated_data = lambda data: setattr(coord, "data", data)
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await coord.async_refresh_boost_state()
+
+        assert coord.data["/gateway"] == {"value": "ok"}
+        assert coord.data["/heatingCircuits/hc1/boostMode"]["value"] == "on"
+
+    @pytest.mark.asyncio
+    async def test_targeted_boost_refresh_ignores_optional_failure(self):
+        client = AsyncMock()
+        client.bulk.side_effect = RuntimeError("temporary")
+        coord = _bare_coordinator(client)
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await coord.async_refresh_boost_state()
+
+    @pytest.mark.asyncio
+    async def test_targeted_boost_refresh_propagates_auth_failure(self):
+        client = AsyncMock()
+        client.bulk.side_effect = ConfigEntryAuthFailed("401")
+        coord = _bare_coordinator(client)
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            with pytest.raises(ConfigEntryAuthFailed):
+                await coord.async_refresh_boost_state()
+
+    @pytest.mark.asyncio
+    async def test_confirm_native_active_accepts_mode_or_remaining_time(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord.async_refresh = AsyncMock()
+        coord.data = {"/heatingCircuits/hc1/boostMode": {"value": "on"}}
+        assert await coord._confirm_native_active() is True
+
+        coord.data = {"/heatingCircuits/hc1/boostRemainingTime": {"value": 15}}
+        assert await coord._confirm_native_active() is True
+
+        coord.data = {"/heatingCircuits/hc1/boostRemainingTime": {"value": 0}}
+        assert await coord._confirm_native_active() is False
+
+    @pytest.mark.asyncio
+    async def test_probe_native_boost_uses_shortcut_when_confirmed(self):
+        from custom_components.bosch.pointtapi_entities import ROUTE_SHORTCUT
+
+        client = AsyncMock()
+        coord = _bare_coordinator(client)
+        coord._confirm_native_active = AsyncMock(return_value=True)
+
+        route = await coord._probe_native_boost(22.0, 2.0, [1])
+
+        assert route == ROUTE_SHORTCUT
+        assert coord.boost_probe_result["route"] == ROUTE_SHORTCUT
+
+    @pytest.mark.asyncio
+    async def test_probe_native_boost_falls_back_after_failed_routes(self):
+        from custom_components.bosch.pointtapi_entities import ROUTE_FALLBACK
+
+        client = AsyncMock()
+        client.put.side_effect = [RuntimeError("shortcut"), RuntimeError("direct")]
+        coord = _bare_coordinator(client)
+        coord._confirm_native_active = AsyncMock(return_value=False)
+
+        route = await coord._probe_native_boost(22.0, 2.0, [1])
+
+        assert route == ROUTE_FALLBACK
+        assert len(coord.boost_probe_result["rungs"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_native_boost_on_handles_success_and_failure(self):
+        from custom_components.bosch.pointtapi_entities import ROUTE_DIRECT, ROUTE_SHORTCUT
+
+        client = AsyncMock()
+        coord = _bare_coordinator(client)
+        coord._confirm_native_active = AsyncMock(return_value=True)
+
+        assert await coord._native_boost_on(ROUTE_SHORTCUT, 22.0, 2.0, [1]) is True
+        assert await coord._native_boost_on(ROUTE_DIRECT, 22.0, 2.0, [1]) is True
+        client.put.side_effect = RuntimeError("failed")
+        assert await coord._native_boost_on(ROUTE_DIRECT, 22.0, 2.0, [1]) is False
+
+    @pytest.mark.asyncio
+    async def test_native_boost_off_handles_shortcut_and_direct_routes(self):
+        from custom_components.bosch.pointtapi_entities import ROUTE_DIRECT, ROUTE_SHORTCUT
+
+        client = AsyncMock()
+        coord = _bare_coordinator(client)
+        coord.data = {
+            "/heatingCircuits/hc1/boostTemperature": {"value": 23},
+            "/heatingCircuits/hc1/boostDuration": {"value": 1},
+        }
+
+        assert await coord._native_boost_off(ROUTE_SHORTCUT, [1]) is True
+        assert await coord._native_boost_off(ROUTE_SHORTCUT, []) is True
+        assert await coord._native_boost_off(ROUTE_DIRECT, [1]) is True
+        assert await coord._native_boost_off(ROUTE_DIRECT, []) is True
+
+        client.put.side_effect = RuntimeError("failed")
+        assert await coord._native_boost_off(ROUTE_DIRECT, [1]) is False
+
+    @pytest.mark.asyncio
+    async def test_zone_boost_rejects_unavailable_zone(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._refresh_boost_state = AsyncMock(return_value={})
+
+        with pytest.raises(HomeAssistantError, match="unavailable"):
+            await coord.async_set_zone_boost(1, True)
+
+    @pytest.mark.asyncio
+    async def test_refresh_boost_state_keeps_only_dict_responses(self):
+        client = AsyncMock()
+        client.get.side_effect = [
+            {"value": "on"},
+            "not a resource",
+        ]
+        coord = _bare_coordinator(client)
+
+        result = await coord._refresh_boost_state({"/gateway": {"value": "ok"}})
+
+        assert result["/heatingCircuits/hc1/boostMode"] == {"value": "on"}
+        assert "/heatingCircuits/hc1/boostZones" not in result
+        assert coord.data == result
+
+    @pytest.mark.asyncio
+    async def test_zone_boost_native_enable(self):
+        from custom_components.bosch.pointtapi_entities import ROUTE_SHORTCUT
+
+        data = {
+            "/heatingCircuits/hc1/boostShortcut": {
+                "available": "true", "writeable": 1, "used": 1,
+            },
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"allowedZones": [1], "zones": []}],
+            },
+            "/heatingCircuits/hc1/boostMode": {"value": "off"},
+            "/heatingCircuits/hc1/boostTemperature": {"value": 22},
+            "/heatingCircuits/hc1/boostDuration": {"value": 2},
+        }
+        coord = _bare_coordinator(AsyncMock())
+        coord._refresh_boost_state = AsyncMock(return_value=data)
+        coord._probe_native_boost = AsyncMock(return_value=ROUTE_SHORTCUT)
+        coord.async_request_refresh = AsyncMock()
+
+        await coord.async_set_zone_boost(1, True)
+
+        assert coord._boost_selected_zones == {1}
+        coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_zone_boost_fallback_enable(self):
+        data = {
+            "/heatingCircuits/hc1/boostShortcut": {
+                "available": "true", "writeable": 1, "used": 1,
+            },
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"allowedZones": [1], "zones": []}],
+            },
+            "/heatingCircuits/hc1/boostMode": {"value": "off"},
+            "/heatingCircuits/hc1/boostTemperature": {"value": 22},
+            "/heatingCircuits/hc1/boostDuration": {"value": 2},
+            "/zones/zn1/userMode": {"value": "clock"},
+        }
+        client = AsyncMock()
+        coord = _bare_coordinator(client)
+        coord._refresh_boost_state = AsyncMock(return_value=data)
+        coord.boost_probe_result = {"route": "fallback"}
+        coord.async_request_refresh = AsyncMock()
+        coord.hass = AsyncMock()
+        cancel = lambda: None
+
+        with patch(
+            "custom_components.bosch.pointtapi_coordinator.async_call_later",
+            return_value=cancel,
+        ):
+            await coord.async_set_zone_boost(1, True)
+
+        assert coord._fallback_pre_boost_modes[1] == "clock"
+        assert client.put.await_args_list[0].args == ("/zones/zn1/userMode", "manual")
+
+    @pytest.mark.asyncio
+    async def test_zone_boost_native_disable(self):
+        from custom_components.bosch.pointtapi_entities import ROUTE_DIRECT
+
+        data = {
+            "/heatingCircuits/hc1/boostShortcut": {
+                "available": "true", "writeable": 1, "used": 1,
+            },
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"allowedZones": [1], "zones": [1, 2]}],
+            },
+            "/heatingCircuits/hc1/boostMode": {"value": "on"},
+        }
+        coord = _bare_coordinator(AsyncMock())
+        coord._refresh_boost_state = AsyncMock(return_value=data)
+        coord.boost_probe_result = {"route": ROUTE_DIRECT}
+        coord._native_boost_off = AsyncMock(return_value=True)
+        coord.async_request_refresh = AsyncMock()
+
+        await coord.async_set_zone_boost(1, False)
+
+        coord._native_boost_off.assert_awaited_once_with(ROUTE_DIRECT, [2])
+        assert coord._boost_selected_zones == {2}
+
+    @pytest.mark.asyncio
+    async def test_zone_boost_fallback_disable_restores_mode(self):
+        data = {
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"allowedZones": [1], "zones": [1]}],
+            },
+        }
+        client = AsyncMock()
+        coord = _bare_coordinator(client)
+        coord._refresh_boost_state = AsyncMock(return_value=data)
+        coord.boost_probe_result = {"route": "fallback"}
+        coord._fallback_pre_boost_modes = {1: "clock"}
+        coord._auto_off_cancels[1] = lambda: None
+        coord.async_request_refresh = AsyncMock()
+
+        await coord.async_set_zone_boost(1, False)
+
+        client.put.assert_awaited_once_with("/zones/zn1/userMode", "clock")
+        assert coord.boost_session is None
+
+
+class TestCoordinatorHistoryBackground:
+    @pytest.mark.asyncio
+    async def test_history_background_caches_success(self):
+        coord = _bare_coordinator(AsyncMock())
+        history = {"value": [{"entries": []}]}
+
+        with patch(
+            "custom_components.bosch.pointtapi_coordinator._fetch_history_hourly_all",
+            new=AsyncMock(return_value=history),
+        ):
+            await coord._refresh_history_hourly_background()
+
+        assert coord._history_hourly_data == history
+        assert coord._history_hourly_task is None
+
+    @pytest.mark.asyncio
+    async def test_history_background_keeps_cache_on_errors(self):
+        coord = _bare_coordinator(AsyncMock())
+        coord._history_hourly_data = {"old": True}
+
+        with patch(
+            "custom_components.bosch.pointtapi_coordinator._fetch_history_hourly_all",
+            new=AsyncMock(side_effect=RuntimeError("temporary")),
+        ):
+            await coord._refresh_history_hourly_background()
+
+        assert coord._history_hourly_data == {"old": True}
+        assert coord._history_hourly_task is None
 
 
 def _walk_client():

@@ -243,6 +243,8 @@ async def _get_discovery_path(
         async with asyncio.timeout(timeout):
             return await client.get(path)
     except TimeoutError:
+        if path == "/gateway":
+            raise
         _LOGGER.warning(
             "POINTTAPI discovery path %s timed out after %ss; skipping it for this refresh",
             path,
