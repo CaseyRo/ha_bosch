@@ -31,6 +31,8 @@ from custom_components.bosch.switch import (
 from custom_components.bosch.sensor.energy import EnergySensor, EnergySensors, EcusRecordingSensors
 from custom_components.bosch.sensor.notifications import NotificationSensor
 from custom_components.bosch.sensor.recording import RecordingSensor
+from custom_components.bosch.sensor.bosch import BoschSensor
+from custom_components.bosch.sensor.circuit import CircuitSensor
 from custom_components.bosch.sensor import async_setup_entry as async_setup_sensor_entry
 sensor_module = import_module("custom_components.bosch.sensor")
 binary_module = import_module("custom_components.bosch.binary_sensor")
@@ -705,6 +707,25 @@ async def test_binary_sensor_pointtapi_setup_without_coordinator_and_used_state(
 
 
 @pytest.mark.asyncio
+async def test_binary_sensor_pointtapi_setup_with_coordinator():
+    coordinator = SimpleNamespace(data={})
+    entry = SimpleNamespace(
+        entry_id="entry-binary", data={CONF_PROTOCOL: POINTTAPI, UUID: "uuid-1"},
+        runtime_data=SimpleNamespace(coordinator=coordinator),
+    )
+    add_entities = MagicMock()
+    binary_entities = import_module("custom_components.bosch.pointtapi_entities")
+    with (
+        patch.object(binary_entities, "POINTTAPI_BINARY_SENSOR_DESCRIPTIONS", [MagicMock()]),
+        patch.object(binary_entities, "BoschPoinTTAPIBinarySensorEntity", return_value="point-binary"),
+        patch.object(binary_entities, "_pointtapi_open_window_binary_sensor_descriptions", return_value=[]),
+        patch.object(binary_entities, "_pointtapi_thermostat_valve_warning_binary_sensor_descriptions", return_value=[]),
+    ):
+        assert await binary_module.async_setup_entry(MagicMock(), entry, add_entities) is True
+    assert add_entities.call_args.args[0] == ["point-binary"]
+
+
+@pytest.mark.asyncio
 async def test_number_legacy_entity_properties_and_write():
     obj = SimpleNamespace(
         state=12, min_value=None, max_value=None, step=0.5,
@@ -722,6 +743,20 @@ async def test_number_legacy_entity_properties_and_write():
     obj.set_value.assert_awaited_once_with(15)
     obj.state = None
     assert number.native_value is None
+
+
+def test_simple_sensor_classes_expose_device_names():
+    base = SimpleNamespace(
+        parent_id=None, id="sensor", name="Sensor", attr_id="sensor",
+        state=None, device_class=None, state_class=None, entity_category=None,
+        unit_of_measurement="C",
+    )
+    gateway = SimpleNamespace(device_model="CT200", device_type="EASYCONTROL", firmware="1")
+    assert BoschSensor(MagicMock(), "uuid-1", base, gateway, "Sensor", "sensor").device_name == "Bosch sensors"
+    assert CircuitSensor(
+        hass=MagicMock(), uuid="uuid-1", bosch_object=base, gateway=gateway,
+        name="Sensor", attr_uri="sensor", domain_name="Heating", circuit_type="hc",
+    ).device_name == "Heating circuit Heating"
 
 
 @pytest.mark.asyncio
