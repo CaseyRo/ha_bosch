@@ -45,6 +45,13 @@ clearer device topology, faster startup, and safer Home Assistant behavior.
 - **Registry migrations** — Cleans obsolete Boost switches and names, and
   moves existing thermostat-specific entities without breaking automations.
 
+### Warning
+- **Rollback requires reinstall** — The beta entry migrates to config-entry
+  version 11. Rolling back to an older release is not a clean downgrade: the
+  registry migration history is not reversed. On current Home Assistant builds,
+  a higher config-entry version can block loading until the integration is
+  removed and re-added.
+
 ### Performance
 - **Smarter POINTTAPI discovery** — Uses domain allowlists, bounded parallel
   reference fetching, safer traversal, fast/slow resource tiers, cached slow
