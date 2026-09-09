@@ -4,6 +4,19 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-beta2] — 2026-09-09
+
+### Fixed
+- **Review follow-up** — Applies the remaining Casey review notes: startup
+  diagnostics stay at DEBUG, the dead `/energy/historyEntries` path is removed,
+  and the duplicate French heating-curve translation keys are cleaned up.
+- **Migration safety** — Documents the rollback caveat for beta users so a
+  downgrade requires removing and re-adding the integration on current HA.
+
+### Changed
+- **Release version** — Bumps the integration to `1.6.0-beta2` for the next
+  beta publication on the forked repository.
+
 ## [1.6.0-beta1] — 2026-09-08
 
 The 1.6.0 beta consolidates the POINTTAPI redesign work developed across the
