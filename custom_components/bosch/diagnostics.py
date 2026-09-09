@@ -4,10 +4,11 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
-from .const import CONF_PROTOCOL, POINTTAPI
+from .const import CONF_DEVICE_ID, CONF_PROTOCOL, POINTTAPI, UUID
 
 TO_REDACT_CONFIG = {
     "access_token",
@@ -15,7 +16,19 @@ TO_REDACT_CONFIG = {
     "access_key",
     "password",
     "expires_at",
+    # POINTTAPI writes the appliance serial to all three of these
+    # (config_flow._async_create_pointtapi_entry). It is the pairing
+    # identifier in /gateways/{device_id}/resource/, and testers paste
+    # diagnostics into public issues.
+    CONF_ADDRESS,
+    CONF_DEVICE_ID,
+    UUID,
 }
+
+# Paths whose *value* identifies the appliance. POINTTAPI responses are
+# shaped {"id": ..., "value": ...}, so the key-based checks below never see
+# these — the serial sits under "value" and has to be matched on the path.
+_IDENTIFYING_PATH_SUFFIXES = ("/uuid", "/serialnumber", "/macaddress")
 
 
 async def async_get_config_entry_diagnostics(
@@ -49,6 +62,8 @@ def _redact_path_response(path: str, resp: Any) -> Any:
     if not isinstance(resp, dict):
         return resp
     redacted = dict(resp)
+    if path.lower().endswith(_IDENTIFYING_PATH_SUFFIXES) and "value" in redacted:
+        redacted["value"] = "**REDACTED**"
     if "uuid" in redacted:
         redacted["uuid"] = "**REDACTED**"
     if "serialNumber" in redacted:

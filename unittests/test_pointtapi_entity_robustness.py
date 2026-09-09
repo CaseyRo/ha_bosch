@@ -485,3 +485,53 @@ class TestWriteFailuresSurface:
 
         with pytest.raises(ConfigEntryAuthFailed):
             await ent.async_set_operation_mode("On")
+
+
+class TestClimateOffToHeatRestoresSetpoint:
+    """OFF is stored as manual + min_temp, so leaving OFF has to restore the
+    setpoint too. Writing only userMode leaves the zone at min_temp, and the
+    next poll re-detects OFF and flips the UI back within the poll interval.
+    """
+
+    @pytest.mark.asyncio
+    async def test_off_then_heat_restores_previous_setpoint(self):
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "clock"},
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+
+        await ent.async_set_hvac_mode(HVACMode.OFF)
+        await ent.async_set_hvac_mode(HVACMode.HEAT)
+
+        writes = [c.args for c in coord.client.put.call_args_list]
+        assert ("/zones/zn1/manualTemperatureHeating", 21.0) in writes
+        assert ent.hvac_mode == HVACMode.HEAT
+
+    @pytest.mark.asyncio
+    async def test_off_then_heat_without_known_setpoint_clears_min_temp(self):
+        # No setpoint was ever observed, so we cannot restore the real one —
+        # but we must still leave min_temp, or the zone reads as OFF again.
+        coord = _coord({"/zones/zn1/userMode": {"value": "manual"}})
+        ent = _climate(coord)
+        ent._hvac_mode = HVACMode.OFF
+
+        await ent.async_set_hvac_mode(HVACMode.HEAT)
+
+        writes = dict(c.args for c in coord.client.put.call_args_list)
+        assert writes["/zones/zn1/manualTemperatureHeating"] > ent.min_temp
+
+    @pytest.mark.asyncio
+    async def test_mode_change_while_already_on_leaves_setpoint_alone(self):
+        coord = _coord({
+            "/zones/zn1/userMode": {"value": "manual"},
+            "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
+        })
+        ent = _climate(coord)
+        ent._handle_coordinator_update()
+
+        await ent.async_set_hvac_mode(HVACMode.AUTO)
+
+        written = [c.args[0] for c in coord.client.put.call_args_list]
+        assert "/zones/zn1/manualTemperatureHeating" not in written

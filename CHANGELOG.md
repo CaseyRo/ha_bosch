@@ -2,6 +2,30 @@
 
 All notable changes to this Bosch Home Assistant custom component will be documented in this file.
 
+## [1.5.2] — 2026-09-09 — Diagnostics no longer leak the appliance serial
+
+A maintenance release cut from `v1.5.1-beta.1`, which @jfhautenauven ran on his
+production installation from the day it was published. It carries the four
+defect fixes from #35 and deliberately **excludes** the Boost and
+installation-settings redesign (#34) — that reshapes devices and entities and
+belongs in 1.6.0, not in a patch.
+
+1.5.1 was never released as stable; the number is skipped so that this release
+is unambiguously "the beta plus the fixes" rather than something that merely
+shares a number with `1.5.1-beta.1`.
+
+### Security
+- **Diagnostics leaked the appliance serial four times over.** POINTTAPI writes
+  the serial to `address`, `device_id` and `uuid`, none of which were redacted,
+  and the path redactor matched a top-level `uuid` key that live
+  `{"id": ..., "value": ...}` responses never carry — so `/gateway/uuid` went out
+  in the clear as well. All four are now redacted. This matters because we ask
+  testers to paste diagnostics into public issues (#29); anyone who did so on an
+  earlier release should assume their serial is public.
+
+### Fixed
+- Dead entity gate, solar data wipe, and an Off-mode revert — see #35.
+
 ## [1.5.1-beta.1] — 2026-08-31
 
 ### Fixed

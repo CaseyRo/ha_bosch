@@ -36,11 +36,10 @@ sys.modules.setdefault("custom_components.bosch", _bosch_pkg)
 # executing the real __init__.py.
 _bosch_pkg.create_notification_firmware = MagicMock()
 
-# Also make the sensor sub-package discoverable
-_sensor_pkg = ModuleType("custom_components.bosch.sensor")
-_sensor_pkg.__path__ = [str(REPO_ROOT / "custom_components" / "bosch" / "sensor")]
-_sensor_pkg.__package__ = "custom_components.bosch.sensor"
-sys.modules.setdefault("custom_components.bosch.sensor", _sensor_pkg)
+# The sensor sub-package is imported for real (not shelled like the parent):
+# its __init__.py has no heavy side effects, and shelling it made
+# async_setup_entry unreachable from tests — which is why the sensor platform
+# setup had no coverage at all.
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
