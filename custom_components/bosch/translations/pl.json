@@ -168,6 +168,13 @@
       "return_temperature": {
         "name": "Temperatura powrotu"
       },
+      "indoor_air_temperature": {"name": "Temperatura powietrza wewnętrznego"},
+      "indoor_chip_temperature": {"name": "Temperatura wewnętrznego układu"},
+      "indoor_pcb_temperature": {"name": "Temperatura wewnętrznej płytki PCB"},
+      "ch_pump_modulation": {"name": "Modulacja pompy obiegu grzewczego"},
+      "burner_starts": {"name": "Uruchomienia palnika"},
+      "total_working_time": {"name": "Łączny czas pracy"},
+      "refill_needed": {"name": "Wymagane napełnienie"},
       "assigned_program": {
         "name": "Przypisany program"
       },
@@ -284,6 +291,8 @@
       "min_supply_temperature": {
         "name": "Minimalna temperatura zasilania"
       },
+      "heat_curve_minimum": {"name": "Minimalna krzywa grzewcza"},
+      "heat_curve_maximum": {"name": "Maksymalna krzywa grzewcza"},
       "night_setback_threshold": {
         "name": "Próg obniżenia nocnego"
       },
@@ -304,12 +313,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Czas dezynfekcji termicznej"
-      },
-      "annual_gas_goal": {
-        "name": "Roczny cel zużycia gazu"
-      },
-      "annual_electricity_goal": {
-        "name": "Roczny cel zużycia energii elektrycznej"
       }
     },
     "binary_sensor": {
@@ -341,7 +344,10 @@
       }
     },
     "switch": {
-      "boost": {
+      "boost_mode": {
+        "name": "Boost - Sterowanie ogólne"
+      },
+      "boost_zone": {
         "name": "Boost ogrzewania"
       },
       "auto_firmware_update": {

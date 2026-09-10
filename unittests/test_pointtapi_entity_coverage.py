@@ -94,7 +94,6 @@ class TestEntityHelperConversions:
             ("/solarCircuits/sc1/pumpModulation", None, "Solar"),
             ("/zones/zn2/status", None, "Heating Zone zn2"),
             ("/gateway", "thermal_disinfect", "Hot Water Tank"),
-            ("/gateway", "annual_gas_goal", "Energy performance"),
         ],
     )
     def test_resolve_device_info_routes_paths_and_kinds(self, path, kind, expected_name):

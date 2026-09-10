@@ -168,6 +168,13 @@
       "return_temperature": {
         "name": "Teplota spiatočky"
       },
+      "indoor_air_temperature": {"name": "Teplota vnútorného vzduchu"},
+      "indoor_chip_temperature": {"name": "Teplota vnútorného čipu"},
+      "indoor_pcb_temperature": {"name": "Teplota vnútornej dosky PCB"},
+      "ch_pump_modulation": {"name": "Modulácia vykurovacieho čerpadla"},
+      "burner_starts": {"name": "Štarty horáka"},
+      "total_working_time": {"name": "Celkový čas prevádzky"},
+      "refill_needed": {"name": "Vyžaduje doplnenie"},
       "assigned_program": {
         "name": "Priradený program"
       },
@@ -284,6 +291,8 @@
       "min_supply_temperature": {
         "name": "Minimálna teplota prívodu"
       },
+      "heat_curve_minimum": {"name": "Minimálna vykurovacia krivka"},
+      "heat_curve_maximum": {"name": "Maximálna vykurovacia krivka"},
       "night_setback_threshold": {
         "name": "Prahová hodnota nočného zníženia"
       },
@@ -304,12 +313,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Trvanie termickej dezinfekcie"
-      },
-      "annual_gas_goal": {
-        "name": "Ročný cieľ spotreby plynu"
-      },
-      "annual_electricity_goal": {
-        "name": "Ročný cieľ spotreby elektriny"
       }
     },
     "binary_sensor": {
@@ -341,7 +344,10 @@
       }
     },
     "switch": {
-      "boost": {
+      "boost_mode": {
+        "name": "Boost - Všeobecné ovládanie"
+      },
+      "boost_zone": {
         "name": "Boost vykurovania"
       },
       "auto_firmware_update": {

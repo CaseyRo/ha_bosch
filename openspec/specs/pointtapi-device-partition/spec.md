@@ -35,7 +35,7 @@ The `_resolve_device_info` helper SHALL apply the following routing in order, wi
 |---|---|
 | `/solarCircuits/` | Solar |
 | `/dhwCircuits/` or `thermal_disinfect` switch | Hot Water Tank |
-| `/heatSources/`, `/system/appliance/`, `/energy/`, `annual_gas_goal` number | Boiler |
+| `/heatSources/`, `/system/appliance/`, `/energy/` | Boiler |
 | `/zones/{zid}`, `/heatingCircuits/{cid}`, `/system/sensors/{humidity,temperatures}/`, zone-config numbers/selects | Heating Zone |
 | Anything else (gateway-level) | EasyControl Gateway |
 
@@ -51,7 +51,7 @@ The `_resolve_device_info` helper SHALL apply the following routing in order, wi
 
 #### Scenario: Gas usage routes to Boiler
 
-- **WHEN** the integration constructs any gas usage sensor (`/energy/history_*`, `/energy/historyHourly_*`, `annual_gas_goal`)
+- **WHEN** the integration constructs any gas usage sensor (`/energy/history_*`, `/energy/historyHourly_*`)
 - **THEN** its `device_info.identifiers` SHALL be `(DOMAIN, f"{uuid}_boiler")`
 
 #### Scenario: Notification light switch routes to Gateway

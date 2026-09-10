@@ -272,7 +272,6 @@ _DHW_KINDS = {
     "thermal_disinfect",
 }
 _ENERGY_KINDS = {
-    "annual_gas_goal",
     "energy_efficiency",
 }
 _HEATING_INSTALLATION_RESOURCES = {
@@ -280,6 +279,8 @@ _HEATING_INSTALLATION_RESOURCES = {
     "boostMode",
     "boostRemainingTime",
     "boostTemperature",
+    "heatCurveMax",
+    "heatCurveMin",
     "maxSupply",
     "minSupply",
     "nightSwitchMode",
@@ -300,6 +301,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "EasyControl gateway",
         "pl": "Bramka EasyControl",
         "sk": "Brána EasyControl",
+        "es": "Gateway EasyControl",
+        "pt": "Gateway EasyControl",
     },
     "boiler": {
         "en": "Boiler",
@@ -309,6 +312,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Ketel",
         "pl": "Kocioł",
         "sk": "Kotol",
+        "es": "Caldera",
+        "pt": "Caldeira",
     },
     "dhw": {
         "en": "Hot Water Tank",
@@ -318,6 +323,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Warmwatertank",
         "pl": "Zbiornik ciepłej wody",
         "sk": "Zásobník teplej vody",
+        "es": "Depósito de agua caliente",
+        "pt": "Depósito de água quente",
     },
     "solar": {
         "en": "Solar",
@@ -327,6 +334,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Zonne-energie",
         "pl": "Solarny",
         "sk": "Solar",
+        "es": "Solar",
+        "pt": "Solar",
     },
     "heating_zone": {
         "en": "Heating Zone",
@@ -336,6 +345,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Verwarmingszone",
         "pl": "Strefa ogrzewania",
         "sk": "Vykurovacia zóna",
+        "es": "Zona de calefacción",
+        "pt": "Zona de aquecimento",
     },
     "heating_installation": {
         "en": "Heating Installation Settings",
@@ -345,6 +356,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Instellingen verwarmingsinstallatie",
         "pl": "Ustawienia instalacji grzewczej",
         "sk": "Nastavenia vykurovacieho systému",
+        "es": "Configuración de la instalación de calefacción",
+        "pt": "Definições da instalação de aquecimento",
     },
     "thermostat_valve": {
         "en": "Thermostat valve",
@@ -354,6 +367,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Thermostaatkraan",
         "pl": "Zawór termostatyczny",
         "sk": "Termostatický ventil",
+        "es": "Válvula termostática",
+        "pt": "Válvula termostática",
     },
     "energy_performance": {
         "en": "Energy performance",
@@ -363,6 +378,8 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "nl": "Energieprestaties",
         "pl": "Wydajność energetyczna",
         "sk": "Energetická výkonnosť",
+        "es": "Rendimiento energético",
+        "pt": "Desempenho energético",
     },
 }
 
@@ -385,7 +402,7 @@ def _normalize_language(language: str | None) -> str:
     if not isinstance(language, str) or not language.strip():
         return "en"
     code = language.strip().lower().replace("_", "-").split("-", 1)[0]
-    return code if code in {"en", "de", "fr", "it", "nl", "pl", "sk"} else "en"
+    return code if code in {"en", "de", "es", "fr", "it", "nl", "pl", "pt", "sk"} else "en"
 
 
 def _device_name(name_key: str, language: str | None = None) -> str:
@@ -536,7 +553,16 @@ def _resolve_device_info(
             identifiers={(DOMAIN, f"{uuid}_energy")},
             name=_device_name("energy_performance", language),
             manufacturer="Bosch",
+            model="EasyControl",
             via_device=(DOMAIN, uuid),
+        )
+
+    if p in {
+        "/gateway/pirSensitivity",
+        "/gateway/notificationLight/enabled",
+    }:
+        return _resolve_device_info(
+            uuid, "/zones/zn1", language=language, data=data
         )
 
     # Path-based routing — first match wins.
@@ -569,9 +595,10 @@ def _resolve_device_info(
             identifiers={(DOMAIN, f"{uuid}_energy")},
             name=_device_name("energy_performance", language),
             manufacturer="Bosch",
+            model="EasyControl",
             via_device=(DOMAIN, uuid),
         )
-    circuit_id = _heating_installation_circuit_id(p)
+    circuit_id = "hc1" if p == "/system/awayMode/enabled" else _heating_installation_circuit_id(p)
     if circuit_id:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{uuid}_heating_installation_{circuit_id}")},
@@ -815,6 +842,10 @@ def _thermostat_valve_device_info_for_path(
         return _thermostat_valve_device_info(uuid, data, valve_id, language)
     if _thermostat_device_type(data, valve_id) == THERMOSTAT_VALVE_TYPE:
         return _thermostat_valve_device_info(uuid, data, valve_id, language)
+    if _thermostat_device_type(data, valve_id) == "thermostat":
+        return _resolve_device_info(
+            uuid, "/zones/zn1", language=language, data=data
+        )
     return _resolve_device_info(uuid, path, language=language, data=data)
 
 
@@ -1334,7 +1365,15 @@ _ZONE_STATUS_ACTIONS = {
 }
 
 
-class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], ClimateEntity):
+class _BoschPoinTTAPICoordinatorEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator]):
+    """Coordinator entity that applies already-loaded data on registration."""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
+
+
+class BoschPoinTTAPIClimateEntity(_BoschPoinTTAPICoordinatorEntity, ClimateEntity):
     """Climate entity for one POINTTAPI zone: current/setpoint from coordinator.data."""
 
     _attr_has_entity_name = True
@@ -1384,6 +1423,18 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         the OFF indicator stable across coordinator polls.
         """
         data = self.coordinator.data or {}
+        boost_zone_id = self._boost_zone_id
+        observed_boost = None
+        if boost_zone_id is not None:
+            boost_mode = _val(data, "/heatingCircuits/hc1/boostMode")
+            if boost_mode is not None:
+                observed_boost = (
+                    boost_mode == "on"
+                    and boost_zone_id in _boost_zone_values(data, "zones")
+                )
+                self.coordinator.reconcile_pending_boost_intent(
+                    boost_zone_id, observed_boost
+                )
         self._current = _val(data, f"/zones/{self._zone_id}/temperatureActual")
         self._target = _val(data, f"/zones/{self._zone_id}/temperatureHeatingSetpoint")
         if self._target is None:
@@ -1447,6 +1498,12 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         """Return PRESET_BOOST when this zone is in the native selected-zone list, else PRESET_NONE."""
         zone_id = self._boost_zone_id
         data = self.coordinator.data or {}
+        if zone_id is not None:
+            pending = self.coordinator.pending_boost_intent(zone_id)
+            if pending is True:
+                return PRESET_BOOST
+            if pending is False:
+                return PRESET_NONE
         if (
             zone_id is not None
             and _val(data, "/heatingCircuits/hc1/boostMode") == "on"
@@ -1562,16 +1619,30 @@ class BoschPoinTTAPIClimateEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinat
         if preset_mode == PRESET_BOOST:
             if PRESET_BOOST not in self.preset_modes:
                 raise HomeAssistantError("Boost is unavailable for this zone")
-            await self.coordinator.async_set_zone_boost(zone_id, True)
+            self.coordinator.set_pending_boost_intent(zone_id, True)
+            self.async_write_ha_state()
+            try:
+                await self.coordinator.async_set_zone_boost(zone_id, True)
+            except Exception:
+                self.coordinator.clear_pending_boost_intent(zone_id)
+                self.async_write_ha_state()
+                raise
             return
         if preset_mode in {PRESET_NONE, None}:
-            await self.coordinator.async_set_zone_boost(zone_id, False)
+            self.coordinator.set_pending_boost_intent(zone_id, False)
+            self.async_write_ha_state()
+            try:
+                await self.coordinator.async_set_zone_boost(zone_id, False)
+            except Exception:
+                self.coordinator.clear_pending_boost_intent(zone_id)
+                self.async_write_ha_state()
+                raise
             return
         raise HomeAssistantError(f"Unsupported POINTTAPI preset mode: {preset_mode}")
 
 
 class BoschPoinTTAPIWaterHeaterEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], WaterHeaterEntity
+    _BoschPoinTTAPICoordinatorEntity, WaterHeaterEntity
 ):
     """Water heater entity for POINTTAPI dhw1: state and temps from coordinator.data."""
 
@@ -1839,6 +1910,23 @@ def _pointtapi_zone_program_select_descriptions(
             options_fn=lambda d: tuple(_zone_program_option_map(d).keys()),
             current_option_fn=lambda d, zid=zone_id: _zone_program_current_option(d, zid),
             option_to_value_fn=lambda option, d: _zone_program_write_value(option, d),
+        )
+        for zone_id in pointtapi_zone_ids(data)
+    )
+
+
+def _pointtapi_zone_mode_select_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple["BoschPoinTTAPISelectEntityDescription", ...]:
+    """Return one translated zone-mode select for every discovered zone."""
+    if not data:
+        return ()
+
+    return tuple(
+        BoschPoinTTAPISelectEntityDescription(
+            key=f"/zones/{zone_id}/userMode",
+            translation_key="zone_mode",
+            options=("clock", "manual"),
         )
         for zone_id in pointtapi_zone_ids(data)
     )
@@ -2306,7 +2394,7 @@ def _pointtapi_sensor_descriptions(
 
 
 class BoschPoinTTAPISensorEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SensorEntity
+    _BoschPoinTTAPICoordinatorEntity, SensorEntity
 ):
     """Sensor entity for POINTTAPI: one path from coordinator.data; has_entity_name=True."""
 
@@ -2420,6 +2508,24 @@ POINTTAPI_NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         translation_key="min_supply_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=10.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/heatCurveMin",
+        translation_key="heat_curve_minimum",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=20.0,
+        native_max_value=90.0,
+        native_step=1.0,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    NumberEntityDescription(
+        key="/heatingCircuits/hc1/heatCurveMax",
+        translation_key="heat_curve_maximum",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=40.0,
         native_max_value=90.0,
         native_step=1.0,
         entity_category=EntityCategory.CONFIG,
@@ -2575,32 +2681,6 @@ def _pointtapi_dynamic_number_descriptions(
     data = data or {}
     descriptions: list[NumberEntityDescription] = []
 
-    if isinstance(data.get("/energy/gas/annualGoal"), dict):
-        descriptions.append(
-            NumberEntityDescription(
-                key="/energy/gas/annualGoal",
-                translation_key="annual_gas_goal",
-                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-                native_min_value=0.0,
-                native_max_value=1000000.0,
-                native_step=1.0,
-                entity_category=EntityCategory.CONFIG,
-            )
-        )
-
-    if isinstance(data.get("/energy/electricity/annualGoal"), dict):
-        descriptions.append(
-            NumberEntityDescription(
-                key="/energy/electricity/annualGoal",
-                translation_key="annual_electricity_goal",
-                native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-                native_min_value=0.0,
-                native_max_value=1000000.0,
-                native_step=1.0,
-                entity_category=EntityCategory.CONFIG,
-            )
-        )
-
     discovered: set[str] = set()
     for row in _thermostat_valve_rows(data):
         try:
@@ -2642,7 +2722,7 @@ def _pointtapi_number_descriptions(
 
 
 class BoschPoinTTAPINumberEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], NumberEntity
+    _BoschPoinTTAPICoordinatorEntity, NumberEntity
 ):
     """Number entity for POINTTAPI: read/write a single path value."""
 
@@ -2763,7 +2843,7 @@ ROUTE_FALLBACK = "fallback"
 
 
 class BoschPoinTTAPIBoostSwitchEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
+    _BoschPoinTTAPICoordinatorEntity, SwitchEntity
 ):
     """Switch entity for POINTTAPI: one-tap boost for one heating zone.
 
@@ -2773,7 +2853,7 @@ class BoschPoinTTAPIBoostSwitchEntity(
     """
 
     _attr_has_entity_name = True
-    _attr_translation_key = "boost"
+    _attr_translation_key = "boost_zone"
     _attr_name = None
 
     def __init__(
@@ -2889,6 +2969,12 @@ class BoschPoinTTAPISwitchEntityDescription(SwitchEntityDescription):
 
 POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...] = (
     BoschPoinTTAPISwitchEntityDescription(
+        key="/heatingCircuits/hc1/boostMode",
+        translation_key="boost_mode",
+        on_value="on",
+        off_value="off",
+    ),
+    BoschPoinTTAPISwitchEntityDescription(
         key="/gateway/update/enabled",
         translation_key="auto_firmware_update",
         entity_category=EntityCategory.CONFIG,
@@ -2921,7 +3007,7 @@ POINTTAPI_SWITCH_DESCRIPTIONS: tuple[BoschPoinTTAPISwitchEntityDescription, ...]
 
 
 class BoschPoinTTAPIGenericSwitchEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SwitchEntity
+    _BoschPoinTTAPICoordinatorEntity, SwitchEntity
 ):
     """Generic switch entity for POINTTAPI boolean paths (true/false string values)."""
 
@@ -3033,11 +3119,6 @@ def _normalize_select_option(raw_option: Any, supported_options: set[str]) -> st
 
 POINTTAPI_SELECT_DESCRIPTIONS: tuple[BoschPoinTTAPISelectEntityDescription, ...] = (
     BoschPoinTTAPISelectEntityDescription(
-        key="/zones/zn1/userMode",
-        translation_key="zone_mode",
-        options=("clock", "manual"),
-    ),
-    BoschPoinTTAPISelectEntityDescription(
         key="/gateway/pirSensitivity",
         translation_key="pir_sensitivity",
         options=("high", "medium", "low"),
@@ -3070,11 +3151,15 @@ def _pointtapi_select_descriptions(
 ) -> tuple[BoschPoinTTAPISelectEntityDescription, ...]:
     """Return all POINTTAPI select descriptions, including dynamic per-zone ones."""
     data = data or {}
-    return POINTTAPI_SELECT_DESCRIPTIONS + _pointtapi_zone_program_select_descriptions(data)
+    return (
+        _pointtapi_zone_mode_select_descriptions(data)
+        + POINTTAPI_SELECT_DESCRIPTIONS
+        + _pointtapi_zone_program_select_descriptions(data)
+    )
 
 
 class BoschPoinTTAPISelectEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], SelectEntity
+    _BoschPoinTTAPICoordinatorEntity, SelectEntity
 ):
     """Select entity for POINTTAPI option paths."""
 
@@ -3169,6 +3254,8 @@ class BoschPoinTTAPISelectEntity(
                 self._current_option = _select_state_key(option)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
+            if self._path.startswith("/zones/") and self._path.endswith("/userMode"):
+                await self.coordinator.async_refresh_boost_state()
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
@@ -3330,7 +3417,7 @@ def _parse_update_timestamp(raw: Any) -> datetime | None:
 
 
 class BoschPoinTTAPIBinarySensorEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], BinarySensorEntity
+    _BoschPoinTTAPICoordinatorEntity, BinarySensorEntity
 ):
     """Binary sensor entity for POINTTAPI; routes device via _resolve_device_info."""
 
@@ -3480,7 +3567,7 @@ def _gateway_latest_version(data: dict[str, Any]) -> str | None:
 
 
 class BoschPoinTTAPIUpdateEntity(
-    CoordinatorEntity[PoinTTAPIDataUpdateCoordinator], UpdateEntity
+    _BoschPoinTTAPICoordinatorEntity, UpdateEntity
 ):
     """Read-only Update entity for POINTTAPI gateways.
 

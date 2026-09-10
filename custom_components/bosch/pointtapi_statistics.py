@@ -10,6 +10,10 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
+try:
+    from homeassistant.components.recorder.models import StatisticMeanType
+except ImportError:  # Home Assistant cores before StatisticMeanType
+    StatisticMeanType = None
 from homeassistant.components.recorder.statistics import (
     async_import_statistics,
     get_last_statistics,
@@ -68,13 +72,18 @@ def _build_statistics(
     name: str,
 ) -> tuple[StatisticMetaData, list[StatisticData]]:
     """Build StatisticMetaData and StatisticData list for a gas field."""
+    metadata_kwargs = {
+        "has_mean": False,
+        "has_sum": True,
+        "name": name,
+        "source": "recorder",
+        "statistic_id": statistic_id,
+        "unit_of_measurement": "kWh",
+    }
+    if StatisticMeanType:
+        metadata_kwargs["mean_type"] = StatisticMeanType.NONE
     metadata = StatisticMetaData(
-        has_mean=False,
-        has_sum=True,
-        name=name,
-        source="recorder",
-        statistic_id=statistic_id,
-        unit_of_measurement="kWh",
+        **metadata_kwargs,
     )
     stats: list[StatisticData] = []
     running_sum = 0.0
@@ -155,14 +164,17 @@ async def async_backfill_gas_history(
 
     # Also backfill the total (gCh + gHw combined)
     total_id = f"{entity_id_prefix}_gas_total_today"
-    total_metadata = StatisticMetaData(
-        has_mean=False,
-        has_sum=True,
-        name="Gas total today",
-        source="recorder",
-        statistic_id=total_id,
-        unit_of_measurement="kWh",
-    )
+    total_metadata_kwargs = {
+        "has_mean": False,
+        "has_sum": True,
+        "name": "Gas total today",
+        "source": "recorder",
+        "statistic_id": total_id,
+        "unit_of_measurement": "kWh",
+    }
+    if StatisticMeanType:
+        total_metadata_kwargs["mean_type"] = StatisticMeanType.NONE
+    total_metadata = StatisticMetaData(**total_metadata_kwargs)
     total_stats: list[StatisticData] = []
     running_sum = 0.0
     for entry in backfill_entries:

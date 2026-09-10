@@ -25,10 +25,10 @@ import pytest
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
 from homeassistant.components.climate.const import HVACAction
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from custom_components.bosch.pointtapi_entities import (
     POINTTAPI_NUMBER_DESCRIPTIONS,
-    POINTTAPI_SELECT_DESCRIPTIONS,
     POINTTAPI_SWITCH_DESCRIPTIONS,
     BoschPoinTTAPIClimateEntity,
     BoschPoinTTAPIBoostSwitchEntity,
@@ -38,6 +38,7 @@ from custom_components.bosch.pointtapi_entities import (
     BoschPoinTTAPISensorEntity,
     BoschPoinTTAPIWaterHeaterEntity,
     _path_available,
+    _pointtapi_select_descriptions,
     _pointtapi_sensor_descriptions,
     _solar_data_available,
 )
@@ -51,6 +52,7 @@ def _coord(data):
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
     coord.async_request_refresh = AsyncMock()
+    coord.async_refresh_boost_state = AsyncMock()
     coord.async_set_zone_boost = AsyncMock()
     return coord
 
@@ -70,7 +72,7 @@ def _number(coord, key):
 
 
 def _select(coord, key):
-    desc = next(d for d in POINTTAPI_SELECT_DESCRIPTIONS if d.key == key)
+    desc = next(d for d in _pointtapi_select_descriptions(coord.data) if d.key == key)
     ent = BoschPoinTTAPISelectEntity(coord, "entry1", "uuid1", desc)
     ent.async_write_ha_state = MagicMock()
     return ent
@@ -229,6 +231,21 @@ class TestNumberRobustness:
         coord.client.put.assert_not_awaited()
 
 
+class TestCoordinatorEntityInitialSync:
+    @pytest.mark.asyncio
+    async def test_entity_reads_loaded_data_when_added_after_first_refresh(self):
+        key = "/zones/zn1/temperatureActual"
+        coord = _coord({key: {"value": 21.5}})
+        desc = next(d for d in _pointtapi_sensor_descriptions(coord.data) if d.key == key)
+        ent = BoschPoinTTAPISensorEntity(coord, "entry1", "uuid1", desc)
+        ent.async_write_ha_state = MagicMock()
+
+        with patch.object(CoordinatorEntity, "async_added_to_hass", new=AsyncMock()):
+            await ent.async_added_to_hass()
+
+        assert ent.native_value == 21.5
+        ent.async_write_ha_state.assert_called_once()
+
 # ── Select (write + malformed) ─────────────────────────────────────────────────
 
 
@@ -251,6 +268,7 @@ class TestSelectRobustness:
         coord.client.put.assert_awaited_once_with(self.KEY, "manual")
         assert ent.current_option == "manual"  # optimistic
         coord.async_request_refresh.assert_awaited_once()
+        coord.async_refresh_boost_state.assert_awaited_once()
 
 
 # ── Climate (read + absent + malformed + write) ────────────────────────────────
@@ -363,6 +381,61 @@ class TestClimateRobustness:
         ent = _climate(coord)
         await ent.async_set_preset_mode("boost")
         coord.async_set_zone_boost.assert_awaited_once_with(1, True)
+
+    @pytest.mark.asyncio
+    async def test_boost_preset_is_immediately_optimistic(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [], "allowedZones": [1]}]
+            },
+            "/heatingCircuits/hc1/boostShortcut": {
+                "used": "true", "available": "true", "writeable": 1
+            },
+        })
+        pending: dict[int, bool] = {}
+        coord.set_pending_boost_intent.side_effect = pending.__setitem__
+        coord.pending_boost_intent.side_effect = pending.get
+        ent = _climate(coord)
+
+        await ent.async_set_preset_mode("boost")
+
+        assert ent.preset_mode == "boost"
+        assert pending == {1: True}
+
+    def test_failed_boost_poll_does_not_clear_pending_intent(self):
+        coord = _coord({})
+        pending = {1: True}
+        coord.pending_boost_intent.side_effect = pending.get
+        coord.reconcile_pending_boost_intent.side_effect = (
+            lambda zone_id, observed: pending.pop(zone_id, None)
+            if observed is not None
+            else None
+        )
+        ent = _climate(coord)
+
+        ent._handle_coordinator_update()
+
+        assert pending == {1: True}
+        assert ent.preset_mode == "boost"
+
+    def test_successful_boost_poll_reconciles_pending_intent(self):
+        coord = _coord({
+            "/heatingCircuits/hc1/boostMode": {"value": "on"},
+            "/heatingCircuits/hc1/boostZones": {
+                "value": [{"zones": [1], "allowedZones": [1]}]
+            },
+        })
+        pending = {1: True}
+        coord.pending_boost_intent.side_effect = pending.get
+        coord.reconcile_pending_boost_intent.side_effect = (
+            lambda zone_id, observed: pending.pop(zone_id, None)
+        )
+        ent = _climate(coord)
+
+        ent._handle_coordinator_update()
+
+        assert pending == {}
+        assert ent.preset_mode == "boost"
 
     @pytest.mark.asyncio
     async def test_set_boost_preset_rejects_when_not_allowed(self):

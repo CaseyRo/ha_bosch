@@ -4,6 +4,273 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0-beta2] — 2026-09-09
+
+### Fixed
+- **Review follow-up** — Applies the remaining Casey review notes: startup
+  diagnostics stay at DEBUG, the dead `/energy/historyEntries` path is removed,
+  and the duplicate French heating-curve translation keys are cleaned up.
+- **Migration safety** — Documents the rollback caveat for beta users so a
+  downgrade requires removing and re-adding the integration on current HA.
+
+### Changed
+- **Release version** — Bumps the integration to `1.6.0-beta2` for the next
+  beta publication on the forked repository.
+
+## [1.6.0-beta1] — 2026-09-08
+
+The 1.6.0 beta consolidates the POINTTAPI redesign work developed across the
+alpha releases into a release focused on real-world multi-zone installations,
+clearer device topology, faster startup, and safer Home Assistant behavior.
+
+### Added
+- **Thermostat-valve support** — Adds ETRV valve temperature, valve position,
+  signal, battery, protocol, warning, child-lock, and calibration-offset
+  entities with device-aware routing and reference discovery.
+- **Heating Installation Settings device** — Adds a dedicated device for
+  supply limits, heating curves, summer/winter controls, night thresholds,
+  room influence, global Boost control, and away mode.
+- **Multi-zone controls** — Exposes zone mode for every discovered zone and
+  adds Spanish and Portuguese localization for user-facing entities and
+  virtual device names.
+
+### Changed
+- **Boost as a climate preset** — Keeps the user-facing Boost control on each
+  climate entity instead of exposing misleading per-zone switches.
+- **Optimistic Boost state** — Shows the requested intent immediately,
+  preserves it through incomplete polls, and reconciles it with explicit
+  Bosch state on the next successful update.
+- **Device topology** — Moves thermostat-specific controls from the gateway to
+  the thermostat or heating-installation device, with migrations preserving
+  entity IDs and unique IDs.
+- **Localization architecture** — Supports `es` and `pt` language codes and
+  keeps locale keys synchronized with the canonical base strings.
+
+### Fixed
+- **Multi-zone Boost behavior** — Corrects native zone selection, partial zone
+  removal, stale refresh handling, last-zone shutdown via `boostMode=off`, and
+  `boostShortcut` HTTP 403 fallback to the direct route.
+- **Startup responsiveness** — Publishes loaded coordinator data immediately
+  instead of waiting for a later polling notification.
+- **Home Assistant compatibility** — Adds `mean_type=NONE` for sum-only
+  statistics imports and uses `via_device_id` where the registry API requires
+  an internal device ID.
+- **Registry migrations** — Cleans obsolete Boost switches and names, and
+  moves existing thermostat-specific entities without breaking automations.
+
+### Warning
+- **Rollback requires reinstall** — The beta entry migrates to config-entry
+  version 11. Rolling back to an older release is not a clean downgrade: the
+  registry migration history is not reversed. On current Home Assistant builds,
+  a higher config-entry version can block loading until the integration is
+  removed and re-added.
+
+### Performance
+- **Smarter POINTTAPI discovery** — Uses domain allowlists, bounded parallel
+  reference fetching, safer traversal, fast/slow resource tiers, cached slow
+  inventories, background history loading, and deliberate rediscovery.
+- **Measured result** — Startup time was reduced by **74%** on a complex
+  installation with ETRV valves compared with the pre-optimization behavior.
+
+### Scope
+- Installation settings: [#22](https://github.com/CaseyRo/ha_bosch/issues/22)
+- Boost model: [#21](https://github.com/CaseyRo/ha_bosch/issues/21)
+- Home Assistant deprecations: [#47](https://github.com/CaseyRo/ha_bosch/issues/47)
+- Spanish/Portuguese localization: [#37](https://github.com/CaseyRo/ha_bosch/issues/37), [#38](https://github.com/CaseyRo/ha_bosch/issues/38)
+- Future locale roadmap: [#39](https://github.com/CaseyRo/ha_bosch/issues/39), [#40](https://github.com/CaseyRo/ha_bosch/issues/40), [#41](https://github.com/CaseyRo/ha_bosch/issues/41)
+
+## [1.6.0-alpha22] — 2026-09-08
+
+### Fixed
+- **Boost responsiveness** — Shows the user's Boost intent immediately on
+  climate entities, preserves it across incomplete polls, and reconciles it
+  with the next explicit Bosch state.
+- **Translations** — Synchronizes all supported locales with the base strings,
+  including heating-curve controls and previously missing diagnostic sensors.
+
+## [1.6.0-alpha21] — 2026-09-08
+
+### Added
+- **Heating curve settings** — Adds minimum and maximum heating-curve
+  controls to the heating installation settings device ([#22](https://github.com/CaseyRo/ha_bosch/issues/22)).
+
+### Fixed
+- **Thermostat-specific switches** — Moves away mode, motion sensitivity, and
+  notification light controls from the gateway to the appropriate thermostat
+  or heating-installation device, with registry migrations for existing
+  entities ([#22](https://github.com/CaseyRo/ha_bosch/issues/22)).
+- **Boost control semantics** — Keeps Boost as a climate preset, corrects
+  multi-zone native selection and turn-off behavior, handles Bosch's distinct
+  last-zone shutdown command, and removes misleading per-zone Boost switches
+  ([#21](https://github.com/CaseyRo/ha_bosch/issues/21)).
+- **Home Assistant compatibility** — Adds `mean_type=NONE` to sum-only
+  POINTTAPI statistics imports and uses `via_device_id` where the registry API
+  requires it ([#47](https://github.com/CaseyRo/ha_bosch/issues/47)).
+
+### Performance
+- **POINTTAPI startup and polling** — Replaces broad/sequential discovery with
+  domain allowlists, bounded parallel reference fetching, fast/slow resource
+  tiers, background history loading, and immediate entity synchronization from
+  already-loaded coordinator data. On a complex installation with ETRV valves,
+  measured startup time was reduced by **74%** versus the pre-optimization
+  implementation.
+
+## [1.6.0-alpha20] — 2026-09-08
+
+### Fixed
+- **POINTTAPI statistics import** — Supplies `mean_type=NONE` for sum-only
+  gas statistics imports, with compatibility for older Home Assistant cores.
+- **Device registry compatibility** — Uses `via_device_id` for the direct
+  registry API call.
+
+### Removed
+- **POINTTAPI Boost switches** — Removes per-zone Boost switch entities and
+  cleans them from the entity registry; Boost remains available as a climate
+  preset.
+
+## [1.6.0-alpha19] — 2026-09-08
+
+### Fixed
+- **Boost switch naming** — Uses the translated entity name instead of the
+  zone device name, with migration v8 cleaning persisted registry overrides.
+
+## [1.6.0-alpha18] — 2026-09-08
+
+### Fixed
+- **Boost switch registry migration** — Adds migration v7 to clean legacy and
+  current registry names so translated Boost switch labels are restored.
+- **Thermostat child-lock device** — Moves the main thermostat child-lock
+  switch from the gateway device to the zone 1 thermostat device.
+- **POINTTAPI Boost turn-off** — Clears and reapplies partial zone selections,
+  preserves user selections across stale refreshes, and uses `boostMode=off`
+  when the last active zone is removed.
+
+## [1.6.0-alpha17] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost turn-off** — Remembers the direct Boost route after a
+  `boostShortcut` HTTP 403, avoiding repeated failures when other zones remain
+  active.
+- **Boost switch registry migration** — Clears both stored registry names and
+  declares config-entry migration version 5 so translated names are restored.
+
+## [1.6.0-alpha16] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost availability** — Rechecks Boost capabilities after a
+  zone mode change so the climate preset follows Bosch's updated state.
+- **Boost switch naming** — Migrates existing entity-registry entries so the
+  translated `Boost chauffage` name is restored without changing entity IDs.
+
+## [1.6.0-alpha15] — 2026-09-08
+
+### Added
+- **POINTTAPI thermostat valves** — Adds valve offset and child-lock support
+  with device-specific entity routing and regression coverage.
+
+### Fixed
+- **POINTTAPI discovery and startup** — Improves reference traversal,
+  parallel discovery, startup timing diagnostics, and background history
+  loading while reducing unnecessary API calls.
+- **POINTTAPI boost controls** — Hardens boost route selection, fallback
+  handling, zone validation, and state refresh behavior.
+
+### Removed
+- **Annual energy goals** — Removes the unused annual gas and electricity goal
+  entities, API discovery paths, translations, and related routing code.
+
+## [1.6.0-alpha14] — 2026-09-08
+
+### Changed
+- **POINTTAPI discovery allowlist** — Replaces the growing exclusion list with
+  domain-specific allowlists that fetch only resources consumed by the current
+  entity surface while retaining dynamic zone, program, and valve discovery.
+
+## [1.6.0-alpha13] — 2026-09-08
+
+### Fixed
+- **POINTTAPI discovery efficiency** — Removes additional unused gateway,
+  energy, DHW, appliance, zone, program, and thermostat-valve metadata calls,
+  including descendant paths covered by wildcard exclusions.
+
+## [1.6.0-alpha12] — 2026-09-08
+
+### Changed
+- **POINTTAPI startup diagnostics** — Logs the total first-refresh duration and
+  every measured discovery path on every startup, including fast starts.
+
+## [1.6.0-alpha11] — 2026-09-08
+
+### Changed
+- **POINTTAPI discovery budget** — Reduces the total startup discovery timeout
+  from 120 seconds to 60 seconds so a slow or incomplete discovery cannot delay
+  initialization for more than one minute.
+
+## [1.6.0-alpha10] — 2026-09-08
+
+### Fixed
+- **POINTTAPI discovery efficiency** — Skips unused gateway metadata and
+  program-week subtrees during discovery, reducing unnecessary API calls while
+  preserving paths consumed by the current entity surface.
+
+## [1.6.0-alpha9] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup performance** — Fetches nested discovery references in
+  parallel with a concurrency limit of 10, avoiding the previous cumulative
+  delay from hundreds of sequential resource requests.
+
+## [1.6.0-alpha8] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup responsiveness** — Publishes current device data without
+  waiting for paginated `historyHourly` loading; historical energy data now
+  refreshes in the background and is included in a later coordinator update.
+
+## [1.6.0-alpha7] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup diagnostics** — Records the total first-refresh duration
+  and the elapsed time for each discovery path when startup exceeds 30 seconds.
+- **POINTTAPI discovery timeout** — Bounds the complete discovery walk at 120
+  seconds while preserving partial data and warning when the budget is reached.
+
+## [1.6.0-alpha6] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup diagnostics** — Optional discovery requests now time out
+  after 8 seconds instead of blocking startup for up to 30 seconds each, and
+  skipped requests are reported at warning level with their resource path.
+
+## [1.6.0-alpha5] — 2026-09-08
+
+### Fixed
+- **POINTTAPI startup performance** — Defers paginated `historyHourly`
+  loading until the first regular poll so current thermostat data and controls
+  become available without waiting for the historical energy walk.
+
+## [1.6.0-alpha4] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost synchronization** — Refreshes the live Boost mode and
+  selected zones before changing the native shortcut selection, and restarts
+  an active shortcut with `boostMode=off` before applying the updated zones.
+- **POINTTAPI Boost registry migration** — Removes stale per-zone Boost entity
+  entries so Home Assistant recreates them with the corrected label.
+- **POINTTAPI Boost naming** — Uses the localized **Heating boost** label for
+  per-zone Boost switches across all supported languages.
+
+## [1.6.0-alpha3] — 2026-09-08
+
+### Fixed
+- **POINTTAPI Boost zone selection** — Activating a zone no longer activates
+  stale zones that were only preselected while Boost was off.
+- **POINTTAPI Boost turn-off** — A forbidden `boostShortcut` write now falls
+  back to the direct `boostZones` and `boostMode` route instead of surfacing a
+  403 to Home Assistant.
+- **POINTTAPI Boost naming** — Per-zone Boost switches are displayed as
+  `Boost` instead of inheriting the thermostat zone name.
+
 ### Security
 - **Diagnostics no longer leak the appliance serial.** POINTTAPI stores the
   serial under `address`, `device_id` *and* `uuid` in the config entry, none of

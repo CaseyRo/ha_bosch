@@ -8,6 +8,7 @@ a live RRC2 gateway on 2026-06-05 — see docs/pointtapi-api.md.
 from __future__ import annotations
 
 import asyncio
+import fnmatch
 import logging
 import time
 from datetime import timedelta
@@ -75,6 +76,190 @@ FAST_DEVICE_RESOURCE_MARKERS = (
 REDISCOVERY_INTERVAL = 24 * 3600
 # Throttle the bulk-failure WARNING to once per hour; repeats log at DEBUG.
 BULK_WARN_INTERVAL = 3600
+DISCOVERY_OPTIONAL_TIMEOUT = 8
+DISCOVERY_TOTAL_TIMEOUT = 60
+DISCOVERY_ALLOWED_PATTERNS = {
+    "/gateway": (
+        "/gateway/notificationLight*",
+        "/gateway/productID",
+        "/gateway/pirSensitivity",
+        "/gateway/ui",
+        "/gateway/ui/eco",
+        "/gateway/update*",
+        "/gateway/versionFirmware",
+        "/gateway/wifi*",
+        "/gateway/zigbee*",
+    ),
+    "/heatingCircuits/hc1": (
+        "/heatingCircuits/hc1/boost*",
+        "/heatingCircuits/hc1/heatCurveMax",
+        "/heatingCircuits/hc1/heatCurveMin",
+        "/heatingCircuits/hc1/maxSupply",
+        "/heatingCircuits/hc1/minSupply",
+        "/heatingCircuits/hc1/nightSwitchMode",
+        "/heatingCircuits/hc1/nightThreshold",
+        "/heatingCircuits/hc1/powerSetpoint",
+        "/heatingCircuits/hc1/roomInfluence",
+        "/heatingCircuits/hc1/suWiSwitchMode",
+        "/heatingCircuits/hc1/suWiThreshold",
+        "/heatingCircuits/hc1/supplyTemperatureSetpoint",
+    ),
+    "/dhwCircuits/dhw1": (
+        "/dhwCircuits/dhw1/actualTemp",
+        "/dhwCircuits/dhw1/extraDhw*",
+        "/dhwCircuits/dhw1/operationMode",
+        "/dhwCircuits/dhw1/state",
+        "/dhwCircuits/dhw1/temperatureLevels",
+        "/dhwCircuits/dhw1/temperatureLevels/high",
+        "/dhwCircuits/dhw1/thermalDisinfect*",
+    ),
+    "/system/sensors": (
+        "/system/sensors/humidity/indoor_h1",
+        "/system/sensors/humidity",
+        "/system/sensors/temperatures",
+        "/system/sensors/temperatures/outdoor_t1",
+        "/system/sensors/temperatures/offset",
+    ),
+    "/system/appliance": (
+        "/system/appliance/blockingError",
+        "/system/appliance/causeCode",
+        "/system/appliance/displayCode",
+        "/system/appliance/lockingError",
+        "/system/appliance/maintenanceRequest",
+        "/system/appliance/systemPressure",
+    ),
+    "/zones": (
+        "/zones/zn*/actualValvePosition",
+        "/zones/zn*/clockProgram",
+        "/zones/zn*/manualTemperatureHeating",
+        "/zones/zn*/name",
+        "/zones/zn*/openWindowDetection*",
+        "/zones/zn*/optimumStartState",
+        "/zones/zn*/status",
+        "/zones/zn*/temperatureActual",
+        "/zones/zn*/temperatureHeatingSetpoint",
+        "/zones/zn*/userMode",
+    ),
+    "/energy": (
+        "/energy/electricity/dayAverage",
+        "/energy/electricity/monthAverage",
+        "/energy/history",
+        "/energy/historyHourly",
+    ),
+    "/heatSources": (
+        "/heatSources/actualModulation",
+        "/heatSources/actualSupplyTemperature",
+        "/heatSources/flameIndication",
+        "/heatSources/numberOfStarts",
+        "/heatSources/refillNeeded",
+        "/heatSources/returnTemperature",
+    ),
+    "/solarCircuits/sc1": (
+        "/solarCircuits/sc1/collectorTemperature",
+        "/solarCircuits/sc1/dhwTankBottomTemperature",
+        "/solarCircuits/sc1/pumpModulation",
+        "/solarCircuits/sc1/totalSolarGain",
+    ),
+    "/programs": (
+        "/programs/pg*/name",
+    ),
+    "/devices": (
+        "/devices/list",
+        "/devices/device*/type",
+        "/devices/device*/etrv",
+        "/devices/device*/etrv/childLock*",
+        "/devices/device*/etrv/offset",
+        "/devices/device*/etrv/temperatureActual",
+        "/devices/device*/etrv/valvePosition",
+        "/devices/device*/thermostat",
+        "/devices/device*/thermostat/childLock*",
+        "/devices/device*/thermostat/offset",
+        "/devices/device*/thermostat/temperatureActual",
+        "/devices/device*/thermostat/valvePosition",
+    ),
+}
+
+
+def _discovery_path_needed(path: str) -> bool:
+    """Return whether a discovered path can feed the current entity surface."""
+    compact_valve_prefix = "/devices/list/thermostat_valve/"
+    if path.startswith(compact_valve_prefix):
+        suffix = path.removeprefix(compact_valve_prefix).split("/")
+        return (
+            len(suffix) == 1
+            or (len(suffix) == 2 and suffix[1] == "offset")
+            or (len(suffix) >= 2 and suffix[1] == "childLock")
+        )
+    if path.startswith("/zones/zn") and path.count("/") == 2:
+        return True
+    if path.startswith("/programs/pg") and path.count("/") == 2:
+        return True
+    if path.startswith("/devices/device") and path.count("/") == 2:
+        return True
+    if path.startswith("/programs/pg") and not path.endswith("/name"):
+        return False
+    for root, patterns in DISCOVERY_ALLOWED_PATTERNS.items():
+        if path.startswith(root + "/"):
+            return any(_discovery_pattern_matches(path, pattern) for pattern in patterns)
+    return True
+
+
+def _discovery_pattern_matches(path: str, pattern: str) -> bool:
+    """Match discovery patterns without allowing ``*`` to cross path segments."""
+    if pattern.endswith("*"):
+        base_parts = pattern[:-1].strip("/").split("/")
+        path_parts = path.strip("/").split("/")
+        if len(path_parts) >= len(base_parts) and all(
+            fnmatch.fnmatchcase(path_part, pattern_part)
+            for path_part, pattern_part in zip(path_parts, base_parts)
+        ):
+            return True
+
+    path_parts = path.strip("/").split("/")
+    pattern_parts = pattern.strip("/").split("/")
+    if len(path_parts) != len(pattern_parts):
+        return False
+    return all(
+        fnmatch.fnmatchcase(path_part, pattern_part)
+        for path_part, pattern_part in zip(path_parts, pattern_parts)
+    )
+
+
+async def _get_discovery_path(
+    client: PoinTTAPIClient,
+    path: str,
+    *,
+    timeout: float = DISCOVERY_OPTIONAL_TIMEOUT,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> Any:
+    """Fetch a discovery path without letting an optional resource stall startup."""
+    if deadline is not None:
+        timeout = min(timeout, max(0.0, deadline - asyncio.get_running_loop().time()))
+        if timeout <= 0:
+            if path == "/gateway":
+                raise TimeoutError(
+                    f"POINTTAPI discovery deadline exhausted before fetching {path}"
+                )
+            return None
+    started = asyncio.get_running_loop().time()
+    try:
+        async with asyncio.timeout(timeout):
+            return await client.get(path)
+    except TimeoutError:
+        if path == "/gateway":
+            raise
+        _LOGGER.warning(
+            "POINTTAPI discovery path %s timed out after %ss; skipping it for this refresh",
+            path,
+            timeout,
+        )
+        return None
+    finally:
+        if timings is not None:
+            timings.append(
+                (path, round(asyncio.get_running_loop().time() - started, 3))
+            )
 
 
 def _is_slow_resource(path: str) -> bool:
@@ -86,7 +271,10 @@ def _is_slow_resource(path: str) -> bool:
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
 
 
-async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] | None:
+async def _fetch_history_hourly_all(
+    client: PoinTTAPIClient,
+    call_counter: list[int] | None = None,
+) -> dict[str, Any] | None:
     """Walk /energy/historyHourly pagination forward to collect every entry.
 
     The API returns 15 entries per page plus a `next` cursor inside the
@@ -95,6 +283,8 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
     today. Returns the original response shape with the entries flattened
     across all pages, or None if the first fetch failed.
     """
+    if call_counter is not None:
+        call_counter[0] += 1
     first = await client.get("/energy/historyHourly")
     if not isinstance(first, dict):
         return None
@@ -109,6 +299,8 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
         if nxt is None:
             break
         try:
+            if call_counter is not None:
+                call_counter[0] += 1
             page = await client.get(f"/energy/historyHourly?next={nxt}")
         except Exception as err:
             _LOGGER.debug("historyHourly pagination stopped at next=%s: %s", nxt, err)
@@ -127,11 +319,18 @@ async def _fetch_history_hourly_all(client: PoinTTAPIClient) -> dict[str, Any] |
 
 
 async def _discover_roots(
-    client: PoinTTAPIClient, root: str, fallback: str
+    client: PoinTTAPIClient,
+    root: str,
+    fallback: str,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
 ) -> list[str]:
     """Return reference roots from a listing, or its static fallback."""
     try:
-        resp = await client.get(root)
+        resp = await _get_discovery_path(
+            client, root, deadline=deadline, timings=timings
+        )
         if isinstance(resp, dict):
             roots = [
                 r[ID_KEY]
@@ -149,22 +348,95 @@ async def _discover_roots(
     return [fallback]
 
 
-async def _zone_roots(client: PoinTTAPIClient) -> list[str]:
+async def _zone_roots(
+    client: PoinTTAPIClient,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> list[str]:
     """Return one walk root per zone, with a zn1 fallback."""
-    return await _discover_roots(client, "/zones", "/zones/zn1")
+    return await _discover_roots(
+        client, "/zones", "/zones/zn1", deadline=deadline, timings=timings
+    )
 
 
-async def _program_roots(client: PoinTTAPIClient) -> list[str]:
+async def _program_roots(
+    client: PoinTTAPIClient,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> list[str]:
     """Return one walk root per listed program."""
-    return await _discover_roots(client, "/programs", "/programs")
+    return await _discover_roots(
+        client, "/programs", "/programs", deadline=deadline, timings=timings
+    )
 
 
-async def _device_roots(client: PoinTTAPIClient) -> list[str]:
+async def _device_roots(
+    client: PoinTTAPIClient,
+    *,
+    deadline: float | None = None,
+    timings: list[tuple[str, float]] | None = None,
+) -> list[str]:
     """Return one walk root per listed device."""
-    return await _discover_roots(client, "/devices", "/devices")
+    return await _discover_roots(
+        client, "/devices", "/devices", deadline=deadline, timings=timings
+    )
 
 
-async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
+async def _fetch_reference_tree(
+    client: PoinTTAPIClient,
+    response: dict[str, Any],
+    data: dict[str, Any],
+    seen_references: set[str],
+    semaphore: asyncio.Semaphore,
+    *,
+    deadline: float,
+    timings: list[tuple[str, float]] | None = None,
+) -> None:
+    """Fetch nested references concurrently, capped by the discovery semaphore."""
+    async def fetch_reference(ref_id: str, depth: int) -> None:
+        if not _discovery_path_needed(ref_id) or ref_id in seen_references:
+            return
+        seen_references.add(ref_id)
+        try:
+            async with semaphore:
+                child = await _get_discovery_path(
+                    client, ref_id, deadline=deadline, timings=timings
+                )
+            if not isinstance(child, dict):
+                return
+            data[ref_id] = child
+            if depth >= 3:
+                return
+            children = [
+                item.get(ID_KEY)
+                for item in child.get(REFERENCES_KEY) or []
+                if isinstance(item, dict) and item.get(ID_KEY)
+            ]
+            await asyncio.gather(
+                *(fetch_reference(child_id, depth + 1) for child_id in children)
+            )
+        except ConfigEntryAuthFailed:
+            _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
+        except Exception:
+            _LOGGER.debug("POINTTAPI optional ref %s unavailable", ref_id)
+
+    references = [
+        item.get(ID_KEY)
+        for item in response.get(REFERENCES_KEY) or []
+        if isinstance(item, dict) and item.get(ID_KEY)
+    ]
+    await asyncio.gather(*(fetch_reference(ref_id, 1) for ref_id in references))
+
+
+async def _fetch_paths(
+    client: PoinTTAPIClient,
+    *,
+    include_history_hourly: bool = True,
+    timings: list[tuple[str, float]] | None = None,
+    history_call_counter: list[int] | None = None,
+) -> dict[str, Any]:
     """Fetch root paths and one level of references; return path -> response dict.
 
     Only /gateway auth failures are treated as real token problems (re-raised as
@@ -172,78 +444,77 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
     some sub-resources may be forbidden without the token being invalid.
     """
     data: dict[str, Any] = {}
+    deadline = asyncio.get_running_loop().time() + DISCOVERY_TOTAL_TIMEOUT
+    semaphore = asyncio.Semaphore(10)
     roots: list[str] = []
     for r in POINTTAPI_COORDINATOR_ROOTS:
         if r == "/zones":
-            roots.extend(await _zone_roots(client))
+            roots.extend(
+                await _zone_roots(client, deadline=deadline, timings=timings)
+            )
             continue
         if r == "/programs":
-            roots.extend(await _program_roots(client))
+            roots.extend(
+                await _program_roots(client, deadline=deadline, timings=timings)
+            )
             continue
         if r == "/devices":
-            roots.extend(await _device_roots(client))
+            roots.extend(
+                await _device_roots(client, deadline=deadline, timings=timings)
+            )
             continue
         roots.append(r)
     roots = list(dict.fromkeys(roots))
     seen_references: set[str] = set()
     for root in roots:
+        if not _discovery_path_needed(root):
+            continue
+        if root == "/energy/historyHourly" and not include_history_hourly:
+            continue
         if root == "/energy/historyHourly":
             try:
-                merged = await _fetch_history_hourly_all(client)
+                history_started = asyncio.get_running_loop().time()
+                merged = await _fetch_history_hourly_all(
+                    client, call_counter=history_call_counter
+                )
                 if isinstance(merged, dict):
                     data[root] = merged
+                if timings is not None:
+                    timings.append(
+                        (
+                            root,
+                            round(
+                                asyncio.get_running_loop().time() - history_started,
+                                3,
+                            ),
+                        )
+                    )
             except ConfigEntryAuthFailed:
                 _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", root)
             except Exception as err:
                 _LOGGER.debug("POINTTAPI optional path %s not available: %s", root, err)
             continue
         try:
-            resp = await client.get(root)
+            root_timeout = 30 if root == "/gateway" else DISCOVERY_OPTIONAL_TIMEOUT
+            resp = await _get_discovery_path(
+                client,
+                root,
+                timeout=root_timeout,
+                deadline=deadline,
+                timings=timings,
+            )
             if not isinstance(resp, dict):
                 continue
             data[root] = resp
-            refs = resp.get(REFERENCES_KEY) or []
-            for ref in refs:
-                ref_id = ref.get(ID_KEY) if isinstance(ref, dict) else None
-                if not ref_id or ref_id in seen_references:
-                    continue
-                seen_references.add(ref_id)
-                try:
-                    sub = await client.get(ref_id)
-                    if isinstance(sub, dict):
-                        data[ref_id] = sub
-                        # Fetch nested refEnum leaves such as
-                        # device -> etrv -> childLock -> enabled.
-                        if sub.get("type") == "refEnum":
-                            for r2 in sub.get(REFERENCES_KEY) or []:
-                                r2_id = r2.get(ID_KEY) if isinstance(r2, dict) else None
-                                if not r2_id or r2_id in data:
-                                    continue
-                                try:
-                                    sub2 = await client.get(r2_id)
-                                    if isinstance(sub2, dict):
-                                        data[r2_id] = sub2
-                                        if sub2.get("type") == "refEnum":
-                                            for r3 in sub2.get(REFERENCES_KEY) or []:
-                                                r3_id = r3.get(ID_KEY) if isinstance(r3, dict) else None
-                                                if not r3_id or r3_id in data:
-                                                    continue
-                                                try:
-                                                    leaf = await client.get(r3_id)
-                                                    if isinstance(leaf, dict):
-                                                        data[r3_id] = leaf
-                                                except ConfigEntryAuthFailed:
-                                                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r3_id)
-                                                except Exception:
-                                                    continue
-                                except ConfigEntryAuthFailed:
-                                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", r2_id)
-                                except Exception:
-                                    continue
-                except ConfigEntryAuthFailed:
-                    _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
-                except Exception:  # skip single path failure
-                    continue
+            await _fetch_reference_tree(
+                client,
+                resp,
+                data,
+                seen_references,
+                semaphore,
+                deadline=deadline,
+                timings=timings,
+            )
         except ConfigEntryAuthFailed:
             if root == "/gateway":
                 raise  # Token is genuinely bad
@@ -253,11 +524,23 @@ async def _fetch_paths(client: PoinTTAPIClient) -> dict[str, Any]:
                 _LOGGER.warning("POINTTAPI gateway fetch failed: %s", err)
                 raise UpdateFailed(f"POINTTAPI fetch failed: {err}") from err
             _LOGGER.debug("POINTTAPI optional path %s not available, skipping: %s", root, err)
+    if asyncio.get_running_loop().time() >= deadline:
+        _LOGGER.debug(
+            "POINTTAPI discovery budget of %ss exhausted; continuing with %s resources",
+            DISCOVERY_TOTAL_TIMEOUT,
+            len(data),
+        )
     return data
 
 
 class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator for POINTTAPI: one poll, path-keyed data; 401/403 -> ConfigEntryAuthFailed."""
+
+    _BOOST_REFRESH_PATHS = (
+        "/heatingCircuits/hc1/boostMode",
+        "/heatingCircuits/hc1/boostZones",
+        "/heatingCircuits/hc1/boostShortcut",
+    )
 
     def __init__(
         self,
@@ -277,6 +560,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Lock for serializing boost zone updates across rapid toggles.
         self._boost_lock = asyncio.Lock()
         self._boost_selected_zones: set[int] | None = None
+        self._pending_boost_intents: dict[int, bool] = {}
         # Tracks an in-flight HA-triggered boost session. The boost switch sets
         # this on turn-on and clears it on turn-off; the boost_remaining_time
         # sensor reads it to derive a synthetic countdown.
@@ -293,15 +577,54 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._bulk_warned_at: float | None = None
         self._history_hourly_data: dict[str, Any] | None = None
         self._last_history_hourly_fetch: float = 0.0
+        self._history_hourly_task: asyncio.Task[None] | None = None
         self._slow_bulk_paths: list[str] = []
         self._fast_bulk_paths: list[str] = []
         self._slow_data: dict[str, Any] = {}
         self._last_slow_fetch: float = 0.0
+        self.discovery_timings: list[tuple[str, float]] = []
+        self.history_hourly_calls = 0
 
     @property
     def client(self) -> PoinTTAPIClient:
         """Return the POINTTAPI client for PUT calls from entities."""
         return self._client
+
+    def set_pending_boost_intent(self, zone_id: int, enabled: bool) -> None:
+        """Record a user Boost intent until a successful poll reconciles it."""
+        self._pending_boost_intents[zone_id] = enabled
+
+    def pending_boost_intent(self, zone_id: int) -> bool | None:
+        """Return the pending user Boost intent for a zone, if any."""
+        return self._pending_boost_intents.get(zone_id)
+
+    def clear_pending_boost_intent(self, zone_id: int) -> None:
+        """Clear a pending Boost intent after a command failure."""
+        self._pending_boost_intents.pop(zone_id, None)
+
+    def reconcile_pending_boost_intent(
+        self, zone_id: int, observed_enabled: bool | None
+    ) -> None:
+        """Clear a pending intent only after a usable poll confirms or contradicts it."""
+        if observed_enabled is None:
+            return
+        self._pending_boost_intents.pop(zone_id, None)
+
+    async def async_refresh_boost_state(self) -> None:
+        """Re-read Boost capabilities after Bosch applies a zone mode change."""
+        await asyncio.sleep(1)
+        try:
+            boost_data = await self._client.bulk(list(self._BOOST_REFRESH_PATHS))
+        except ConfigEntryAuthFailed:
+            raise
+        except Exception as err:
+            _LOGGER.debug("POINTTAPI targeted Boost refresh failed: %s", err)
+            return
+        if not boost_data:
+            return
+        merged = dict(self.data or {})
+        merged.update(boost_data)
+        self.async_set_updated_data(merged)
 
     async def _confirm_native_active(self) -> bool:
         """A native write counts only if the device reports boost active."""
@@ -318,10 +641,21 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self, boost_temp: float, duration_h: float, zones: list[int]
     ) -> str:
         """Run the probe ladder once; cache and return the working route."""
-        from .pointtapi_entities import ROUTE_DIRECT, ROUTE_FALLBACK, ROUTE_SHORTCUT
+        from .pointtapi_entities import (
+            ROUTE_DIRECT,
+            ROUTE_FALLBACK,
+            ROUTE_SHORTCUT,
+            _val,
+        )
 
         rungs: list[dict[str, Any]] = []
         try:
+            if _val(
+                self.data or {}, "/heatingCircuits/hc1/boostMode"
+            ) == "on":
+                await self.client.put(
+                    "/heatingCircuits/hc1/boostMode", "off"
+                )
             await self.client.put(
                 "/heatingCircuits/hc1/boostShortcut",
                 [{
@@ -374,10 +708,16 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self, route: str, boost_temp: float, duration_h: float, zones: list[int]
     ) -> bool:
         """Activate boost via the cached native route. True when confirmed."""
-        from .pointtapi_entities import ROUTE_SHORTCUT
+        from .pointtapi_entities import ROUTE_SHORTCUT, _val
 
         try:
             if route == ROUTE_SHORTCUT:
+                if _val(
+                    self.data or {}, "/heatingCircuits/hc1/boostMode"
+                ) == "on":
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostMode", "off"
+                    )
                 await self.client.put(
                     "/heatingCircuits/hc1/boostShortcut",
                     [{
@@ -403,21 +743,38 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _native_boost_off(self, route: str, zones: list[int]) -> bool:
         """Update native Boost selection without touching zone user modes."""
-        from .pointtapi_entities import ROUTE_SHORTCUT, _val
+        from .pointtapi_entities import ROUTE_DIRECT, ROUTE_SHORTCUT, _val
 
         try:
             if route == ROUTE_SHORTCUT:
                 data = self.data or {}
+                path = "/heatingCircuits/hc1/boostShortcut"
+                temperature = float(
+                    _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
+                )
+                duration = int(
+                    float(_val(data, "/heatingCircuits/hc1/boostDuration") or 2.0)
+                )
+                if not zones:
+                    await self.client.put(
+                        "/heatingCircuits/hc1/boostMode", "off"
+                    )
+                    return True
                 await self.client.put(
-                    "/heatingCircuits/hc1/boostShortcut",
+                    path,
                     [{
-                        "mode": "on" if zones else "off",
-                        "temperature": float(
-                            _val(data, "/heatingCircuits/hc1/boostTemperature") or 26.0
-                        ),
-                        "duration": int(
-                            float(_val(data, "/heatingCircuits/hc1/boostDuration") or 2.0)
-                        ),
+                        "mode": "off",
+                        "temperature": temperature,
+                        "duration": duration,
+                        "zones": [],
+                    }],
+                )
+                await self.client.put(
+                    path,
+                    [{
+                        "mode": "on",
+                        "temperature": temperature,
+                        "duration": duration,
                         "zones": zones,
                     }],
                 )
@@ -435,10 +792,43 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
             return True
         except ConfigEntryAuthFailed:
+            if route == ROUTE_SHORTCUT:
+                try:
+                    if zones:
+                        await self.client.put(
+                            "/heatingCircuits/hc1/boostZones", [{"zones": zones}]
+                        )
+                        await self.client.put(
+                            "/heatingCircuits/hc1/boostMode", "on"
+                        )
+                    else:
+                        await self.client.put(
+                            "/heatingCircuits/hc1/boostMode", "off"
+                        )
+                    self.boost_probe_result = {
+                        **(self.boost_probe_result or {}),
+                        "route": ROUTE_DIRECT,
+                    }
+                    return True
+                except ConfigEntryAuthFailed:
+                    pass
             raise
         except Exception as err:
             _LOGGER.warning("Native boost OFF via %s failed: %s", route, err)
             return False
+
+    async def _refresh_boost_state(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Read the live native Boost state before changing its selection."""
+        fresh = dict(data)
+        for path in (
+            "/heatingCircuits/hc1/boostMode",
+            "/heatingCircuits/hc1/boostZones",
+        ):
+            response = await self.client.get(path)
+            if isinstance(response, dict):
+                fresh[path] = response
+        self.data = fresh
+        return fresh
 
     async def async_set_zone_boost(self, zone_id: int, enable: bool) -> None:
         """Turn boost on or off for a specified zone, serialized with an asyncio.Lock."""
@@ -453,6 +843,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         async with self._boost_lock:
             data = self.data or {}
+            data = await self._refresh_boost_state(data)
             if enable and not (
                 _path_writable(data, "/heatingCircuits/hc1/boostShortcut")
                 and zone_id in _boost_zone_values(data, "allowedZones")
@@ -470,7 +861,10 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 base_zones = _boost_zone_values(data, "zones")
 
             if enable:
-                target_zones = sorted(base_zones | {zone_id})
+                active_zones = base_zones if _val(
+                    data, "/heatingCircuits/hc1/boostMode"
+                ) == "on" else set()
+                target_zones = sorted(active_zones | {zone_id})
                 probe = self.boost_probe_result
                 try:
                     if probe is None:
@@ -501,9 +895,6 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
                     self._boost_selected_zones = set(target_zones)
                     await self.async_request_refresh()
-                    self._boost_selected_zones = _boost_zone_values(
-                        self.data or {}, "zones"
-                    )
                     return
 
                 # Fallback: manual mode workaround
@@ -568,9 +959,6 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if await self._native_boost_off(route, target_zones):
                         self._boost_selected_zones = set(target_zones)
                         await self.async_request_refresh()
-                        self._boost_selected_zones = _boost_zone_values(
-                            self.data or {}, "zones"
-                        )
                         return
 
                 # Fallback disable
@@ -616,6 +1004,46 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.warning("POINTTAPI coordinator update failed: %s", err)
             raise UpdateFailed(f"POINTTAPI update failed: {err}") from err
 
+    async def _refresh_history_hourly_background(self) -> None:
+        """Load hourly history without delaying current-state coordinator updates."""
+        try:
+            merged = await _fetch_history_hourly_all(self._client)
+            if isinstance(merged, dict):
+                self._history_hourly_data = merged
+                self._last_history_hourly_fetch = time.monotonic()
+        except ConfigEntryAuthFailed:
+            _LOGGER.debug(
+                "POINTTAPI 401/403 on %s, keeping cached data",
+                HISTORY_HOURLY_PATH,
+            )
+        except Exception as err:
+            _LOGGER.debug(
+                "POINTTAPI optional path %s not available: %s",
+                HISTORY_HOURLY_PATH,
+                err,
+            )
+        finally:
+            self._history_hourly_task = None
+
+    def _schedule_history_hourly_refresh(self, now: float) -> None:
+        """Start history loading once it is due, without blocking the poll."""
+        history_task = getattr(self, "_history_hourly_task", None)
+        if (history_task is None or history_task.done()) and (
+            self._history_hourly_data is None
+            or now - self._last_history_hourly_fetch
+            >= HISTORY_HOURLY_REFRESH_INTERVAL
+        ):
+            hass = getattr(self, "hass", None)
+            create_task = getattr(hass, "async_create_task", None)
+            if create_task is None:
+                self._history_hourly_task = asyncio.create_task(
+                    self._refresh_history_hourly_background()
+                )
+            else:
+                self._history_hourly_task = create_task(
+                    self._refresh_history_hourly_background()
+                )
+
     async def _fetch(self) -> dict[str, Any]:
         """Discovery walk (first refresh / every 24h) or bulk steady state.
 
@@ -625,7 +1053,15 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
         now = time.monotonic()
         if not self._bulk_paths or now - self._last_discovery >= REDISCOVERY_INTERVAL:
-            data = await _fetch_paths(self._client)
+            self.discovery_timings = []
+            history_calls = [0]
+            data = await _fetch_paths(
+                self._client,
+                include_history_hourly=True,
+                timings=self.discovery_timings,
+                history_call_counter=history_calls,
+            )
+            self.history_hourly_calls = history_calls[0]
             # The paginated historyHourly resource stays on sequential GETs
             # (bulk resourcePaths carry no query strings).
             self._bulk_paths = [p for p in data if p != HISTORY_HOURLY_PATH]
@@ -675,23 +1111,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             len(data), len(self._bulk_paths),
         )
 
-        if (
-            self._history_hourly_data is None
-            or now - self._last_history_hourly_fetch
-            >= HISTORY_HOURLY_REFRESH_INTERVAL
-        ):
-            try:
-                merged = await _fetch_history_hourly_all(self._client)
-                if isinstance(merged, dict):
-                    self._history_hourly_data = merged
-                    self._last_history_hourly_fetch = now
-            except ConfigEntryAuthFailed:
-                _LOGGER.debug("POINTTAPI 401/403 on %s, keeping cached data", HISTORY_HOURLY_PATH)
-            except Exception as err:
-                _LOGGER.debug(
-                    "POINTTAPI optional path %s not available: %s",
-                    HISTORY_HOURLY_PATH, err,
-                )
+        self._schedule_history_hourly_refresh(now)
         if self._history_hourly_data is not None:
             data[HISTORY_HOURLY_PATH] = self._history_hourly_data
         return data

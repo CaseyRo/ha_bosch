@@ -181,8 +181,6 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
-| Number | Annual gas goal | annual_gas_goal | /energy/gas/annualGoal | Dynamic, if path exists |
-| Number | Annual electricity goal | annual_electricity_goal | /energy/electricity/annualGoal | Dynamic, if path exists |
 | Sensor | Gas heating today | gas_heating_today | /energy/historyHourly (aggregated to daily) | 1 entity |
 | Sensor | Gas hot-water today | gas_hot_water_today | /energy/historyHourly (aggregated to daily) | 1 entity |
 | Sensor | Gas total today | gas_total_today | /energy/historyHourly (aggregated to daily) | 1 entity |

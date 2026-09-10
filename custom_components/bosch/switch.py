@@ -19,12 +19,10 @@ from .const import (
     UUID,
 )
 from .pointtapi_entities import (
-    BoschPoinTTAPIBoostSwitchEntity,
     BoschPoinTTAPIGenericSwitchEntity,
     POINTTAPI_SWITCH_DESCRIPTIONS,
     _pointtapi_open_window_switch_descriptions,
     _pointtapi_thermostat_valve_switch_descriptions,
-    pointtapi_boost_zone_ids,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,12 +35,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = rt_data.coordinator
         if coordinator:
             uuid = config_entry.data.get(UUID)
-            entities = [
-                BoschPoinTTAPIBoostSwitchEntity(
-                    coordinator, config_entry.entry_id, uuid, zone_id
-                )
-                for zone_id in pointtapi_boost_zone_ids(coordinator.data or {})
-            ]
+            entities = []
             descriptions = list(POINTTAPI_SWITCH_DESCRIPTIONS)
             descriptions.extend(
                 _pointtapi_open_window_switch_descriptions(

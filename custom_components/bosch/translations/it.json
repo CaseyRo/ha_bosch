@@ -168,6 +168,13 @@
       "return_temperature": {
         "name": "Temperatura di ritorno"
       },
+      "indoor_air_temperature": {"name": "Temperatura dell'aria interna"},
+      "indoor_chip_temperature": {"name": "Temperatura del chip interno"},
+      "indoor_pcb_temperature": {"name": "Temperatura del PCB interno"},
+      "ch_pump_modulation": {"name": "Modulazione della pompa di riscaldamento"},
+      "burner_starts": {"name": "Avvii del bruciatore"},
+      "total_working_time": {"name": "Tempo di funzionamento totale"},
+      "refill_needed": {"name": "Rifornimento necessario"},
       "assigned_program": {
         "name": "Programma assegnato"
       },
@@ -284,6 +291,8 @@
       "min_supply_temperature": {
         "name": "Temperatura minima di mandata"
       },
+      "heat_curve_minimum": {"name": "Curva di riscaldamento minima"},
+      "heat_curve_maximum": {"name": "Curva di riscaldamento massima"},
       "night_setback_threshold": {
         "name": "Soglia di riduzione notturna"
       },
@@ -304,12 +313,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Durata disinfezione termica"
-      },
-      "annual_gas_goal": {
-        "name": "Obiettivo annuale del gas"
-      },
-      "annual_electricity_goal": {
-        "name": "Obiettivo annuale dell'energia elettrica"
       }
     },
     "binary_sensor": {
@@ -341,8 +344,11 @@
       }
     },
     "switch": {
-      "boost": {
-        "name": "Boost di riscaldamento"
+      "boost_mode": {
+        "name": "Boost - Controllo generale"
+      },
+      "boost_zone": {
+        "name": "Boost riscaldamento"
       },
       "auto_firmware_update": {
         "name": "Aggiornamento automatico del firmware"

@@ -36,11 +36,12 @@ UUID = "101506113"
         # Energy performance
         ("/energy/history_total", f"{UUID}_energy"),
         ("/energy/historyHourly_ch", f"{UUID}_energy"),
-        ("/energy/gas/annualGoal", f"{UUID}_energy"),
         # Heating Zone (zn1 → no suffix on name)
         ("/zones/zn1/temperatureActual", f"{UUID}_zn1"),
         ("/zones/zn1/actualValvePosition", f"{UUID}_zn1"),
         ("/heatingCircuits/hc1/maxSupply", f"{UUID}_heating_installation_hc1"),
+        ("/system/awayMode/enabled", f"{UUID}_heating_installation_hc1"),
+        ("/gateway/pirSensitivity", f"{UUID}_zn1"),
         ("/heatingCircuits/hc1/nightThreshold", f"{UUID}_heating_installation_hc1"),
         ("/heatingCircuits/hc1/roomInfluence", f"{UUID}_heating_installation_hc1"),
         ("/system/sensors/temperatures/outdoor_t1", f"{UUID}_zn1"),
@@ -50,7 +51,7 @@ UUID = "101506113"
         ("/gateway/wifi/rssi", UUID),
         ("/gateway/versionFirmware", UUID),
         ("/gateway/update/enabled", UUID),
-        ("/gateway/notificationLight/enabled", UUID),
+        ("/gateway/notificationLight/enabled", f"{UUID}_zn1"),
     ],
 )
 def test_resolve_device_info_routes_path_to_expected_device(path: str, expected_id: str) -> None:
@@ -92,6 +93,25 @@ def test_device_names_are_localized_when_language_is_provided() -> None:
     assert gateway["name"] == "Passerelle EasyControl"
     assert zone["name"] == "Zone de chauffage"
     assert energy["name"] == "Performance énergétique"
+
+
+@pytest.mark.parametrize(
+    ("language", "expected_gateway", "expected_installation"),
+    [
+        ("es", "Gateway EasyControl", "Configuración de la instalación de calefacción"),
+        ("pt", "Gateway EasyControl", "Definições da instalação de aquecimento"),
+    ],
+)
+def test_device_names_support_new_locales(
+    language: str, expected_gateway: str, expected_installation: str
+) -> None:
+    gateway = _resolve_device_info(UUID, "/gateway/versionFirmware", language=language)
+    installation = _resolve_device_info(
+        UUID, "/heatingCircuits/hc1/maxSupply", language=language
+    )
+
+    assert gateway["name"] == expected_gateway
+    assert installation["name"] == expected_installation
 
 
 @pytest.mark.parametrize(

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -79,6 +80,9 @@ def _mock_coordinator(data=None, probe_result=None):
     coord.last_update_success = True
     coord.client = MagicMock()
     coord.client.put = AsyncMock()
+    coord.client.get = AsyncMock(
+        side_effect=lambda path: coord.data.get(path)
+    )
     coord.async_request_refresh = AsyncMock()
     coord.async_refresh = AsyncMock()
     coord.boost_session = None
@@ -90,6 +94,7 @@ def _mock_coordinator(data=None, probe_result=None):
     coord._probe_native_boost = PoinTTAPIDataUpdateCoordinator._probe_native_boost.__get__(coord, PoinTTAPIDataUpdateCoordinator)
     coord._native_boost_on = PoinTTAPIDataUpdateCoordinator._native_boost_on.__get__(coord, PoinTTAPIDataUpdateCoordinator)
     coord._native_boost_off = PoinTTAPIDataUpdateCoordinator._native_boost_off.__get__(coord, PoinTTAPIDataUpdateCoordinator)
+    coord._refresh_boost_state = PoinTTAPIDataUpdateCoordinator._refresh_boost_state.__get__(coord, PoinTTAPIDataUpdateCoordinator)
     coord.async_set_zone_boost = PoinTTAPIDataUpdateCoordinator.async_set_zone_boost.__get__(coord, PoinTTAPIDataUpdateCoordinator)
     listeners = []
 
@@ -138,6 +143,7 @@ def test_boost_switch_unique_id_per_zone() -> None:
     switch = _boost_switch(coord, zone_id=2)
 
     assert switch.unique_id == "entry1_pointtapi_boost_zone_2"
+    assert switch.translation_key == "boost_zone"
 
 
 def test_boost_switches_are_created_for_all_configured_zones() -> None:
@@ -151,7 +157,7 @@ def test_boost_switches_are_created_for_all_configured_zones() -> None:
 
 
 @pytest.mark.asyncio
-async def test_switch_setup_creates_one_boost_switch_per_zone():
+async def test_switch_setup_does_not_create_boost_switches():
     coord = _mock_coordinator({
         **_BOOST_DATA,
         "/zones/zn1/temperatureHeatingSetpoint": {"value": 20.0},
@@ -171,7 +177,7 @@ async def test_switch_setup_creates_one_boost_switch_per_zone():
     boost_switches = [
         entity for entity in entities if isinstance(entity, BoschPoinTTAPIBoostSwitchEntity)
     ]
-    assert [switch._zone_id for switch in boost_switches] == [1, 2, 3]
+    assert boost_switches == []
 
 
 def test_boost_switch_unavailable_when_zone_is_not_allowed() -> None:
@@ -311,6 +317,149 @@ class TestNativeBoostProbe:
         assert ent.is_on is True
 
     @pytest.mark.asyncio
+    async def test_cached_shortcut_turn_on_restarts_active_boost(self):
+        """Changing zones while active turns Boost off before reapplying it."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1], "allowedZones": [1, 2]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+        _activates_on_refresh(coord)
+        ent = _boost_switch(coord, zone_id=2)
+
+        await ent.async_turn_on()
+
+        calls = coord.client.put.await_args_list
+        assert [call.args for call in calls[:2]] == [
+            ("/heatingCircuits/hc1/boostMode", "off"),
+            (
+                "/heatingCircuits/hc1/boostShortcut",
+                [{"mode": "on", "temperature": 24.0, "duration": 3, "zones": [1, 2]}],
+            ),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_turn_on_uses_live_zones_before_restarting_boost(self):
+        """A fresh GET wins over a stale coordinator selection."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1], "allowedZones": [1, 2, 3]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+        coord.client.get = AsyncMock(
+            side_effect=[
+                {"value": "on"},
+                {"value": [{"zones": [1, 3], "allowedZones": [1, 2, 3]}]},
+            ]
+        )
+        _activates_on_refresh(coord)
+        ent = _boost_switch(coord, zone_id=2)
+
+        await ent.async_turn_on()
+
+        assert coord.client.get.await_args_list[0].args == (
+            "/heatingCircuits/hc1/boostMode",
+        )
+        assert coord.client.get.await_args_list[1].args == (
+            "/heatingCircuits/hc1/boostZones",
+        )
+        assert coord.client.put.await_args_list[1].args[1][0]["zones"] == [1, 2, 3]
+
+    @pytest.mark.asyncio
+    async def test_turn_on_ignores_preselected_zones_when_boost_is_off(self):
+        """A dormant selection must not activate every preselected zone."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "off"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2], "allowedZones": [1, 2, 3]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+        ent = _boost_switch(coord, zone_id=3)
+
+        await ent.async_turn_on()
+
+        path, value = coord.client.put.await_args_list[0].args
+        assert path == "/heatingCircuits/hc1/boostShortcut"
+        assert value[0]["zones"] == [3]
+
+    @pytest.mark.asyncio
+    async def test_shortcut_forbidden_on_off_falls_back_to_direct_route(self):
+        """A shortcut 403 on turn-off retries boostZones plus boostMode."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2], "allowedZones": [1, 2]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+
+        async def put(path, value):
+            if path == "/heatingCircuits/hc1/boostShortcut":
+                raise ConfigEntryAuthFailed("HTTP 403")
+            return True
+
+        coord.client.put = AsyncMock(side_effect=put)
+        ent = _boost_switch(coord, zone_id=1)
+
+        await ent.async_turn_off()
+
+        paths = [call.args[0] for call in coord.client.put.await_args_list]
+        assert paths == [
+            "/heatingCircuits/hc1/boostShortcut",
+            "/heatingCircuits/hc1/boostZones",
+            "/heatingCircuits/hc1/boostMode",
+        ]
+        assert coord.client.put.await_args_list[-1].args[1] == "on"
+        assert coord.boost_probe_result["route"] == "boostMode"
+
+    @pytest.mark.asyncio
+    async def test_shortcut_forbidden_is_not_retried_for_next_zone_turn_off(self):
+        """A shortcut 403 switches subsequent partial turn-offs to direct mode."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2, 3], "allowedZones": [1, 2, 3]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+
+        async def put(path, value):
+            if path == "/heatingCircuits/hc1/boostShortcut":
+                raise ConfigEntryAuthFailed("HTTP 403")
+            return True
+
+        coord.client.put = AsyncMock(side_effect=put)
+        await coord.async_set_zone_boost(1, False)
+        coord.client.put.reset_mock()
+        await coord.async_set_zone_boost(2, False)
+
+        paths = [call.args[0] for call in coord.client.put.await_args_list]
+        assert paths == [
+            "/heatingCircuits/hc1/boostZones",
+            "/heatingCircuits/hc1/boostMode",
+        ]
+
+    @pytest.mark.asyncio
     async def test_native_off_never_touches_usermode(self):
         """Native-mode off deactivates via the route, not the zone mode."""
         coord = _mock_coordinator(
@@ -325,6 +474,28 @@ class TestNativeBoostProbe:
         paths = [c.args[0] for c in coord.client.put.await_args_list]
         assert paths == ["/heatingCircuits/hc1/boostMode"]
         assert coord.client.put.await_args_list[0].args[1] == "off"
+
+    @pytest.mark.asyncio
+    async def test_native_off_last_zone_uses_boost_mode_off(self):
+        """Removing the last native zone turns Boost off directly."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1], "allowedZones": [1]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+        ent = _boost_switch(coord, zone_id=1)
+        ent._is_on = True
+
+        await ent.async_turn_off()
+
+        coord.client.put.assert_awaited_once_with(
+            "/heatingCircuits/hc1/boostMode", "off"
+        )
         assert ent.is_on is False
 
     @pytest.mark.asyncio
@@ -345,10 +516,40 @@ class TestNativeBoostProbe:
 
         await ent.async_turn_off()
 
-        path, value = coord.client.put.await_args_list[0].args
+        path, value = coord.client.put.await_args_list[-1].args
         assert path == "/heatingCircuits/hc1/boostShortcut"
         assert value[0]["mode"] == "on"
         assert value[0]["zones"] == [3]
+        assert coord.client.put.await_args_list[0].args[1][0]["mode"] == "off"
+
+    @pytest.mark.asyncio
+    async def test_native_off_keeps_user_selection_when_refresh_is_stale(self):
+        """Successive removals must not restore zones from a stale refresh."""
+        coord = _mock_coordinator(
+            {
+                **_BOOST_DATA,
+                "/heatingCircuits/hc1/boostMode": {"value": "on"},
+                "/heatingCircuits/hc1/boostZones": {
+                    "value": [{"zones": [1, 2, 3], "allowedZones": [1, 2, 3]}]
+                },
+            },
+            probe_result={"route": "boostShortcut", "rungs": []},
+        )
+        ent1 = _boost_switch(coord, zone_id=1)
+        ent1._is_on = True
+        await ent1.async_turn_off()
+
+        coord.client.put.reset_mock()
+        ent2 = _boost_switch(coord, zone_id=2)
+        ent2._is_on = True
+        await ent2.async_turn_off()
+
+        payloads = [
+            call.args[1][0]
+            for call in coord.client.put.await_args_list
+            if call.args[0] == "/heatingCircuits/hc1/boostShortcut"
+        ]
+        assert payloads[-1]["zones"] == [3]
 
     @pytest.mark.asyncio
     async def test_fallback_off_restores_usermode(self):
@@ -394,7 +595,7 @@ class TestNativeBoostProbe:
 
         await ent.async_turn_off()
 
-        path, value = coord.client.put.await_args_list[0].args
+        path, value = coord.client.put.await_args_list[-1].args
         assert path == "/heatingCircuits/hc1/boostShortcut"
         assert value[0]["mode"] == "on"
         assert value[0]["zones"] == [2]
@@ -538,8 +739,8 @@ async def test_sequential_zone_boost_in_same_poll_window():
 
 
 @pytest.mark.asyncio
-async def test_version_3_unique_id_migration():
-    """Migrating entry to v3 renames entry_id_pointtapi_boost to entry_id_pointtapi_boost_zone_1."""
+async def test_version_4_migrates_boost_registry_entries():
+    """Migrating to v4 removes stale per-zone Boost registry entries."""
     from custom_components.bosch.__init__ import async_migrate_entry
 
     hass = MagicMock()
@@ -548,14 +749,245 @@ async def test_version_3_unique_id_migration():
     entry.entry_id = "test_entry_123"
     entry.data = {"http_xmpp": "pointtapi"}
 
+    stale_entity = SimpleNamespace(
+        config_entry_id="test_entry_123",
+        domain="switch",
+        unique_id="test_entry_123_pointtapi_boost_zone_1",
+        entity_id="switch.bibliotheque_thermostat_bibliotheque",
+    )
     mock_er = MagicMock()
+    mock_er.entities = {stale_entity.entity_id: stale_entity}
     mock_er.async_get_entity_id.return_value = "switch.heating_boost"
 
     with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
         res = await async_migrate_entry(hass, entry)
         assert res is True
-        mock_er.async_get_entity_id.assert_called_once_with("switch", "bosch", "test_entry_123_pointtapi_boost")
-        mock_er.async_update_entity.assert_called_once_with(
+        mock_er.async_get_entity_id.assert_any_call(
+            "switch", "bosch", "test_entry_123_pointtapi_boost"
+        )
+        mock_er.async_update_entity.assert_any_call(
             "switch.heating_boost", new_unique_id="test_entry_123_pointtapi_boost_zone_1"
         )
-        hass.config_entries.async_update_entry.assert_called_once_with(entry, version=3)
+        mock_er.async_remove.assert_any_call(
+            "switch.bibliotheque_thermostat_bibliotheque"
+        )
+        hass.config_entries.async_update_entry.assert_any_call(entry, version=4)
+
+
+@pytest.mark.asyncio
+async def test_version_5_clears_custom_boost_registry_names():
+    """Migrating to v5 restores translated names for existing Boost switches."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 4
+    entry.entry_id = "test_entry_123"
+    entry.data = {"http_xmpp": "pointtapi"}
+
+    entity = SimpleNamespace(
+        config_entry_id="test_entry_123",
+        domain="switch",
+        unique_id="test_entry_123_pointtapi_boost_zone_1",
+        entity_id="switch.salon_boost",
+        name="Heating boost",
+        original_name="Heating boost",
+    )
+    mock_er = MagicMock()
+    mock_er.entities = {entity.entity_id: entity}
+    mock_er.async_get_entity_id.return_value = "switch.away_mode"
+
+    with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
+        assert await async_migrate_entry(hass, entry) is True
+
+    mock_er.async_update_entity.assert_any_call(
+        "switch.salon_boost", name=None, original_name=None
+    )
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=5)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=6)
+
+
+@pytest.mark.asyncio
+async def test_version_6_moves_thermostat_child_lock_to_zone_device():
+    """Migrating to v6 moves only the regular thermostat child-lock switch."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 5
+    entry.entry_id = "test_entry_123"
+    entry.data = {"http_xmpp": "pointtapi", "uuid": "uuid-1"}
+
+    entity = SimpleNamespace(
+        config_entry_id="test_entry_123",
+        domain="switch",
+        unique_id=(
+            "test_entry_123_pointtapi_switch_devices_device1_"
+            "thermostat_childLock_enabled"
+        ),
+        entity_id="switch.thermostat_child_lock",
+        device_id="gateway-device",
+    )
+    mock_er = MagicMock()
+    mock_er.entities = {entity.entity_id: entity}
+    zone_device = SimpleNamespace(id="zone1-device")
+    mock_dr = MagicMock()
+    mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
+    mock_dr.async_get_or_create.return_value = zone_device
+
+    with (
+        patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er),
+        patch("homeassistant.helpers.device_registry.async_get", return_value=mock_dr),
+    ):
+        assert await async_migrate_entry(hass, entry) is True
+
+    mock_dr.async_get_or_create.assert_any_call(
+        config_entry_id="test_entry_123",
+        identifiers={("bosch", "uuid-1_zn1")},
+        name="Heating Zone",
+        manufacturer="Bosch",
+        via_device_id="gateway-device",
+    )
+    mock_er.async_update_entity.assert_any_call(
+        "switch.thermostat_child_lock", device_id="zone1-device"
+    )
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=6)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=7)
+
+
+@pytest.mark.asyncio
+async def test_version_7_clears_all_legacy_boost_registry_names():
+    """Migrating to v7 clears names for old and per-zone Boost unique IDs."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 6
+    entry.entry_id = "test_entry_123"
+    entry.data = {"http_xmpp": "pointtapi"}
+
+    entities = {
+        "switch.old_boost": SimpleNamespace(
+            config_entry_id="test_entry_123",
+            domain="switch",
+            unique_id="test_entry_123_pointtapi_boost",
+            entity_id="switch.old_boost",
+            name="Heating boost",
+            original_name="Heating boost",
+        ),
+        "switch.zone_boost": SimpleNamespace(
+            config_entry_id="test_entry_123",
+            domain="switch",
+            unique_id="test_entry_123_pointtapi_boost_zone_1",
+            entity_id="switch.zone_boost",
+            name="Heating boost",
+            original_name="Heating boost",
+        ),
+    }
+    mock_er = MagicMock()
+    mock_er.entities = entities
+
+    with patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er):
+        assert await async_migrate_entry(hass, entry) is True
+
+    assert mock_er.async_update_entity.call_count == 5
+    mock_er.async_update_entity.assert_any_call(
+        "switch.old_boost", name=None, original_name=None
+    )
+    mock_er.async_update_entity.assert_any_call(
+        "switch.zone_boost", name=None, original_name=None
+    )
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=7)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=8)
+
+
+@pytest.mark.asyncio
+async def test_version_10_moves_away_mode_to_heating_installation_device():
+    """Migrating to v10 moves only the POINTTAPI away-mode switch."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+    from custom_components.bosch.const import CONF_PROTOCOL, POINTTAPI, UUID
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 9
+    entry.entry_id = "test_entry_123"
+    entry.data = {CONF_PROTOCOL: POINTTAPI, UUID: "uuid-1"}
+
+    entity = SimpleNamespace(
+        config_entry_id="test_entry_123",
+        domain="switch",
+        unique_id="test_entry_123_pointtapi_switch_system_awayMode_enabled",
+        entity_id="switch.away_mode",
+        device_id="gateway-device",
+    )
+    mock_er = MagicMock()
+    mock_er.entities = {entity.entity_id: entity}
+    mock_er.async_get_entity_id.return_value = "switch.away_mode"
+    mock_dr = MagicMock()
+    mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
+    mock_dr.async_get_or_create.return_value = SimpleNamespace(id="installation-device")
+
+    with (
+        patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er),
+        patch("homeassistant.helpers.device_registry.async_get", return_value=mock_dr),
+    ):
+        assert await async_migrate_entry(hass, entry) is True
+
+    mock_er.async_get_entity_id.assert_called_once_with(
+        "switch", "bosch", entity.unique_id
+    )
+    mock_er.async_update_entity.assert_called_once_with(
+        "switch.away_mode", device_id="installation-device"
+    )
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=10)
+    hass.config_entries.async_update_entry.assert_any_call(entry, version=11)
+
+
+@pytest.mark.asyncio
+async def test_version_11_moves_thermostat_gateway_switches_to_zone_device():
+    """Migrating to v11 moves motion sensitivity and notification light switches."""
+    from custom_components.bosch.__init__ import async_migrate_entry
+    from custom_components.bosch.const import CONF_PROTOCOL, POINTTAPI, UUID
+
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.version = 10
+    entry.entry_id = "test_entry_123"
+    entry.data = {CONF_PROTOCOL: POINTTAPI, UUID: "uuid-1"}
+    entities = {
+        "switch.motion": SimpleNamespace(
+            config_entry_id=entry.entry_id,
+            domain="switch",
+            unique_id="test_entry_123_pointtapi_switch_gateway_pirSensitivity",
+            entity_id="switch.motion",
+        ),
+        "switch.light": SimpleNamespace(
+            config_entry_id=entry.entry_id,
+            domain="switch",
+            unique_id=(
+                "test_entry_123_pointtapi_switch_gateway_"
+                "notificationLight_enabled"
+            ),
+            entity_id="switch.light",
+        ),
+    }
+    mock_er = MagicMock()
+    mock_er.entities = entities
+    mock_dr = MagicMock()
+    mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
+    mock_dr.async_get_or_create.return_value = SimpleNamespace(id="zone1-device")
+
+    with (
+        patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er),
+        patch("homeassistant.helpers.device_registry.async_get", return_value=mock_dr),
+    ):
+        assert await async_migrate_entry(hass, entry) is True
+
+    assert mock_er.async_update_entity.call_count == 2
+    mock_er.async_update_entity.assert_any_call(
+        "switch.motion", device_id="zone1-device"
+    )
+    mock_er.async_update_entity.assert_any_call(
+        "switch.light", device_id="zone1-device"
+    )
+    hass.config_entries.async_update_entry.assert_called_once_with(entry, version=11)

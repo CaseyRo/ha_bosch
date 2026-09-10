@@ -305,6 +305,12 @@
       "min_supply_temperature": {
         "name": "Min supply temperature"
       },
+      "heat_curve_minimum": {
+        "name": "Minimum heating curve"
+      },
+      "heat_curve_maximum": {
+        "name": "Maximum heating curve"
+      },
       "night_setback_threshold": {
         "name": "Night setback threshold"
       },
@@ -325,12 +331,6 @@
       },
       "thermal_disinfect_time": {
         "name": "Thermal disinfect time"
-      },
-      "annual_gas_goal": {
-        "name": "Annual gas goal"
-      },
-      "annual_electricity_goal": {
-        "name": "Annual electricity goal"
       }
     },
     "binary_sensor": {
@@ -362,7 +362,10 @@
       }
     },
     "switch": {
-      "boost": {
+      "boost_mode": {
+        "name": "Boost - General control"
+      },
+      "boost_zone": {
         "name": "Heating boost"
       },
       "auto_firmware_update": {
