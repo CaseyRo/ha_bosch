@@ -4,24 +4,17 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
-## [1.6.0-beta2] — 2026-09-09
-
-### Fixed
-- **Review follow-up** — Applies the remaining Casey review notes: startup
-  diagnostics stay at DEBUG, the dead `/energy/historyEntries` path is removed,
-  and the duplicate French heating-curve translation keys are cleaned up.
-- **Migration safety** — Documents the rollback caveat for beta users so a
-  downgrade requires removing and re-adding the integration on current HA.
-
-### Changed
-- **Release version** — Bumps the integration to `1.6.0-beta2` for the next
-  beta publication on the forked repository.
-
-## [1.6.0-beta1] — 2026-09-08
+## [1.6.0-beta.1] — 2026-09-10
 
 The 1.6.0 beta consolidates the POINTTAPI redesign work developed across the
 alpha releases into a release focused on real-world multi-zone installations,
 clearer device topology, faster startup, and safer Home Assistant behavior.
+
+This is the first 1.6.0 beta published here. It contains everything from the
+`v1.6.0-beta1` and `v1.6.0-beta2` pre-releases on the
+[jfhautenauven/ha_bosch](https://github.com/jfhautenauven/ha_bosch) fork, plus
+the review follow-ups listed under Fixed. The `1.6.0-alpha*` entries below are
+that fork's history.
 
 ### Added
 - **Thermostat-valve support** — Adds ETRV valve temperature, valve position,
@@ -57,6 +50,12 @@ clearer device topology, faster startup, and safer Home Assistant behavior.
   an internal device ID.
 - **Registry migrations** — Cleans obsolete Boost switches and names, and
   moves existing thermostat-specific entities without breaking automations.
+- **Review follow-up** — Startup diagnostics stay at DEBUG, the dead
+  `/energy/historyEntries` path is removed, and the duplicate French
+  heating-curve translation keys are cleaned up.
+- **Gateway discovery deadline** — If the discovery time budget runs out
+  before `/gateway` is fetched, the refresh now fails and retries instead of
+  completing without gateway data.
 
 ### Warning
 - **Rollback requires reinstall** — The beta entry migrates to config-entry
