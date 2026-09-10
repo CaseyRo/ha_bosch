@@ -495,6 +495,14 @@ async def test_coordinator_discovery_deadline_and_root_auth_fallback():
 
 
 @pytest.mark.asyncio
+async def test_coordinator_discovery_deadline_raises_for_gateway():
+    """A silent None on /gateway would hide a failed refresh; it must raise instead."""
+    client = AsyncMock()
+    with pytest.raises(TimeoutError):
+        await _get_discovery_path(client, "/gateway", deadline=0, timings=[])
+
+
+@pytest.mark.asyncio
 async def test_coordinator_reference_tree_skips_invalid_and_nested_failures():
     client = AsyncMock()
     client.get.side_effect = ["not a dict", ConfigEntryAuthFailed("403")]

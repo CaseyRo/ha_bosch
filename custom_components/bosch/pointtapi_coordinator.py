@@ -237,6 +237,10 @@ async def _get_discovery_path(
     if deadline is not None:
         timeout = min(timeout, max(0.0, deadline - asyncio.get_running_loop().time()))
         if timeout <= 0:
+            if path == "/gateway":
+                raise TimeoutError(
+                    f"POINTTAPI discovery deadline exhausted before fetching {path}"
+                )
             return None
     started = asyncio.get_running_loop().time()
     try:
