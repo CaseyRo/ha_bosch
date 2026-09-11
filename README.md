@@ -11,18 +11,19 @@ A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-the
 
 ---
 
-> ## v1.5.0 current status
+> ## v1.6.0-beta.1 current status
 >
-> The current POINTTAPI release adds dedicated thermostat-valve devices with child lock,
-> valve position, actual temperature, and writable calibration offset controls. It also
-> includes appliance-status decoding, per-zone schedule selection and average-temperature
-> sensors, native boost with a fallback, and reference-driven discovery of optional
-> controls and energy surfaces.
+> **v1.6.0-beta.1** (pre-release) reworks the POINTTAPI path for multi-zone installations.
+> Boost is a preset on every zone's climate entity; installation-wide settings (supply
+> limits, heating curve, summer/winter, night setback, room influence, global Boost, away
+> mode) live on a new **Heating Installation Settings** device; and startup spends much less
+> time waiting on Bosch's cloud (74% less on a 12-valve installation). Spanish and Portuguese
+> are new. The latest stable release is **v1.5.2**.
 >
-> Polling is tiered to keep live temperatures, modes, and valve telemetry responsive while
-> refreshing slower gateway, energy, solar, appliance, and inventory data every five
-> minutes. Gateway metadata now identifies supported CT200 and TC100.2 models, and
-> cloud entries support `bosch.refresh_gateway` plus the generic custom GET/PUT services.
+> HACS offers the beta only if beta versions are enabled for this repository. **Upgrading
+> to 1.6.0 migrates the config entry one way:** going back to 1.5.x means removing and
+> re-adding the integration, so take a backup first. Full notes in the
+> [v1.6.0-beta.1 release](https://github.com/CaseyRo/ha_bosch/releases/tag/v1.6.0-beta.1).
 >
 > ### Validation status
 >
@@ -93,7 +94,7 @@ Paste the whole callback URL **or** just the `code` value into the final step �
 
 Token refresh is automatic. If your session expires, HA triggers a re-authentication flow — no need to delete and re-add the integration.
 
-### Entities (POINTTAPI, v1.5.0)
+### Entities (POINTTAPI, v1.6.0)
 
 Entity creation is partly dynamic. What you see depends on what your appliance advertises in its resource references.
 
@@ -115,15 +116,13 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | Boiler ignition starts | boiler_ignition_starts | /heatSources/numberOfStarts | 1 per boiler |
 | Binary sensor | Burner flame | burner_flame | /heatSources/flameIndication (resolved via actualModulation) | 1 per boiler |
 | Binary sensor | Refill needed | refill_needed | /heatSources/refillNeeded | 1 per boiler |
+| Binary sensor | Hot water burner | dhw_burner | derived: flame on AND demand = dhw | 1 per boiler |
 
-#### Thermostat (gateway EasyControl)
+#### Gateway (EasyControl)
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
 | Switch | Auto firmware update | auto_firmware_update | /gateway/update/enabled | 1 per gateway |
-| Switch | Notification light | notification_light | /gateway/notificationLight/enabled | 1 per gateway |
-| Switch | Away mode | away_mode | /system/awayMode/enabled | 1 per gateway |
-| Select | PIR sensitivity | pir_sensitivity | /gateway/pirSensitivity | 1 per gateway |
 | Sensor | WiFi RSSI | wifi_rssi | /gateway/wifi/rssi | 1 per gateway |
 | Sensor | WiFi firmware version | wifi_firmware_version | /gateway/wifi/versionFirmware | 1 per gateway |
 | Sensor | Gateway firmware version | firmware_version | /gateway/versionFirmware | 1 per gateway |
@@ -137,31 +136,46 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 
 | Platform | Entity | Translation key | Resource path | Scope |
 |---|---|---|---|---|
-| Climate | Zone climate (Auto/Heat/Off + hvac_action) | n/a (Climate entity) | /zones/{zid}/temperatureActual, /zones/{zid}/temperatureHeatingSetpoint, /zones/{zid}/manualTemperatureHeating, /zones/{zid}/userMode, /zones/{zid}/status | 1 per discovered zone |
-| Switch | Boost | boost | /heatingCircuits/hc1/boostShortcut or /heatingCircuits/hc1/boostMode (fallback writes zone manual mode) | 1 entity |
+| Climate | Zone climate (Auto/Heat/Off, Boost preset, hvac_action) | n/a (Climate entity) | /zones/{zid}/temperatureActual, /zones/{zid}/temperatureHeatingSetpoint, /zones/{zid}/manualTemperatureHeating, /zones/{zid}/userMode, /zones/{zid}/status | 1 per discovered zone |
 | Switch | Open window detection enable | open_window_detection | /zones/{zid}/openWindowDetection/enabled | Dynamic, per zone when reference exists |
-| Number | Boost temperature | boost_temperature | /heatingCircuits/hc1/boostTemperature | 1 entity |
-| Number | Boost duration | boost_duration | /heatingCircuits/hc1/boostDuration | 1 entity |
-| Number | Max supply temperature | max_supply_temperature | /heatingCircuits/hc1/maxSupply | 1 entity |
-| Number | Min supply temperature | min_supply_temperature | /heatingCircuits/hc1/minSupply | 1 entity |
-| Number | Night setback threshold | night_setback_threshold | /heatingCircuits/hc1/nightThreshold | 1 entity |
-| Number | Summer/winter threshold | summer_winter_threshold | /heatingCircuits/hc1/suWiThreshold | 1 entity |
-| Number | Room influence | room_influence | /heatingCircuits/hc1/roomInfluence | 1 entity |
+| Switch | Notification light | notification_light | /gateway/notificationLight/enabled | 1 entity (attached to zone zn1) |
 | Number | Temperature calibration offset | temperature_calibration_offset | /system/sensors/temperatures/offset | 1 entity |
-| Select | Zone mode | zone_mode | /zones/zn1/userMode | Static select for zn1 |
-| Select | Summer/winter mode | summer_winter_mode | /heatingCircuits/hc1/suWiSwitchMode | 1 entity |
-| Select | Night switch mode | night_switch_mode | /heatingCircuits/hc1/nightSwitchMode | 1 entity |
+| Select | Zone mode | zone_mode | /zones/{zid}/userMode | Dynamic, per discovered zone |
 | Select | Assigned program select | assigned_program_select | /zones/{zid}/clockProgram | Dynamic, per discovered zone |
+| Select | Motion detector sensitivity | pir_sensitivity | /gateway/pirSensitivity | 1 entity (attached to zone zn1) |
 | Sensor | Outdoor temperature | outdoor_temperature | /system/sensors/temperatures/outdoor_t1 | 1 entity (attached to zone device) |
 | Sensor | Indoor humidity | indoor_humidity | /system/sensors/humidity/indoor_h1 | 1 entity (attached to zone device) |
-| Sensor | Boost remaining time | boost_remaining_time | /heatingCircuits/hc1/boostRemainingTime (or synthetic fallback session) | 1 entity |
-| Sensor | Supply temperature setpoint | supply_temp_setpoint | /heatingCircuits/hc1/supplyTemperatureSetpoint | 1 entity |
-| Sensor | Boiler power setpoint | boiler_power | /heatingCircuits/hc1/powerSetpoint | 1 entity |
 | Sensor | Zone valve position | valve_position | /zones/{zid}/actualValvePosition | Dynamic, per zone when reference exists |
 | Sensor | Zone average temperature | zone_average_temperature | /zones/{zid}/temperatureActual | Dynamic, per discovered zone |
 | Sensor | Assigned program name | assigned_program | /zones/{zid}/assignedProgramName (computed from /programs/pgN/name) | Dynamic, per discovered zone |
 | Sensor | Optimum start state | optimum_start_state | /zones/{zid}/optimumStartState | Dynamic, per zone when reference exists |
 | Binary sensor | Open window detected | open_window_detected | /zones/{zid}/openWindowDetection/status | Dynamic, per zone when reference exists |
+
+Boost is a **preset on each zone's climate entity**. Selecting it shows Boost straight away and holds
+it until Bosch confirms on the next poll; Boost on several zones runs as one Bosch boost session.
+The shared Boost temperature and duration, and the installation-wide Boost switch, are on the
+Heating Installation Settings device below.
+
+#### Heating Installation Settings
+
+| Platform | Entity | Translation key | Resource path | Scope |
+|---|---|---|---|---|
+| Switch | Boost - General control | boost_mode | /heatingCircuits/hc1/boostMode | 1 entity (hc1) |
+| Switch | Away mode | away_mode | /system/awayMode/enabled | 1 entity |
+| Number | Boost temperature | boost_temperature | /heatingCircuits/hc1/boostTemperature | 1 entity (hc1) |
+| Number | Boost duration | boost_duration | /heatingCircuits/hc1/boostDuration | 1 entity (hc1) |
+| Number | Max supply temperature | max_supply_temperature | /heatingCircuits/hc1/maxSupply | 1 entity (hc1) |
+| Number | Min supply temperature | min_supply_temperature | /heatingCircuits/hc1/minSupply | 1 entity (hc1) |
+| Number | Minimum heating curve | heat_curve_minimum | /heatingCircuits/hc1/heatCurveMin | 1 entity (hc1) |
+| Number | Maximum heating curve | heat_curve_maximum | /heatingCircuits/hc1/heatCurveMax | 1 entity (hc1) |
+| Number | Night setback threshold | night_setback_threshold | /heatingCircuits/hc1/nightThreshold | 1 entity (hc1) |
+| Number | Summer/winter threshold | summer_winter_threshold | /heatingCircuits/hc1/suWiThreshold | 1 entity (hc1) |
+| Number | Room influence | room_influence | /heatingCircuits/hc1/roomInfluence | 1 entity (hc1) |
+| Select | Summer/winter mode | summer_winter_mode | /heatingCircuits/hc1/suWiSwitchMode | 1 entity (hc1) |
+| Select | Night switch mode | night_switch_mode | /heatingCircuits/hc1/nightSwitchMode | 1 entity (hc1) |
+| Sensor | Boost remaining time | boost_remaining_time | /heatingCircuits/hc1/boostRemainingTime (or synthetic fallback session) | 1 entity (hc1) |
+| Sensor | Supply temperature setpoint | supply_temp_setpoint | /heatingCircuits/hc1/supplyTemperatureSetpoint | 1 entity (hc1) |
+| Sensor | Boiler power setpoint | boiler_power | /heatingCircuits/hc1/powerSetpoint | 1 entity (hc1) |
 
 #### Thermostat valve
 
@@ -204,7 +218,6 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | DHW actual temperature | dhw_actual_temperature | /dhwCircuits/dhw1/actualTemp | 1 entity |
 | Sensor | Thermal disinfect last result | thermal_disinfect_last_result | /dhwCircuits/dhw1/thermalDisinfect/lastResult | 1 entity |
 | Binary sensor | Hot water enabled | dhw_enabled | /dhwCircuits/dhw1/state | 1 entity |
-| Binary sensor | Hot water burner | dhw_burner | derived: flame AND demand = dhw | 1 entity |
 
 #### Solar (optional)
 
@@ -220,10 +233,15 @@ Notes:
 - Zone-scoped dynamic entities rely on zone references (for example openWindowDetection, actualValvePosition, optimumStartState).
 - Thermostat-valve entities are discovered from /devices/list thermostat_valve rows and compatible /devices/deviceN trees; count and labels vary by installation.
 - Solar entities are conditionally suppressed when the first refresh has no usable /solarCircuits/sc1 data; stale solar registry entries are removed.
+- Number entities are created only for resources the appliance marks writeable.
+- On a CT200 without radiator valves, the thermostat's own child lock appears on its zone device.
+- 1.6.0 removed the per-zone Boost switches (use the climate preset) and the annual gas and electricity
+  goal numbers. The Boost switches are cleaned up on upgrade; leftover goal entries can be deleted by hand.
 
 ### Under the hood
-- **Bulk polling** — steady-state polls batch all discovered resource reads (188 paths on a typical CT200) into a handful of bulk POSTs against `pointt-api`'s bulk endpoint instead of one GET per path, with automatic per-cycle fallback to sequential GETs if the bulk route ever misbehaves (endpoint format credit: [homecom_alt](https://github.com/serbanb11/homecom_alt), see `docs/pointtapi-api.md`)
+- **Bulk polling** — steady-state polls batch all discovered resource reads (about 100 paths on a CT200 since 1.6.0) into a handful of bulk POSTs against `pointt-api`'s bulk endpoint instead of one GET per path, with automatic per-cycle fallback to sequential GETs if the bulk route ever misbehaves (endpoint format credit: [homecom_alt](https://github.com/serbanb11/homecom_alt), see `docs/pointtapi-api.md`)
 - **Coordinator-based polling, fast and slow** — everything runs through one `DataUpdateCoordinator`, not per-entity polling. Temperatures, modes and live valve telemetry refresh every 60 seconds; `/gateway`, `/energy`, `/solarCircuits`, `/programs`, `/system/appliance` and the `/devices` inventory every 5 minutes; energy history every 30 minutes; discovery once a day
+- **Lean discovery (1.6.0)** — discovery walks only the resources some entity can use, fetches references in parallel within a time budget, and loads energy history in the background; startup took 74% less time than 1.5.x on a 12-valve installation. If Bosch is too slow to answer for `/gateway`, the refresh fails and retries rather than starting with gateway data missing
 - **OAuth2 with PKCE** — same auth flow the Bosch app uses, with automatic token refresh
 - **Proper error handling** — 401/403 triggers HA's reauth flow, timeouts and network errors surface as `UpdateFailed`
 - **Diagnostics** — full diagnostic dump available from the HA integrations page (credentials are redacted)
@@ -350,7 +368,7 @@ python3 -m pytest --tb=short -q unittests
 pip install bosch-thermostat-client==0.28.2 tzdata ruff
 ```
 
-CI runs ruff + pytest on Python 3.12 and 3.13.
+CI runs ruff + pytest on Python 3.13 and fails below 70% test coverage.
 
 ## Testing & reporting
 
@@ -378,7 +396,7 @@ logger:
 In a healthy cloud setup you'll see one of these per 60s poll:
 
 ```
-POINTTAPI bulk steady state: 188/188 paths returned     ← bulk polling working
+POINTTAPI bulk steady state: N/N paths returned         ← bulk polling working
 POINTTAPI bulk fetch failed (...); falling back ...     ← bulk degraded (still works, please report!)
 ```
 
@@ -396,7 +414,7 @@ POINTTAPI bulk fetch failed (...); falling back ...     ← bulk degraded (still
 - When it started (after which version / change)
 
 [Open a bug report](https://github.com/CaseyRo/ha_bosch/issues/new?template=bug_report.yml) — the
-form has fields for all of the above. **Positive reports are just as valuable**: "v1.5.0 works on my
+form has fields for all of the above. **Positive reports are just as valuable**: "v1.6.0-beta.1 works on my
 TC100.2 with 10 zones and 12 thermostat valves; native boost picked the boostShortcut route" confirms
 that the dynamic entity discovery and boost probe ladder generalize beyond the tested installations.
 
@@ -414,7 +432,7 @@ If this integration is useful to you, consider buying me a coffee:
 All credit for the original integration goes to [@pszafer](https://github.com/pszafer) and the contributors to the upstream projects — see the attribution note at the top of this README. This fork adds only the POINTTAPI cloud path; everything else is their work.
 
 - POINTTAPI path and EasyControl cloud support by [@CaseyRo](https://github.com/CaseyRo)
-- Major recent POINTTAPI improvements (last 2 weeks) by [@jfhautenauven](https://github.com/jfhautenauven) ([@LaPoutreDeBamako](https://github.com/LaPoutreDeBamako)): thermostat-valve support (actual temperature, child lock, offset), writable per-zone assigned-program entities, reference-driven `/programs` and `/devices` discovery, multi-language localization polish, solar-presence robustness, and expanded unit tests.
+- Most POINTTAPI feature work since 1.2.0 by [@jfhautenauven](https://github.com/jfhautenauven) ([@LaPoutreDeBamako](https://github.com/LaPoutreDeBamako)): thermostat-valve support (actual temperature, child lock, offset), writable per-zone assigned-program entities, reference-driven `/programs` and `/devices` discovery, the 1.6.0 Boost model and Heating Installation Settings device, faster discovery and startup, Spanish and Portuguese translations, solar-presence robustness, and the expanded test suite.
 
 ## Acknowledgements
 
