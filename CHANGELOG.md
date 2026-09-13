@@ -4,6 +4,14 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **Diagnostics no longer include the account holder's details.** The
+  download carried `/gateway/user/*` (name, email, phone and street address,
+  base64-encoded so reading the file through misses them), installer
+  contacts, `/gateway/identificationKey` and `/system/location/*` unredacted.
+  The 1.6.0 discovery allowlist happens not to fetch these paths; they are now
+  redacted regardless. Caught by a tester who hand-redacted their dump on #29.
+
 ## [1.6.0-beta.1] — 2026-09-10
 
 The 1.6.0 beta consolidates the POINTTAPI redesign work developed across the

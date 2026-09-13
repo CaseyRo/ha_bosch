@@ -42,6 +42,23 @@ class TestRedactPathResponse:
             redacted = _redact_path_response(path, {"id": path, "value": "SERIAL123"})
             assert redacted["value"] == "**REDACTED**", path
 
+    def test_redacts_owner_details(self):
+        # Path shapes from a real 1.5.2 dump posted on #29: the account
+        # holder's details sit under "value" and slipped past the serial checks.
+        for path, value in {
+            "/gateway/user/name": "Jane Doe",
+            "/gateway/user/email": "jane@example.org",
+            "/gateway/user/address": [{"address": "Street 1", "zip": "1234"}],
+            "/gateway/installer/phone": "012345",
+            "/gateway/identificationKey": "KEY123",
+            "/system/location/coordinates": "52.37,4.89",
+        }.items():
+            redacted = _redact_path_response(path, {"id": path, "value": value})
+            assert redacted["value"] == "**REDACTED**", path
+        # The prefix must stop at a segment boundary.
+        for path in ("/gateway/userMode", "/gateway/versionFirmware"):
+            assert _redact_path_response(path, {"id": path, "value": "x"})["value"] == "x"
+
     def test_ordinary_path_value_survives(self):
         resp = {"id": "/system/sensors/outdoor_t1", "value": 12.5}
         assert _redact_path_response(resp["id"], resp)["value"] == 12.5
