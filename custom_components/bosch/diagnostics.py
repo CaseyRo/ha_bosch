@@ -30,6 +30,18 @@ TO_REDACT_CONFIG = {
 # these — the serial sits under "value" and has to be matched on the path.
 _IDENTIFYING_PATH_SUFFIXES = ("/uuid", "/serialnumber", "/macaddress")
 
+# Subtrees whose values identify the *owner*: account name, email, phone and
+# street address (base64-encoded, so reading the file through misses them),
+# installer contacts, location, gateway keys. Mirrors CONFIDENTIAL_URI in
+# bosch-thermostat-client's helper.py, matched as prefixes so children count.
+_CONFIDENTIAL_PATH_PREFIXES = (
+    "/gateway/user",
+    "/gateway/installer",
+    "/gateway/identificationkey",
+    "/gateway/remoteservicespassword",
+    "/system/location",
+)
+
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
@@ -62,7 +74,14 @@ def _redact_path_response(path: str, resp: Any) -> Any:
     if not isinstance(resp, dict):
         return resp
     redacted = dict(resp)
-    if path.lower().endswith(_IDENTIFYING_PATH_SUFFIXES) and "value" in redacted:
+    lowered = path.lower()
+    if "value" in redacted and (
+        lowered.endswith(_IDENTIFYING_PATH_SUFFIXES)
+        or any(
+            lowered == prefix or lowered.startswith(prefix + "/")
+            for prefix in _CONFIDENTIAL_PATH_PREFIXES
+        )
+    ):
         redacted["value"] = "**REDACTED**"
     if "uuid" in redacted:
         redacted["uuid"] = "**REDACTED**"
