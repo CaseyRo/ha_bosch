@@ -342,8 +342,9 @@ HACS then notifies you of updates like any other integration.
 This is a drop-in replacement for `bosch-thermostat/home-assistant-bosch-custom-component`. Your existing config entry and XMPP/HTTP setups are fully preserved — new entities only appear for POINTTAPI entries.
 
 1. Back up your existing `config/custom_components/bosch/` folder
-2. Install this fork via HACS or manually (see above), replacing the existing `bosch` folder
-3. Restart Home Assistant — existing entities carry over, new ones appear automatically
+2. **Installed the original through HACS?** Remove it there first (**HACS → Bosch thermostat → ⋮ → Remove**). Both repositories install into the same `bosch` folder, so HACS would keep offering the original's updates, and accepting one overwrites this fork and leaves your config entry unable to load
+3. Install this fork via HACS or manually (see above), replacing the existing `bosch` folder
+4. Restart Home Assistant — existing entities carry over, new ones appear automatically
 
 ### Keeping up to date
 
