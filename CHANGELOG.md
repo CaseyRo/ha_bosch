@@ -11,6 +11,11 @@ All notable changes to this Bosch Home Assistant custom component will be docume
   contacts, `/gateway/identificationKey` and `/system/location/*` unredacted.
   The 1.6.0 discovery allowlist happens not to fetch these paths; they are now
   redacted regardless. Caught by a tester who hand-redacted their dump on #29.
+- **Spanish and Portuguese setup has a sign-in link.** The
+  `pointtapi_oauth_open` step in `es.json` and `pt.json` had no `{auth_url}`
+  link, so the login step gave those users nothing to click. A new test checks
+  that every locale keeps its source string's placeholders; hassfest only
+  validates `en.json` for custom integrations, so CI never caught it.
 
 ## [1.6.0-beta.1] — 2026-09-10
 
