@@ -1,0 +1,530 @@
+{
+  "entity_component": {
+    "_": {
+      "state_attributes": {
+        "preset_mode": {
+          "state": {
+            "boost": "Lämmitystehostus"
+          }
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outdoor_temperature": {
+        "name": "Ulkolämpötila"
+      },
+      "indoor_humidity": {
+        "name": "Sisäilman kosteus"
+      },
+      "valve_position": {
+        "name": "Venttiilin asento"
+      },
+      "system_pressure": {
+        "name": "Järjestelmän paine"
+      },
+      "wifi_rssi": {
+        "name": "WiFi-signaalin voimakkuus"
+      },
+      "wifi_firmware_version": {
+        "name": "WiFi-laiteohjelmistoversio"
+      },
+      "zigbee_firmware_version": {
+        "name": "Zigbee-laiteohjelmistoversio"
+      },
+      "energy_efficiency": {
+        "name": "Energiatehokkuus"
+      },
+      "boost_remaining_time": {
+        "name": "Tehostuksen jäljellä oleva aika"
+      },
+      "gas_heating_today": {
+        "name": "Kaasulämmitys tänään"
+      },
+      "gas_hot_water_today": {
+        "name": "Kaasulämmin vesi tänään"
+      },
+      "gas_total_today": {
+        "name": "Kaasun kokonaiskulutus tänään"
+      },
+      "gas_heating_hourly": {
+        "name": "Kaasulämmitys tällä tunnilla"
+      },
+      "gas_hot_water_hourly": {
+        "name": "Kaasulämmin vesi tällä tunnilla"
+      },
+      "gas_total_hourly": {
+        "name": "Kaasun kokonaiskulutus tällä tunnilla"
+      },
+      "blocking_error": {
+        "name": "Estävä vikakoodi",
+        "state": {
+          "false": "Ei virhettä",
+          "true": "Virhe"
+        }
+      },
+      "locking_error": {
+        "name": "Lukitseva vikakoodi",
+        "state": {
+          "false": "Ei virhettä",
+          "true": "Virhe"
+        }
+      },
+      "maintenance_request": {
+        "name": "Huoltopyyntö",
+        "state": {
+          "false": "Ei vaadita",
+          "true": "Vaaditaan"
+        }
+      },
+      "display_code": {
+        "name": "Näyttökoodi"
+      },
+      "cause_code": {
+        "name": "Huoltokoodi"
+      },
+      "appliance_status": {
+        "name": "Kattilan tila",
+        "state": {
+          "unknown": "Tuntematon",
+          "locking_fault_code_active": "Lukitseva vikakoodi aktiivinen",
+          "blocking_fault_code_active": "Estävä vikakoodi aktiivinen",
+          "standby_no_heat_demand": "Valmiustila - ei lämmöntarvetta",
+          "heating_operation": "Lämmitys käytössä",
+          "hot_water_operation": "Lämminvesikäyttö",
+          "anti_cycle_delay": "Käyntijakson estoviive",
+          "dhw_post_heating_lockout": "Käyttöveden jälkilämmityksen lukitus aktiivinen",
+          "system_pressure_too_low": "Järjestelmän paine liian alhainen",
+          "flue_gas_test_heat_demand": "Lämmöntarve savukaasutestin vuoksi",
+          "flue_gas_thermostat_or_air_pressure_active": "Savukaasutermostaatti tai ilmanpaineensäädin aktiivinen",
+          "flue_gas_sensor_temperature_differential_too_great": "Savukaasun lämpötila-antureiden 1 ja 2 lämpötilaero on liian suuri",
+          "flue_gas_temperature_above_120_celsius": "Savukaasun lämpötila yli 120 °C",
+          "safety_supply_temp_rising_too_fast": "Turva-/menoveden lämpötila nousee liian nopeasti",
+          "heating_gradient_limitation": "Lämmityksen gradienttirajoitus",
+          "dhw_gradient_limitation": "Käyttöveden gradienttirajoitus",
+          "supply_return_temp_difference_too_high": "Meno- ja paluulämpötilan ero on liian suuri",
+          "pump_no_pressure_difference": "Kiertovesipumppu ei muodosta paine-eroa",
+          "fan_stopped_during_safety_time": "Puhallin pysähtyi turva-aikana",
+          "fan_stopped_during_operation": "Puhallin pysähtyi käytön aikana",
+          "fan_speed_too_low": "Puhaltimen nopeus liian alhainen",
+          "fan_speed_too_high": "Puhaltimen nopeus liian suuri",
+          "fan_malfunction": "Puhallinvika",
+          "air_pressure_monitor_fault": "Ilmanpainevalvonnan vika",
+          "supply_temp_too_high": "Menoveden lämpötila liian korkea",
+          "safety_sensor_temp_too_high": "Turva-anturin lämpötila liian korkea",
+          "safety_sensor_short_circuit": "Turva-anturin oikosulku",
+          "safety_sensor_disconnected": "Turva-anturi irrotettu",
+          "supply_sensor_short_circuit": "Menovesianturin oikosulku",
+          "supply_sensor_disconnected": "Menovesianturi irrotettu",
+          "safety_limiter_active": "Turvatermostaatti/lämpötilarajoitin aktiivinen",
+          "communication_or_internal_signal_fault": "Tietoliikenne- tai sisäisen signaalin vika",
+          "internal_monitoring_fault": "Sisäinen valvontavika",
+          "no_flame_after_ignition": "Liekkiä ei havaittu sytytyksen jälkeen",
+          "unexpected_flame_signal": "Liekkisignaali havaittu, vaikka liekkiä ei odoteta",
+          "flame_detected_after_gas_shutdown": "Liekki havaittu kaasun sulkemisen jälkeen",
+          "ionization_signal_lost": "Ionisaatiosignaali katosi käytön aikana",
+          "invalid_ionization_signal": "Virheellinen ionisaatiosignaali",
+          "mains_voltage_fault_or_power_loss": "Verkkojännitevika tai sähkökatko",
+          "first_safety_time_fault": "Ensimmäisen turva-ajan aikakatkaisuvirhe",
+          "restart_attempt_time_fault": "Uudelleenkäynnistysyrityksen aikakatkaisuvirhe",
+          "external_cutoff_switch_active": "Ulkoinen katkaisukytkin aktiivinen",
+          "external_controller_fault": "Ulkoisen säätimen vika",
+          "gas_valve_communication_fault": "Kaasuventtiilin tietoliikennevika",
+          "gas_valve_not_recognized": "Kaasuventtiilia ei tunnistettu",
+          "kim_not_recognized": "KIM:iä ei tunnistettu",
+          "internal_electronics_fault": "Sisäinen elektroniikkavika",
+          "equipment_fault_relay_error": "Laitteen vikareleen virhe",
+          "device_internal_fault": "Laitteen sisäinen vika",
+          "return_sensor_short_circuit": "Paluulämpötila-anturin oikosulku",
+          "return_sensor_disconnected": "Paluulämpötila-anturi irrotettu",
+          "internal_communication_fault": "Sisäinen tietoliikennevika",
+          "sensor_or_electronics_fault": "Anturi- tai elektroniikkavika",
+          "communication_fault": "Tietoliikennevika",
+          "internal_controller_fault": "Sisäinen säätimenvika",
+          "regulation_system_internal_fault": "Säätöjärjestelmän sisäinen vika",
+          "ignition_or_flame_fault": "Sytytys- tai liekkivika",
+          "flame_fault": "Liekkivika",
+          "regulation_system_test": "Säätöjärjestelmän testi",
+          "boiler_startup_preventilation": "Kattilan käynnistys tai esituuletus",
+          "burner_operation_monitoring": "Polttimen toiminnan valvonta",
+          "flame_monitoring": "Liekin valvonta",
+          "safety_shutdown_after_24h_continuous_operation": "Turvasammutus 24 tunnin jatkuvan poltin-/puhallinkäytön jälkeen",
+          "burner_startup_phase": "Poltin käynnistysvaiheessa",
+          "fan_starting": "Puhallin käynnistyy",
+          "startup_delay": "Käynnistysviive",
+          "pump_or_flow_insufficient": "Pumppu/kiertovirtaus riittämätön",
+          "purge_function_active": "Ilmaustoiminto aktiivinen",
+          "pump_or_three_way_valve_anti_seizure": "Pumpun/kolmitieventtiilin jumittumisen esto aktiivinen",
+          "internal_error_service_required": "Sisäinen virhe - huolto vaaditaan",
+          "burner_starting": "Poltin käynnistyy",
+          "heat_demand_below_min_power": "Lämmöntarve alle vähimmäistehon",
+          "gas_valve_opening": "Kaasuventtiili avautuu",
+          "gas_valve_open_burner_startup": "Kaasuventtiili auki / polttimen käynnistys",
+          "boiler_starting": "Kattila käynnistyy",
+          "supply_temp_above_setpoint": "Menoveden lämpötila yli asetuspisteen",
+          "dhw_sensor_temp_too_high": "Käyttövesianturin lämpötila liian korkea",
+          "main_controller_fault": "Pääsäätimen vika",
+          "regulation_system_fault": "Säätöjärjestelmän vika",
+          "internal_fault": "Sisäinen vika",
+          "electronic_fault": "Elektroniikkavika",
+          "internal_system_fault": "Sisäinen järjestelmävika"
+        }
+      },
+      "firmware_version": {
+        "name": "Laiteohjelmistoversio"
+      },
+      "supply_temp_setpoint": {
+        "name": "Menoveden lämpötilan asetuspiste"
+      },
+      "boiler_power": {
+        "name": "Kattilateho"
+      },
+      "actual_supply_temperature": {
+        "name": "Menoveden lämpötila"
+      },
+      "actual_modulation": {
+        "name": "Nykyinen modulointi"
+      },
+      "collector_temperature": {
+        "name": "Keräimen lämpötila"
+      },
+      "storage_temperature": {
+        "name": "Varaajan lämpötila"
+      },
+      "heat_demand_type": {
+        "name": "Tarvetyyppi",
+        "state": {
+          "off": "Ei tarvetta",
+          "ch": "Lämmitys",
+          "dhw": "Lämmin käyttövesi"
+        }
+      },
+      "pump_modulation": {
+        "name": "Pumpun modulointi"
+      },
+      "total_gain": {
+        "name": "Aurinkoenergian kokonaistuotto"
+      },
+      "dhw_actual_temperature": {
+        "name": "Lämpötila"
+      },
+      "zone_average_temperature": {
+        "name": "Keskilämpötila"
+      },
+      "boiler_ignition_starts": {
+        "name": "Sytytyskerrat"
+      },
+      "last_update_check": {
+        "name": "Viimeisin päivitystarkistus"
+      },
+      "last_update_applied": {
+        "name": "Viimeisin asennettu päivitys"
+      },
+      "indoor_air_temperature": {
+        "name": "Sisäilman lämpötila"
+      },
+      "indoor_chip_temperature": {
+        "name": "Sisäisen piirin lämpötila"
+      },
+      "indoor_pcb_temperature": {
+        "name": "Sisäisen piirilevyn lämpötila"
+      },
+      "ch_pump_modulation": {
+        "name": "Lämmityspiirin pumpun modulointi"
+      },
+      "burner_starts": {
+        "name": "Polttimen käynnistykset"
+      },
+      "total_working_time": {
+        "name": "Kokonaiskäyntiaika"
+      },
+      "return_temperature": {
+        "name": "Paluulämpötila"
+      },
+      "assigned_program": {
+        "name": "Määritetty ohjelma"
+      },
+      "optimum_start_state": {
+        "name": "Optimaalisen käynnistyksen tila",
+        "state": {
+          "idle": "Jouten"
+        }
+      },
+      "electricity_day_average": {
+        "name": "Sähkön päiväkeskiarvo"
+      },
+      "electricity_month_average": {
+        "name": "Sähkön kuukausikeskiarvo"
+      },
+      "refill_needed": {
+        "name": "Täyttö tarvitaan"
+      },
+      "notifications": {
+        "name": "Ilmoitukset"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Signaalin voimakkuus"
+      },
+      "thermostat_valve_battery": {
+        "name": "Paristo"
+      },
+      "thermostat_valve_zone": {
+        "name": "Vyöhyke"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokolla"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Lapsilukko"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Nykyinen lämpötila"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Venttiilin asento"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Lämpödesinfioinnin viimeisin tulos",
+        "state": {
+          "done": "Valmis",
+          "running": "Kesken"
+        }
+      }
+    },
+    "number": {
+      "boost_temperature": {
+        "name": "Tehostuslämpötila"
+      },
+      "boost_duration": {
+        "name": "Tehostuksen kesto"
+      },
+      "max_supply_temperature": {
+        "name": "Menoveden enimmäislämpötila"
+      },
+      "min_supply_temperature": {
+        "name": "Menoveden vähimmäislämpötila"
+      },
+      "heat_curve_minimum": {
+        "name": "Lämmityskäyrän minimi"
+      },
+      "heat_curve_maximum": {
+        "name": "Lämmityskäyrän maksimi"
+      },
+      "night_setback_threshold": {
+        "name": "Yöalennuksen raja"
+      },
+      "summer_winter_threshold": {
+        "name": "Kesä-/talviraja"
+      },
+      "room_influence": {
+        "name": "Huonelämpötilan vaikutus"
+      },
+      "temperature_calibration_offset": {
+        "name": "Lämpötilan kalibrointipoikkeama"
+      },
+      "thermostat_valve_temperature_offset": {
+        "name": "Lämpötilan kalibrointipoikkeama"
+      },
+      "extra_hot_water_duration": {
+        "name": "Lisälämpimän veden kesto"
+      },
+      "thermal_disinfect_time": {
+        "name": "Lämpödesinfioinnin aika"
+      }
+    },
+    "binary_sensor": {
+      "burner_flame": {
+        "name": "Liekki"
+      },
+      "dhw_burner": {
+        "name": "Lämpimän käyttöveden poltin"
+      },
+      "dhw_enabled": {
+        "name": "Lämmin käyttövesi käytössä",
+        "state": {
+          "on": "Käytössä",
+          "off": "Pois käytöstä"
+        }
+      },
+      "open_window_detected": {
+        "name": "Avoin ikkuna havaittu",
+        "state": {
+          "off": "Suljettu",
+          "on": "Avoin"
+        }
+      },
+      "refill_needed": {
+        "name": "Täyttö tarvitaan"
+      },
+      "thermostat_valve_warning": {
+        "name": "Varoitukset"
+      }
+    },
+    "switch": {
+      "boost_mode": {
+        "name": "Tehostus - yleinen ohjaus"
+      },
+      "boost_zone": {
+        "name": "Lämmitystehostus"
+      },
+      "auto_firmware_update": {
+        "name": "Automaattinen laiteohjelmistopäivitys"
+      },
+      "notification_light": {
+        "name": "Ilmoitusvalo"
+      },
+      "away_mode": {
+        "name": "Poissa-tila"
+      },
+      "extra_hot_water": {
+        "name": "Lisälämmin vesi"
+      },
+      "open_window_detection": {
+        "name": "Avoimen ikkunan tunnistus"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Lapsilukko"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Venttiilin asento"
+      },
+      "thermal_disinfect": {
+        "name": "Lämpödesinfiointi"
+      }
+    },
+    "select": {
+      "zone_mode": {
+        "name": "Vyöhyketila",
+        "state": {
+          "clock": "Kello",
+          "manual": "Manuaalinen"
+        }
+      },
+      "assigned_program_select": {
+        "name": "Määritetty ohjelma"
+      },
+      "pir_sensitivity": {
+        "name": "PIR-herkkyys",
+        "state": {
+          "high": "Korkea",
+          "medium": "Keskitaso",
+          "low": "Matala"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Kesä-/talvitila",
+        "state": {
+          "off": "Pois",
+          "automatic": "Automaattinen",
+          "manual": "Manuaalinen"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Yökytkentätila",
+        "state": {
+          "off": "Pois",
+          "automatic": "Automaattinen",
+          "reduced": "Alennettu"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Lämpödesinfioinnin viikonpäivä",
+        "state": {
+          "mo": "Maanantai",
+          "tu": "Tiistai",
+          "we": "Keskiviikko",
+          "th": "Torstai",
+          "fr": "Perjantai",
+          "sa": "Lauantai",
+          "su": "Sunnuntai"
+        }
+      }
+    },
+    "update": {
+      "firmware_update": {
+        "name": "Laiteohjelmisto"
+      }
+    }
+  },
+  "config": {
+    "title": "Bosch EasyControl",
+    "step": {
+      "xmpp_config": {
+        "title": "Bosch-termostaatin XMPP-määritys",
+        "data": {
+          "address": "Laitteen sarjanumero",
+          "access_token": "Käyttöoikeustunnus",
+          "password": "Salasana"
+        }
+      },
+      "easycontrol_protocol": {
+        "title": "EasyControl-yhteys",
+        "description": "XMPP muodostaa yhteyden suoraan laitteeseesi paikallisverkossa. Pilvikirjautuminen käyttää Bosch-tiliäsi ja toimii etänä.",
+        "data": {
+          "protocol": "Yhteystyyppi"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "EasyControl-laitteesi sarjanumero",
+        "description": "Anna laitteen sarjanumero (väliviivoilla tai ilman). Löydät sen laitteen tarrasta tai Bosch EasyControl -sovelluksesta kohdasta Asetukset → Laitetiedot.",
+        "data": {
+          "device_id": "Sarjanumero"
+        }
+      },
+      "pointtapi_oauth_open": {
+        "title": "Kirjaudu Bosch-tililläsi",
+        "description": "Avaa Boschin kirjautumissivu uuteen selaimen välilehteen napsauttamalla **[tätä linkkiä]({auth_url})** ja kirjaudu sisään Bosch-tililläsi.\n\nKirjautumisen jälkeen selaimessa näkyy virhe \"Sivua ei voi avata\" - **se on odotettua**. Jätä välilehti auki ja napsauta alla **Lähetä**."
+      },
+      "pointtapi_oauth": {
+        "title": "Viimeistele kirjautuminen",
+        "description": "Liitä alle **callback-URL-osoite** tai pelkkä **koodi**. Kirjautumisen jälkeen selain siirtyy osoitteeseen, joka alkaa `com.bosch.tt.dashtt.pointt://app/login?code=`, ja näyttää yleensä tyhjän näytön tai virheen sivun avaamisesta - se on odotettua. Kopioi koko osoite tai vain `code=`-kohdan jälkeinen arvo.\n\n**Onko ongelmia?** Jos osoiterivi näyttää tyhjältä kirjautumisen jälkeen, avaa selaimen historia - epäonnistunut `com.bosch.tt.dashtt.pointt://`-merkintä on tallennettu sinne, ja osoite voidaan kopioida siitä.",
+        "data": {
+          "oauth_callback_url": "Callback-URL tai koodi"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Valitse yhdyskäytäväsi",
+        "description": "Nämä yhdyskäytävät on liitetty Bosch-tiliisi. Valitse lisättävä yhdyskäytävä.",
+        "data": {
+          "device_id": "Yhdyskäytävä"
+        }
+      }
+    },
+    "error": {
+      "service_unavailable": "Palvelua ei ole saatavilla",
+      "invalid_device_id": "Laite-ID saa sisältää vain numeroita (sarjanumero ilman väliviivoja).",
+      "oauth_callback_empty": "Liitä URL-osoite selaimen osoiteriviltä.",
+      "oauth_callback_invalid": "Kirjautumiskoodia ei voitu lukea URL-osoitteesta. Varmista, että kopioit koko URL-osoitteen sivun näytettyä \"Sivua ei voi avata\".",
+      "oauth_token_failed": "Kirjautumista Boschille ei voitu viimeistellä. Kirjautumiskoodi on voinut vanhentua - aloita alusta.",
+      "faulty_credentials": "Yhteyttä ei voitu muodostaa. Tarkista laitteen osoite ja käyttöoikeustunnus ja yritä uudelleen.",
+      "unknown": "Odottamaton virhe. Katso lisätiedot Home Assistantin lokeista."
+    },
+    "abort": {
+      "faulty_credentials": "Virheelliset käyttäjätiedot tai väärä IP-osoite",
+      "already_configured": "Ohjainsivusto on jo määritetty",
+      "unknown": "Tuntematon syy. Tarkista LOKIT.",
+      "reauth_invalid": "Uudelleentodennus koskee vain POINTTAPI-merkintöjä.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Bosch-asetukset",
+        "data": {
+          "new_stats_api": "Käytä uutta tilasto-ohjelmointirajapintaa",
+          "optimistic_mode": "Käytä optimistista tilaa joillekin toiminnoille (tällä hetkellä CT200:n käyttötilan asetuksessa)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "pointtapi": "Pilvi / Bosch-tili",
+        "xmpp": "Paikallinen yhteys (XMPP)"
+      }
+    }
+  }
+}

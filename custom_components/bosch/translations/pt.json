@@ -1,38 +1,530 @@
 {
-  "entity_component": {"_": {"state_attributes": {"preset_mode": {"state": {"boost": "Aquecimento rápido"}}}}},
+  "entity_component": {
+    "_": {
+      "state_attributes": {
+        "preset_mode": {
+          "state": {
+            "boost": "Aquecimento rápido"
+          }
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
-      "outdoor_temperature": {"name": "Temperatura exterior"}, "indoor_humidity": {"name": "Humidade interior"}, "valve_position": {"name": "Posição da válvula"}, "system_pressure": {"name": "Pressão do sistema"}, "wifi_rssi": {"name": "Intensidade do sinal WiFi"}, "wifi_firmware_version": {"name": "Versão do firmware WiFi"}, "zigbee_firmware_version": {"name": "Versão do firmware Zigbee"}, "energy_efficiency": {"name": "Eficiência energética"}, "boost_remaining_time": {"name": "Tempo de aquecimento rápido restante"}, "gas_heating_today": {"name": "Aquecimento a gás de hoje"}, "gas_hot_water_today": {"name": "Água quente a gás de hoje"}, "gas_total_today": {"name": "Gás total de hoje"}, "gas_heating_hourly": {"name": "Aquecimento a gás desta hora"}, "gas_hot_water_hourly": {"name": "Água quente a gás desta hora"}, "gas_total_hourly": {"name": "Gás total desta hora"},
-      "blocking_error": {"name": "Código de falha de bloqueio", "state": {"false": "Sem erro", "true": "Erro"}}, "locking_error": {"name": "Código de falha de segurança", "state": {"false": "Sem erro", "true": "Erro"}}, "maintenance_request": {"name": "Pedido de manutenção", "state": {"false": "Não necessário", "true": "Necessário"}}, "display_code": {"name": "Código do visor"}, "cause_code": {"name": "Código de serviço"}, "firmware_version": {"name": "Versão do firmware"}, "supply_temp_setpoint": {"name": "Temperatura de ida definida"}, "boiler_power": {"name": "Potência da caldeira"}, "actual_supply_temperature": {"name": "Temperatura de ida"}, "actual_modulation": {"name": "Potência de modulação atual"}, "collector_temperature": {"name": "Temperatura do coletor"}, "storage_temperature": {"name": "Temperatura do acumulador"},
-      "heat_demand_type": {"name": "Tipo de pedido", "state": {"off": "Sem pedido", "ch": "Aquecimento", "dhw": "Água quente sanitária"}}, "pump_modulation": {"name": "Modulação da bomba"}, "total_gain": {"name": "Ganho solar total"}, "dhw_actual_temperature": {"name": "Temperatura"}, "zone_average_temperature": {"name": "Temperatura média"}, "last_update_check": {"name": "Última verificação de atualização"}, "last_update_applied": {"name": "Última atualização aplicada"}, "return_temperature": {"name": "Temperatura de retorno"}, "indoor_air_temperature": {"name": "Temperatura do ar interior"}, "indoor_chip_temperature": {"name": "Temperatura do chip interior"}, "indoor_pcb_temperature": {"name": "Temperatura da PCB interior"}, "ch_pump_modulation": {"name": "Modulação da bomba de aquecimento"}, "boiler_ignition_starts": {"name": "Arranques de ignição da caldeira"}, "burner_starts": {"name": "Arranques do queimador"}, "total_working_time": {"name": "Tempo total de funcionamento"}, "appliance_status": {"name": "Estado da caldeira"}, "assigned_program": {"name": "Programa atribuído"}, "optimum_start_state": {"name": "Estado de início otimizado", "state": {"idle": "Inativo"}}, "electricity_day_average": {"name": "Média diária de eletricidade"}, "electricity_month_average": {"name": "Média mensal de eletricidade"}, "refill_needed": {"name": "É necessário reabastecer"}, "notifications": {"name": "Notificações"},
-      "thermostat_valve_signal_strength": {"name": "Intensidade do sinal"}, "thermostat_valve_battery": {"name": "Bateria"}, "thermostat_valve_zone": {"name": "Zona"}, "thermostat_valve_protocol": {"name": "Protocolo"}, "thermostat_valve_child_lock": {"name": "Bloqueio infantil"}, "thermostat_valve_temperature_actual": {"name": "Temperatura atual"}, "thermostat_valve_valve_position": {"name": "Posição da válvula"}, "thermal_disinfect_last_result": {"name": "Resultado da desinfeção térmica", "state": {"done": "Concluída", "running": "Em curso"}}
+      "outdoor_temperature": {
+        "name": "Temperatura exterior"
+      },
+      "indoor_humidity": {
+        "name": "Humidade interior"
+      },
+      "valve_position": {
+        "name": "Posição da válvula"
+      },
+      "system_pressure": {
+        "name": "Pressão do sistema"
+      },
+      "wifi_rssi": {
+        "name": "Intensidade do sinal WiFi"
+      },
+      "wifi_firmware_version": {
+        "name": "Versão do firmware WiFi"
+      },
+      "zigbee_firmware_version": {
+        "name": "Versão do firmware Zigbee"
+      },
+      "energy_efficiency": {
+        "name": "Eficiência energética"
+      },
+      "boost_remaining_time": {
+        "name": "Tempo de aquecimento rápido restante"
+      },
+      "gas_heating_today": {
+        "name": "Aquecimento a gás de hoje"
+      },
+      "gas_hot_water_today": {
+        "name": "Água quente a gás de hoje"
+      },
+      "gas_total_today": {
+        "name": "Gás total de hoje"
+      },
+      "gas_heating_hourly": {
+        "name": "Aquecimento a gás desta hora"
+      },
+      "gas_hot_water_hourly": {
+        "name": "Água quente a gás desta hora"
+      },
+      "gas_total_hourly": {
+        "name": "Gás total desta hora"
+      },
+      "blocking_error": {
+        "name": "Código de falha de bloqueio",
+        "state": {
+          "false": "Sem erro",
+          "true": "Erro"
+        }
+      },
+      "locking_error": {
+        "name": "Código de falha de segurança",
+        "state": {
+          "false": "Sem erro",
+          "true": "Erro"
+        }
+      },
+      "maintenance_request": {
+        "name": "Pedido de manutenção",
+        "state": {
+          "false": "Não necessário",
+          "true": "Necessário"
+        }
+      },
+      "display_code": {
+        "name": "Código do visor"
+      },
+      "cause_code": {
+        "name": "Código de serviço"
+      },
+      "appliance_status": {
+        "name": "Estado da caldeira",
+        "state": {
+          "unknown": "Desconhecido",
+          "locking_fault_code_active": "Código de avaria de bloqueio de segurança ativo",
+          "blocking_fault_code_active": "Código de avaria de bloqueio ativo",
+          "standby_no_heat_demand": "Em espera - sem pedido de aquecimento",
+          "heating_operation": "Funcionamento do aquecimento",
+          "hot_water_operation": "Funcionamento de água quente",
+          "anti_cycle_delay": "Atraso anticiclos",
+          "dhw_post_heating_lockout": "Bloqueio de pós-aquecimento de AQS ativo",
+          "system_pressure_too_low": "Pressão do sistema demasiado baixa",
+          "flue_gas_test_heat_demand": "Pedido de aquecimento devido a teste de gases de combustão",
+          "flue_gas_thermostat_or_air_pressure_active": "Termóstato de gases de combustão ou regulador de pressão do ar ativo",
+          "flue_gas_sensor_temperature_differential_too_great": "A diferença de temperatura entre os sensores de gases de combustão 1 e 2 é demasiado elevada",
+          "flue_gas_temperature_above_120_celsius": "Temperatura dos gases de combustão superior a 120 °C",
+          "safety_supply_temp_rising_too_fast": "A temperatura de segurança/de ida sobe demasiado depressa",
+          "heating_gradient_limitation": "Limitação do gradiente de aquecimento",
+          "dhw_gradient_limitation": "Limitação do gradiente de AQS",
+          "supply_return_temp_difference_too_high": "Diferença entre as temperaturas de ida e retorno demasiado elevada",
+          "pump_no_pressure_difference": "A bomba de circulação não gera diferença de pressão",
+          "fan_stopped_during_safety_time": "Ventilador parado durante o tempo de segurança",
+          "fan_stopped_during_operation": "Ventilador parado durante o funcionamento",
+          "fan_speed_too_low": "Velocidade do ventilador demasiado baixa",
+          "fan_speed_too_high": "Velocidade do ventilador demasiado elevada",
+          "fan_malfunction": "Avaria do ventilador",
+          "air_pressure_monitor_fault": "Avaria do monitor de pressão do ar",
+          "supply_temp_too_high": "Temperatura de ida demasiado elevada",
+          "safety_sensor_temp_too_high": "Temperatura do sensor de segurança demasiado elevada",
+          "safety_sensor_short_circuit": "Curto-circuito no sensor de segurança",
+          "safety_sensor_disconnected": "Sensor de segurança desligado",
+          "supply_sensor_short_circuit": "Curto-circuito no sensor de ida",
+          "supply_sensor_disconnected": "Sensor de ida desligado",
+          "safety_limiter_active": "Termóstato de segurança/limitador de temperatura ativo",
+          "communication_or_internal_signal_fault": "Avaria de comunicação ou de sinal interno",
+          "internal_monitoring_fault": "Avaria interna de monitorização",
+          "no_flame_after_ignition": "Não foi detetada chama após a ignição",
+          "unexpected_flame_signal": "Sinal de chama presente quando não é esperada chama",
+          "flame_detected_after_gas_shutdown": "Chama detetada após o corte de gás",
+          "ionization_signal_lost": "Sinal de ionização perdido durante o funcionamento",
+          "invalid_ionization_signal": "Sinal de ionização inválido",
+          "mains_voltage_fault_or_power_loss": "Avaria na tensão da rede ou falha de alimentação",
+          "first_safety_time_fault": "Avaria por tempo limite do primeiro tempo de segurança",
+          "restart_attempt_time_fault": "Avaria por tempo limite da tentativa de reinício",
+          "external_cutoff_switch_active": "Interruptor de corte externo ativo",
+          "external_controller_fault": "Avaria do controlador externo",
+          "gas_valve_communication_fault": "Avaria de comunicação com a válvula de gás",
+          "gas_valve_not_recognized": "Válvula de gás não reconhecida",
+          "kim_not_recognized": "KIM não reconhecido",
+          "internal_electronics_fault": "Avaria eletrónica interna",
+          "equipment_fault_relay_error": "Erro no relé de avaria do equipamento",
+          "device_internal_fault": "Avaria interna do dispositivo",
+          "return_sensor_short_circuit": "Curto-circuito no sensor de retorno",
+          "return_sensor_disconnected": "Sensor de retorno desligado",
+          "internal_communication_fault": "Avaria de comunicação interna",
+          "sensor_or_electronics_fault": "Avaria no sensor ou na eletrónica",
+          "communication_fault": "Avaria de comunicação",
+          "internal_controller_fault": "Avaria do controlador interno",
+          "regulation_system_internal_fault": "Avaria interna do sistema de regulação",
+          "ignition_or_flame_fault": "Avaria de ignição ou de chama",
+          "flame_fault": "Avaria de chama",
+          "regulation_system_test": "Teste do sistema de regulação",
+          "boiler_startup_preventilation": "Arranque da caldeira/pré-ventilação",
+          "burner_operation_monitoring": "Monitorização do funcionamento do queimador",
+          "flame_monitoring": "Monitorização da chama",
+          "safety_shutdown_after_24h_continuous_operation": "Paragem de segurança após 24 h de funcionamento contínuo do queimador/ventilador",
+          "burner_startup_phase": "Fase de arranque do queimador",
+          "fan_starting": "Arranque do ventilador",
+          "startup_delay": "Atraso de arranque",
+          "pump_or_flow_insufficient": "Caudal da bomba/circulação insuficiente",
+          "purge_function_active": "Função de purga ativa",
+          "pump_or_three_way_valve_anti_seizure": "Proteção contra gripagem da bomba/válvula de 3 vias ativa",
+          "internal_error_service_required": "Erro interno - assistência necessária",
+          "burner_starting": "Arranque do queimador",
+          "heat_demand_below_min_power": "Pedido de aquecimento abaixo da potência mínima",
+          "gas_valve_opening": "Abertura da válvula de gás",
+          "gas_valve_open_burner_startup": "Válvula de gás aberta / arranque do queimador",
+          "boiler_starting": "Arranque da caldeira",
+          "supply_temp_above_setpoint": "Temperatura de ida acima do valor definido",
+          "dhw_sensor_temp_too_high": "Temperatura do sensor de AQS demasiado elevada",
+          "main_controller_fault": "Avaria do controlador principal",
+          "regulation_system_fault": "Avaria do sistema de regulação",
+          "internal_fault": "Avaria interna",
+          "electronic_fault": "Avaria eletrónica",
+          "internal_system_fault": "Avaria interna do sistema"
+        }
+      },
+      "firmware_version": {
+        "name": "Versão do firmware"
+      },
+      "supply_temp_setpoint": {
+        "name": "Temperatura de ida definida"
+      },
+      "boiler_power": {
+        "name": "Potência da caldeira"
+      },
+      "actual_supply_temperature": {
+        "name": "Temperatura de ida"
+      },
+      "actual_modulation": {
+        "name": "Potência de modulação atual"
+      },
+      "collector_temperature": {
+        "name": "Temperatura do coletor"
+      },
+      "storage_temperature": {
+        "name": "Temperatura do acumulador"
+      },
+      "heat_demand_type": {
+        "name": "Tipo de pedido",
+        "state": {
+          "off": "Sem pedido",
+          "ch": "Aquecimento",
+          "dhw": "Água quente sanitária"
+        }
+      },
+      "pump_modulation": {
+        "name": "Modulação da bomba"
+      },
+      "total_gain": {
+        "name": "Ganho solar total"
+      },
+      "dhw_actual_temperature": {
+        "name": "Temperatura"
+      },
+      "zone_average_temperature": {
+        "name": "Temperatura média"
+      },
+      "boiler_ignition_starts": {
+        "name": "Arranques de ignição da caldeira"
+      },
+      "last_update_check": {
+        "name": "Última verificação de atualização"
+      },
+      "last_update_applied": {
+        "name": "Última atualização aplicada"
+      },
+      "indoor_air_temperature": {
+        "name": "Temperatura do ar interior"
+      },
+      "indoor_chip_temperature": {
+        "name": "Temperatura do chip interior"
+      },
+      "indoor_pcb_temperature": {
+        "name": "Temperatura da PCB interior"
+      },
+      "ch_pump_modulation": {
+        "name": "Modulação da bomba de aquecimento"
+      },
+      "burner_starts": {
+        "name": "Arranques do queimador"
+      },
+      "total_working_time": {
+        "name": "Tempo total de funcionamento"
+      },
+      "return_temperature": {
+        "name": "Temperatura de retorno"
+      },
+      "assigned_program": {
+        "name": "Programa atribuído"
+      },
+      "optimum_start_state": {
+        "name": "Estado de início otimizado",
+        "state": {
+          "idle": "Inativo"
+        }
+      },
+      "electricity_day_average": {
+        "name": "Média diária de eletricidade"
+      },
+      "electricity_month_average": {
+        "name": "Média mensal de eletricidade"
+      },
+      "refill_needed": {
+        "name": "É necessário reabastecer"
+      },
+      "notifications": {
+        "name": "Notificações"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Intensidade do sinal"
+      },
+      "thermostat_valve_battery": {
+        "name": "Bateria"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zona"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protocolo"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Bloqueio infantil"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Temperatura atual"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Posição da válvula"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Resultado da desinfeção térmica",
+        "state": {
+          "done": "Concluída",
+          "running": "Em curso"
+        }
+      }
     },
     "number": {
-      "boost_temperature": {"name": "Temperatura de aquecimento rápido"}, "boost_duration": {"name": "Duração do aquecimento rápido"}, "max_supply_temperature": {"name": "Temperatura máxima de ida"}, "min_supply_temperature": {"name": "Temperatura mínima de ida"}, "heat_curve_minimum": {"name": "Curva de aquecimento mínima"}, "heat_curve_maximum": {"name": "Curva de aquecimento máxima"}, "night_setback_threshold": {"name": "Limite de redução noturna"}, "summer_winter_threshold": {"name": "Limite verão/inverno"}, "room_influence": {"name": "Influência da temperatura ambiente"}, "temperature_calibration_offset": {"name": "Correção da temperatura"}, "thermostat_valve_temperature_offset": {"name": "Correção da temperatura"}, "extra_hot_water_duration": {"name": "Duração de água quente adicional"}, "thermal_disinfect_time": {"name": "Hora da desinfeção térmica"}
+      "boost_temperature": {
+        "name": "Temperatura de aquecimento rápido"
+      },
+      "boost_duration": {
+        "name": "Duração do aquecimento rápido"
+      },
+      "max_supply_temperature": {
+        "name": "Temperatura máxima de ida"
+      },
+      "min_supply_temperature": {
+        "name": "Temperatura mínima de ida"
+      },
+      "heat_curve_minimum": {
+        "name": "Curva de aquecimento mínima"
+      },
+      "heat_curve_maximum": {
+        "name": "Curva de aquecimento máxima"
+      },
+      "night_setback_threshold": {
+        "name": "Limite de redução noturna"
+      },
+      "summer_winter_threshold": {
+        "name": "Limite verão/inverno"
+      },
+      "room_influence": {
+        "name": "Influência da temperatura ambiente"
+      },
+      "temperature_calibration_offset": {
+        "name": "Correção da temperatura"
+      },
+      "thermostat_valve_temperature_offset": {
+        "name": "Correção da temperatura"
+      },
+      "extra_hot_water_duration": {
+        "name": "Duração de água quente adicional"
+      },
+      "thermal_disinfect_time": {
+        "name": "Hora da desinfeção térmica"
+      }
     },
     "binary_sensor": {
-      "burner_flame": {"name": "Chama"}, "dhw_burner": {"name": "Queimador de água quente"}, "dhw_enabled": {"name": "Água quente ativa", "state": {"on": "Ativa", "off": "Inativa"}}, "open_window_detected": {"name": "Janela aberta detetada", "state": {"off": "Fechada", "on": "Aberta"}}, "refill_needed": {"name": "É necessário reabastecer"}, "thermostat_valve_warning": {"name": "Avisos"}
+      "burner_flame": {
+        "name": "Chama"
+      },
+      "dhw_burner": {
+        "name": "Queimador de água quente"
+      },
+      "dhw_enabled": {
+        "name": "Água quente ativa",
+        "state": {
+          "on": "Ativa",
+          "off": "Inativa"
+        }
+      },
+      "open_window_detected": {
+        "name": "Janela aberta detetada",
+        "state": {
+          "off": "Fechada",
+          "on": "Aberta"
+        }
+      },
+      "refill_needed": {
+        "name": "É necessário reabastecer"
+      },
+      "thermostat_valve_warning": {
+        "name": "Avisos"
+      }
     },
     "switch": {
-      "boost_mode": {"name": "Aquecimento rápido - Controlo geral"}, "boost_zone": {"name": "Aquecimento rápido"}, "auto_firmware_update": {"name": "Atualização automática do firmware"}, "notification_light": {"name": "Luz de notificação"}, "away_mode": {"name": "Modo ausência"}, "extra_hot_water": {"name": "Água quente adicional"}, "open_window_detection": {"name": "Deteção de janela aberta"}, "thermostat_valve_child_lock": {"name": "Bloqueio infantil"}, "thermostat_valve_valve_position": {"name": "Posição da válvula"}, "thermal_disinfect": {"name": "Desinfeção térmica"}
+      "boost_mode": {
+        "name": "Aquecimento rápido - Controlo geral"
+      },
+      "boost_zone": {
+        "name": "Aquecimento rápido"
+      },
+      "auto_firmware_update": {
+        "name": "Atualização automática do firmware"
+      },
+      "notification_light": {
+        "name": "Luz de notificação"
+      },
+      "away_mode": {
+        "name": "Modo ausência"
+      },
+      "extra_hot_water": {
+        "name": "Água quente adicional"
+      },
+      "open_window_detection": {
+        "name": "Deteção de janela aberta"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Bloqueio infantil"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Posição da válvula"
+      },
+      "thermal_disinfect": {
+        "name": "Desinfeção térmica"
+      }
     },
     "select": {
-      "zone_mode": {"name": "Modo da zona", "state": {"clock": "Programado", "manual": "Manual"}}, "assigned_program_select": {"name": "Programa atribuído"}, "pir_sensitivity": {"name": "Sensibilidade do detetor de movimento", "state": {"high": "Alta", "medium": "Média", "low": "Baixa"}}, "summer_winter_mode": {"name": "Modo verão/inverno", "state": {"off": "Desligado", "automatic": "Automático", "manual": "Manual"}}, "night_switch_mode": {"name": "Modo noturno", "state": {"off": "Desligado", "automatic": "Automático", "reduced": "Reduzido"}}, "thermal_disinfect_weekday": {"name": "Dia da desinfeção térmica", "state": {"mo": "Segunda-feira", "tu": "Terça-feira", "we": "Quarta-feira", "th": "Quinta-feira", "fr": "Sexta-feira", "sa": "Sábado", "su": "Domingo"}}
+      "zone_mode": {
+        "name": "Modo da zona",
+        "state": {
+          "clock": "Programado",
+          "manual": "Manual"
+        }
+      },
+      "assigned_program_select": {
+        "name": "Programa atribuído"
+      },
+      "pir_sensitivity": {
+        "name": "Sensibilidade do detetor de movimento",
+        "state": {
+          "high": "Alta",
+          "medium": "Média",
+          "low": "Baixa"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Modo verão/inverno",
+        "state": {
+          "off": "Desligado",
+          "automatic": "Automático",
+          "manual": "Manual"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Modo noturno",
+        "state": {
+          "off": "Desligado",
+          "automatic": "Automático",
+          "reduced": "Reduzido"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Dia da desinfeção térmica",
+        "state": {
+          "mo": "Segunda-feira",
+          "tu": "Terça-feira",
+          "we": "Quarta-feira",
+          "th": "Quinta-feira",
+          "fr": "Sexta-feira",
+          "sa": "Sábado",
+          "su": "Domingo"
+        }
+      }
     },
-    "update": {"firmware_update": {"name": "Firmware"}}
+    "update": {
+      "firmware_update": {
+        "name": "Firmware"
+      }
+    }
   },
   "config": {
     "title": "Bosch EasyControl",
     "step": {
-      "xmpp_config": {"title": "Configuração XMPP do termóstato Bosch", "data": {"address": "Número de série do dispositivo", "access_token": "Token de acesso", "password": "Palavra-passe"}},
-      "easycontrol_protocol": {"title": "Ligação EasyControl", "description": "O XMPP liga-se diretamente ao dispositivo na rede local. O acesso na nuvem usa a sua conta Bosch e funciona remotamente.", "data": {"protocol": "Tipo de ligação"}},
-      "pointtapi_device_id": {"title": "Número de série do seu EasyControl", "description": "Introduza o número de série do dispositivo, com ou sem hífenes.", "data": {"device_id": "Número de série"}},
-      "pointtapi_oauth_open": {"title": "Iniciar sessão com a conta Bosch", "description": "Abra a ligação de início de sessão e autentique-se com a sua conta Bosch.", "data": {}},
-      "pointtapi_oauth": {"title": "Concluir início de sessão", "description": "Cole o URL de callback ou o código de início de sessão.", "data": {"oauth_callback_url": "URL de callback ou código"}},
-      "pointtapi_gateway": {"title": "Selecionar o gateway", "description": "Estes gateways estão associados à sua conta Bosch.", "data": {"device_id": "Gateway"}}
+      "xmpp_config": {
+        "title": "Configuração XMPP do termóstato Bosch",
+        "data": {
+          "address": "Número de série do dispositivo",
+          "access_token": "Token de acesso",
+          "password": "Palavra-passe"
+        }
+      },
+      "easycontrol_protocol": {
+        "title": "Ligação EasyControl",
+        "description": "O XMPP liga-se diretamente ao dispositivo na rede local. O acesso na nuvem usa a sua conta Bosch e funciona remotamente.",
+        "data": {
+          "protocol": "Tipo de ligação"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "Número de série do seu EasyControl",
+        "description": "Introduza o número de série do dispositivo, com ou sem hífenes.",
+        "data": {
+          "device_id": "Número de série"
+        }
+      },
+      "pointtapi_oauth_open": {
+        "title": "Iniciar sessão com a conta Bosch",
+        "description": "Abra a ligação de início de sessão e autentique-se com a sua conta Bosch."
+      },
+      "pointtapi_oauth": {
+        "title": "Concluir início de sessão",
+        "description": "Cole o URL de callback ou o código de início de sessão.",
+        "data": {
+          "oauth_callback_url": "URL de callback ou código"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Selecionar o gateway",
+        "description": "Estes gateways estão associados à sua conta Bosch.",
+        "data": {
+          "device_id": "Gateway"
+        }
+      }
     },
-    "error": {"service_unavailable": "Serviço indisponível", "invalid_device_id": "O ID do dispositivo só pode conter dígitos.", "oauth_callback_empty": "Cole o URL apresentado pelo navegador.", "oauth_callback_invalid": "Não foi possível ler o código de início de sessão.", "oauth_token_failed": "Não foi possível concluir o início de sessão Bosch.", "faulty_credentials": "Não foi possível ligar. Verifique os dados.", "unknown": "Erro inesperado. Consulte os registos."},
-    "abort": {"faulty_credentials": "Credenciais incorretas ou IP errado", "already_configured": "O local já está configurado", "unknown": "Motivo desconhecido. Consulte os registos.", "reauth_invalid": "A reautenticação só se aplica a entradas POINTTAPI.", "reauth_successful": "A reautenticação foi concluída com sucesso."}
+    "error": {
+      "service_unavailable": "Serviço indisponível",
+      "invalid_device_id": "O ID do dispositivo só pode conter dígitos.",
+      "oauth_callback_empty": "Cole o URL apresentado pelo navegador.",
+      "oauth_callback_invalid": "Não foi possível ler o código de início de sessão.",
+      "oauth_token_failed": "Não foi possível concluir o início de sessão Bosch.",
+      "faulty_credentials": "Não foi possível ligar. Verifique os dados.",
+      "unknown": "Erro inesperado. Consulte os registos."
+    },
+    "abort": {
+      "faulty_credentials": "Credenciais incorretas ou IP errado",
+      "already_configured": "O local já está configurado",
+      "unknown": "Motivo desconhecido. Consulte os registos.",
+      "reauth_invalid": "A reautenticação só se aplica a entradas POINTTAPI.",
+      "reauth_successful": "A reautenticação foi concluída com sucesso."
+    }
   },
-  "options": {"step": {"init": {"title": "Opções Bosch", "data": {"new_stats_api": "Utilizar a nova API de estatísticas", "optimistic_mode": "Utilizar o modo otimista para algumas funções."}}}}
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opções Bosch",
+        "data": {
+          "new_stats_api": "Utilizar a nova API de estatísticas",
+          "optimistic_mode": "Utilizar o modo otimista para algumas funções."
+        }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "pointtapi": "Nuvem / conta Bosch",
+        "xmpp": "Ligação local (XMPP)"
+      }
+    }
+  }
 }

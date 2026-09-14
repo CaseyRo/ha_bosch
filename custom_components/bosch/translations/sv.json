@@ -1,0 +1,530 @@
+{
+  "entity_component": {
+    "_": {
+      "state_attributes": {
+        "preset_mode": {
+          "state": {
+            "boost": "Värmeboost"
+          }
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "outdoor_temperature": {
+        "name": "Utomhustemperatur"
+      },
+      "indoor_humidity": {
+        "name": "Luftfuktighet inomhus"
+      },
+      "valve_position": {
+        "name": "Ventilposition"
+      },
+      "system_pressure": {
+        "name": "Systemtryck"
+      },
+      "wifi_rssi": {
+        "name": "WiFi-signalstyrka"
+      },
+      "wifi_firmware_version": {
+        "name": "WiFi-firmwareversion"
+      },
+      "zigbee_firmware_version": {
+        "name": "Zigbee-firmwareversion"
+      },
+      "energy_efficiency": {
+        "name": "Energieffektivitet"
+      },
+      "boost_remaining_time": {
+        "name": "Återstående boosttid"
+      },
+      "gas_heating_today": {
+        "name": "Gasuppvärmning i dag"
+      },
+      "gas_hot_water_today": {
+        "name": "Gasvarmvatten i dag"
+      },
+      "gas_total_today": {
+        "name": "Total gas i dag"
+      },
+      "gas_heating_hourly": {
+        "name": "Gasuppvärmning denna timme"
+      },
+      "gas_hot_water_hourly": {
+        "name": "Gasvarmvatten denna timme"
+      },
+      "gas_total_hourly": {
+        "name": "Total gas denna timme"
+      },
+      "blocking_error": {
+        "name": "Blockerande felkod",
+        "state": {
+          "false": "Inget fel",
+          "true": "Fel"
+        }
+      },
+      "locking_error": {
+        "name": "Låsande felkod",
+        "state": {
+          "false": "Inget fel",
+          "true": "Fel"
+        }
+      },
+      "maintenance_request": {
+        "name": "Underhållsbegäran",
+        "state": {
+          "false": "Krävs inte",
+          "true": "Krävs"
+        }
+      },
+      "display_code": {
+        "name": "Displaykod"
+      },
+      "cause_code": {
+        "name": "Servicekod"
+      },
+      "appliance_status": {
+        "name": "Pannstatus",
+        "state": {
+          "unknown": "Okänd",
+          "locking_fault_code_active": "Låsande felkod aktiv",
+          "blocking_fault_code_active": "Blockerande felkod aktiv",
+          "standby_no_heat_demand": "Standby - inget värmebehov",
+          "heating_operation": "Värmedrift",
+          "hot_water_operation": "Varmvattendrift",
+          "anti_cycle_delay": "Anticykelfördröjning",
+          "dhw_post_heating_lockout": "Eftervärmningsspärr för tappvarmvatten aktiv",
+          "system_pressure_too_low": "Systemtrycket är för lågt",
+          "flue_gas_test_heat_demand": "Värmebehov på grund av rökgastest",
+          "flue_gas_thermostat_or_air_pressure_active": "Rökgastermostat eller lufttrycksregulator aktiv",
+          "flue_gas_sensor_temperature_differential_too_great": "Temperaturskillnaden mellan rökgastemperaturgivare 1 och 2 är för stor",
+          "flue_gas_temperature_above_120_celsius": "Rökgastemperatur över 120 °C",
+          "safety_supply_temp_rising_too_fast": "Säkerhets-/framledningstemperaturen stiger för snabbt",
+          "heating_gradient_limitation": "Gradientbegränsning vid uppvärmning",
+          "dhw_gradient_limitation": "Gradientbegränsning för tappvarmvatten",
+          "supply_return_temp_difference_too_high": "Skillnaden mellan framlednings- och returtemperatur är för stor",
+          "pump_no_pressure_difference": "Cirkulationspumpen skapar ingen tryckskillnad",
+          "fan_stopped_during_safety_time": "Fläkten stannade under säkerhetstiden",
+          "fan_stopped_during_operation": "Fläkten stannade under drift",
+          "fan_speed_too_low": "Fläkthastigheten är för låg",
+          "fan_speed_too_high": "Fläkthastigheten är för hög",
+          "fan_malfunction": "Fläktfel",
+          "air_pressure_monitor_fault": "Fel i lufttrycksövervakningen",
+          "supply_temp_too_high": "Framledningstemperaturen är för hög",
+          "safety_sensor_temp_too_high": "Säkerhetsgivarens temperatur är för hög",
+          "safety_sensor_short_circuit": "Kortslutning i säkerhetsgivaren",
+          "safety_sensor_disconnected": "Säkerhetsgivaren är frånkopplad",
+          "supply_sensor_short_circuit": "Kortslutning i framledningsgivaren",
+          "supply_sensor_disconnected": "Framledningsgivaren är frånkopplad",
+          "safety_limiter_active": "Säkerhetstermostat/temperaturbegränsare aktiv",
+          "communication_or_internal_signal_fault": "Kommunikations- eller internt signalfel",
+          "internal_monitoring_fault": "Internt övervakningsfel",
+          "no_flame_after_ignition": "Ingen låga upptäcktes efter tändning",
+          "unexpected_flame_signal": "Lågsignal finns när ingen låga förväntas",
+          "flame_detected_after_gas_shutdown": "Låga upptäckt efter gasavstängning",
+          "ionization_signal_lost": "Joniseringssignal förlorad under drift",
+          "invalid_ionization_signal": "Ogiltig joniseringssignal",
+          "mains_voltage_fault_or_power_loss": "Nätspänningsfel eller strömavbrott",
+          "first_safety_time_fault": "Tidsgränsfel för första säkerhetstiden",
+          "restart_attempt_time_fault": "Tidsgränsfel vid omstartsförsök",
+          "external_cutoff_switch_active": "Extern frånskiljare aktiv",
+          "external_controller_fault": "Fel i extern regulator",
+          "gas_valve_communication_fault": "Kommunikationsfel med gasventil",
+          "gas_valve_not_recognized": "Gasventilen känns inte igen",
+          "kim_not_recognized": "KIM känns inte igen",
+          "internal_electronics_fault": "Internt elektronikfel",
+          "equipment_fault_relay_error": "Fel i utrustningens felrelä",
+          "device_internal_fault": "Internt enhetsfel",
+          "return_sensor_short_circuit": "Kortslutning i returgivaren",
+          "return_sensor_disconnected": "Returgivaren är frånkopplad",
+          "internal_communication_fault": "Internt kommunikationsfel",
+          "sensor_or_electronics_fault": "Givar- eller elektronikfel",
+          "communication_fault": "Kommunikationsfel",
+          "internal_controller_fault": "Internt regulatorfel",
+          "regulation_system_internal_fault": "Internt fel i reglersystemet",
+          "ignition_or_flame_fault": "Tändnings- eller lågfel",
+          "flame_fault": "Lågfel",
+          "regulation_system_test": "Test av reglersystemet",
+          "boiler_startup_preventilation": "Pannstart eller förventilering",
+          "burner_operation_monitoring": "Övervakning av brännardrift",
+          "flame_monitoring": "Lågövervakning",
+          "safety_shutdown_after_24h_continuous_operation": "Säkerhetsavstängning efter 24 timmars kontinuerlig brännar-/fläktdrift",
+          "burner_startup_phase": "Brännaren i startfas",
+          "fan_starting": "Fläkten startar",
+          "startup_delay": "Startfördröjning",
+          "pump_or_flow_insufficient": "Pump/cirkulationsflöde otillräckligt",
+          "purge_function_active": "Avluftningsfunktion aktiv",
+          "pump_or_three_way_valve_anti_seizure": "Kärvningsskydd för pump/3-vägsventil aktivt",
+          "internal_error_service_required": "Internt fel - service krävs",
+          "burner_starting": "Brännaren startar",
+          "heat_demand_below_min_power": "Värmebehov under minsta effekt",
+          "gas_valve_opening": "Gasventilen öppnas",
+          "gas_valve_open_burner_startup": "Gasventil öppen / brännarstart",
+          "boiler_starting": "Pannan startar",
+          "supply_temp_above_setpoint": "Framledningstemperatur över börvärdet",
+          "dhw_sensor_temp_too_high": "Tappvarmvattengivarens temperatur är för hög",
+          "main_controller_fault": "Fel i huvudregulator",
+          "regulation_system_fault": "Fel i reglersystemet",
+          "internal_fault": "Internt fel",
+          "electronic_fault": "Elektronikfel",
+          "internal_system_fault": "Internt systemfel"
+        }
+      },
+      "firmware_version": {
+        "name": "Firmwareversion"
+      },
+      "supply_temp_setpoint": {
+        "name": "Börvärde för framledningstemperatur"
+      },
+      "boiler_power": {
+        "name": "Panneffekt"
+      },
+      "actual_supply_temperature": {
+        "name": "Framledningstemperatur"
+      },
+      "actual_modulation": {
+        "name": "Aktuell modulering"
+      },
+      "collector_temperature": {
+        "name": "Kollektortemperatur"
+      },
+      "storage_temperature": {
+        "name": "Ackumulatortemperatur"
+      },
+      "heat_demand_type": {
+        "name": "Behovstyp",
+        "state": {
+          "off": "Inget behov",
+          "ch": "Uppvärmning",
+          "dhw": "Tappvarmvatten"
+        }
+      },
+      "pump_modulation": {
+        "name": "Pumpmodulering"
+      },
+      "total_gain": {
+        "name": "Total solenergi"
+      },
+      "dhw_actual_temperature": {
+        "name": "Temperatur"
+      },
+      "zone_average_temperature": {
+        "name": "Medeltemperatur"
+      },
+      "boiler_ignition_starts": {
+        "name": "Tändstarter"
+      },
+      "last_update_check": {
+        "name": "Senaste uppdateringskontroll"
+      },
+      "last_update_applied": {
+        "name": "Senast installerade uppdatering"
+      },
+      "indoor_air_temperature": {
+        "name": "Inomhuslufttemperatur"
+      },
+      "indoor_chip_temperature": {
+        "name": "Intern chiptemperatur"
+      },
+      "indoor_pcb_temperature": {
+        "name": "Intern PCB-temperatur"
+      },
+      "ch_pump_modulation": {
+        "name": "Värmekretspumpens modulering"
+      },
+      "burner_starts": {
+        "name": "Brännarstarter"
+      },
+      "total_working_time": {
+        "name": "Total drifttid"
+      },
+      "return_temperature": {
+        "name": "Returtemperatur"
+      },
+      "assigned_program": {
+        "name": "Tilldelat program"
+      },
+      "optimum_start_state": {
+        "name": "Status för optimal start",
+        "state": {
+          "idle": "Viloläge"
+        }
+      },
+      "electricity_day_average": {
+        "name": "Elektricitet, dagsgenomsnitt"
+      },
+      "electricity_month_average": {
+        "name": "Elektricitet, månadsgenomsnitt"
+      },
+      "refill_needed": {
+        "name": "Påfyllning behövs"
+      },
+      "notifications": {
+        "name": "Aviseringar"
+      },
+      "thermostat_valve_signal_strength": {
+        "name": "Signalstyrka"
+      },
+      "thermostat_valve_battery": {
+        "name": "Batteri"
+      },
+      "thermostat_valve_zone": {
+        "name": "Zon"
+      },
+      "thermostat_valve_protocol": {
+        "name": "Protokoll"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Barnspärr"
+      },
+      "thermostat_valve_temperature_actual": {
+        "name": "Aktuell temperatur"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Ventilposition"
+      },
+      "thermal_disinfect_last_result": {
+        "name": "Senaste resultat av termisk desinfektion",
+        "state": {
+          "done": "Klar",
+          "running": "Pågår"
+        }
+      }
+    },
+    "number": {
+      "boost_temperature": {
+        "name": "Boosttemperatur"
+      },
+      "boost_duration": {
+        "name": "Boostvaraktighet"
+      },
+      "max_supply_temperature": {
+        "name": "Maximal framledningstemperatur"
+      },
+      "min_supply_temperature": {
+        "name": "Minimal framledningstemperatur"
+      },
+      "heat_curve_minimum": {
+        "name": "Minsta värmekurva"
+      },
+      "heat_curve_maximum": {
+        "name": "Största värmekurva"
+      },
+      "night_setback_threshold": {
+        "name": "Gräns för nattsänkning"
+      },
+      "summer_winter_threshold": {
+        "name": "Sommar-/vintergräns"
+      },
+      "room_influence": {
+        "name": "Rumstemperaturens påverkan"
+      },
+      "temperature_calibration_offset": {
+        "name": "Temperaturkalibreringens offset"
+      },
+      "thermostat_valve_temperature_offset": {
+        "name": "Temperaturkalibreringens offset"
+      },
+      "extra_hot_water_duration": {
+        "name": "Varaktighet för extra varmvatten"
+      },
+      "thermal_disinfect_time": {
+        "name": "Tid för termisk desinfektion"
+      }
+    },
+    "binary_sensor": {
+      "burner_flame": {
+        "name": "Låga"
+      },
+      "dhw_burner": {
+        "name": "Varmvattenbrännare"
+      },
+      "dhw_enabled": {
+        "name": "Varmvatten aktiverat",
+        "state": {
+          "on": "Aktiverat",
+          "off": "Inaktiverat"
+        }
+      },
+      "open_window_detected": {
+        "name": "Öppet fönster upptäckt",
+        "state": {
+          "off": "Stängt",
+          "on": "Öppet"
+        }
+      },
+      "refill_needed": {
+        "name": "Påfyllning behövs"
+      },
+      "thermostat_valve_warning": {
+        "name": "Varningar"
+      }
+    },
+    "switch": {
+      "boost_mode": {
+        "name": "Boost - allmän styrning"
+      },
+      "boost_zone": {
+        "name": "Värmeboost"
+      },
+      "auto_firmware_update": {
+        "name": "Automatisk firmwareuppdatering"
+      },
+      "notification_light": {
+        "name": "Aviseringslampa"
+      },
+      "away_mode": {
+        "name": "Bortaläge"
+      },
+      "extra_hot_water": {
+        "name": "Extra varmvatten"
+      },
+      "open_window_detection": {
+        "name": "Detektering av öppet fönster"
+      },
+      "thermostat_valve_child_lock": {
+        "name": "Barnspärr"
+      },
+      "thermostat_valve_valve_position": {
+        "name": "Ventilposition"
+      },
+      "thermal_disinfect": {
+        "name": "Termisk desinfektion"
+      }
+    },
+    "select": {
+      "zone_mode": {
+        "name": "Zonläge",
+        "state": {
+          "clock": "Klocka",
+          "manual": "Manuell"
+        }
+      },
+      "assigned_program_select": {
+        "name": "Tilldelat program"
+      },
+      "pir_sensitivity": {
+        "name": "PIR-känslighet",
+        "state": {
+          "high": "Hög",
+          "medium": "Medel",
+          "low": "Låg"
+        }
+      },
+      "summer_winter_mode": {
+        "name": "Sommar-/vinterläge",
+        "state": {
+          "off": "Av",
+          "automatic": "Automatiskt",
+          "manual": "Manuellt"
+        }
+      },
+      "night_switch_mode": {
+        "name": "Nattläge",
+        "state": {
+          "off": "Av",
+          "automatic": "Automatiskt",
+          "reduced": "Reducerat"
+        }
+      },
+      "thermal_disinfect_weekday": {
+        "name": "Veckodag för termisk desinfektion",
+        "state": {
+          "mo": "Måndag",
+          "tu": "Tisdag",
+          "we": "Onsdag",
+          "th": "Torsdag",
+          "fr": "Fredag",
+          "sa": "Lördag",
+          "su": "Söndag"
+        }
+      }
+    },
+    "update": {
+      "firmware_update": {
+        "name": "Firmware"
+      }
+    }
+  },
+  "config": {
+    "title": "Bosch EasyControl",
+    "step": {
+      "xmpp_config": {
+        "title": "XMPP-konfiguration för Bosch-termostat",
+        "data": {
+          "address": "Enhetens serienummer",
+          "access_token": "Åtkomsttoken",
+          "password": "Lösenord"
+        }
+      },
+      "easycontrol_protocol": {
+        "title": "EasyControl-anslutning",
+        "description": "XMPP ansluter direkt till enheten på det lokala nätverket. Molninloggning använder ditt Bosch-konto och fungerar på distans.",
+        "data": {
+          "protocol": "Anslutningstyp"
+        }
+      },
+      "pointtapi_device_id": {
+        "title": "Ditt EasyControl-serienummer",
+        "description": "Ange enhetens serienummer (med eller utan bindestreck). Du hittar det på etiketten på enheten eller i Bosch EasyControl-appen under Inställningar → Enhetsinformation.",
+        "data": {
+          "device_id": "Serienummer"
+        }
+      },
+      "pointtapi_oauth_open": {
+        "title": "Logga in med ditt Bosch-konto",
+        "description": "Klicka på **[den här länken]({auth_url})** för att öppna Bosch inloggningssida på en ny flik och logga in med ditt Bosch-konto.\n\nEfter inloggning visar webbläsaren felet \"Det går inte att öppna sidan\" - **det förväntas**. Låt fliken vara öppen och klicka på **Skicka** nedan."
+      },
+      "pointtapi_oauth": {
+        "title": "Slutför inloggning",
+        "description": "Klistra in **callback-URL:en** eller bara **koden** nedan. Efter inloggning hoppar webbläsaren till en adress som börjar med `com.bosch.tt.dashtt.pointt://app/login?code=` och visar vanligtvis en tom sida eller ett fel om att sidan inte kan öppnas - det förväntas. Kopiera hela adressen eller bara värdet efter `code=`.\n\n**Problem?** Om adressfältet ser tomt ut efter inloggning öppnar du webbläsarhistoriken - den misslyckade posten `com.bosch.tt.dashtt.pointt://` finns där och adressen kan kopieras från den.",
+        "data": {
+          "oauth_callback_url": "Callback-URL eller kod"
+        }
+      },
+      "pointtapi_gateway": {
+        "title": "Välj din gateway",
+        "description": "Dessa gateways är parkopplade med ditt Bosch-konto. Välj den som ska läggas till.",
+        "data": {
+          "device_id": "Gateway"
+        }
+      }
+    },
+    "error": {
+      "service_unavailable": "Ingen tjänst tillgänglig",
+      "invalid_device_id": "Enhets-ID får endast innehålla siffror (serienummer utan bindestreck).",
+      "oauth_callback_empty": "Klistra in URL:en från webbläsarens adressfält.",
+      "oauth_callback_invalid": "Kunde inte läsa inloggningskoden från URL:en. Kontrollera att du kopierade hela URL:en efter att sidan visade \"Det går inte att öppna sidan\".",
+      "oauth_token_failed": "Kunde inte slutföra inloggningen med Bosch. Inloggningskoden kan ha gått ut - börja om från början.",
+      "faulty_credentials": "Kunde inte ansluta. Kontrollera enhetsadressen och åtkomsttoken och försök igen.",
+      "unknown": "Oväntat fel. Läs Home Assistant-loggarna för mer information."
+    },
+    "abort": {
+      "faulty_credentials": "Felaktiga användaruppgifter eller fel IP",
+      "already_configured": "Styrenheten är redan konfigurerad",
+      "unknown": "Okänd orsak. Kontrollera LOGGAR.",
+      "reauth_invalid": "Återautentisering gäller endast POINTTAPI-poster.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Bosch-alternativ",
+        "data": {
+          "new_stats_api": "Använd nytt statistik-API",
+          "optimistic_mode": "Använd optimistiskt läge för vissa funktioner (för närvarande inställning av CT200-driftläge)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "protocol": {
+      "options": {
+        "pointtapi": "Moln / Bosch-konto",
+        "xmpp": "Lokal anslutning (XMPP)"
+      }
+    }
+  }
+}
