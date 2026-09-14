@@ -34,17 +34,13 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/dhwCircuits/dhw1/operationMode",
     "/system/sensors",
     "/system/appliance",
-    "/zones",  # expanded to one walk root per discovered zone in _fetch_paths
+    "/zones",
     "/energy",
     "/energy/history",
     "/energy/historyHourly",
     "/heatSources",
     "/solarCircuits/sc1",
-    # Alerts list (type errorList). Optional-path tolerance applies; the
-    # live CT200 serves it (verified 2026-06-05, see boost-probe-notes.md).
     "/notifications",
-    # Away mode leaf — not reachable via the /system/sensors or
-    # /system/appliance reference walks (writeable: 1, verified 2026-06-05).
     "/system/awayMode/enabled",
     "/programs",
     "/devices",
@@ -72,6 +68,15 @@ FAST_DEVICE_RESOURCE_MARKERS = (
     "/etrv/",
     "/thermostat/",
 )
+FAST_APPLIANCE_RESOURCES = {
+    "/system/appliance/blockingError",
+    "/system/appliance/causeCode",
+    "/system/appliance/displayCode",
+    "/system/appliance/lockingError",
+}
+FAST_GATEWAY_RESOURCES = {
+    "/gateway/ui/eco",
+}
 # Re-run the discovery reference walk at most this often so resources that
 # appear later (e.g. solar enabled by an installer) get picked up.
 REDISCOVERY_INTERVAL = 24 * 3600
@@ -269,6 +274,8 @@ def _is_slow_resource(path: str) -> bool:
     if path.startswith("/devices/") and any(
         marker in path for marker in FAST_DEVICE_RESOURCE_MARKERS
     ):
+        return False
+    if path in FAST_APPLIANCE_RESOURCES or path in FAST_GATEWAY_RESOURCES:
         return False
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
 
