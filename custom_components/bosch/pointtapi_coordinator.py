@@ -60,6 +60,7 @@ HISTORY_HOURLY_REFRESH_INTERVAL = 30 * 60
 SLOW_RESOURCE_REFRESH_INTERVAL = 5 * 60
 SLOW_RESOURCE_PREFIXES = (
     "/gateway",
+    "/dhwCircuits/dhw1/hotWaterSystem",
     "/energy",
     "/solarCircuits",
     "/devices",
@@ -107,6 +108,7 @@ DISCOVERY_ALLOWED_PATTERNS = {
     "/dhwCircuits/dhw1": (
         "/dhwCircuits/dhw1/actualTemp",
         "/dhwCircuits/dhw1/extraDhw*",
+        "/dhwCircuits/dhw1/hotWaterSystem",
         "/dhwCircuits/dhw1/operationMode",
         "/dhwCircuits/dhw1/state",
         "/dhwCircuits/dhw1/temperatureLevels",

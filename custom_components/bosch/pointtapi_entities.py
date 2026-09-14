@@ -205,6 +205,13 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     return obj.get(key) if isinstance(obj, dict) else None
 
 
+def _dhw_actual_temperature(data: dict[str, Any]) -> Any:
+    """Return no temperature for instant hot-water systems."""
+    if _val(data, "/dhwCircuits/dhw1/hotWaterSystem") == "instant":
+        return None
+    return _val(data, "/dhwCircuits/dhw1/actualTemp")
+
+
 def _decode_zone_name(value: Any) -> str | None:
     """Decode Bosch zone names, which are returned as base64 UTF-8 strings."""
     if not isinstance(value, str):
@@ -1679,7 +1686,7 @@ class BoschPoinTTAPIWaterHeaterEntity(
     def _sync_from_data(self) -> None:
         """Populate local state from coordinator.data (no HA state write)."""
         data = self.coordinator.data or {}
-        self._current_temp = _val(data, "/dhwCircuits/dhw1/actualTemp")
+        self._current_temp = _dhw_actual_temperature(data)
         self._target_temp = _val(data, "/dhwCircuits/dhw1/temperatureLevels/high")
         raw_op = _val(data, "/dhwCircuits/dhw1/operationMode")
         _LOGGER.debug("Water heater operationMode raw response: %s", data.get("/dhwCircuits/dhw1/operationMode"))
@@ -2309,6 +2316,7 @@ def _pointtapi_sensor_descriptions(
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
             state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_dhw_actual_temperature,
         ),
         # ── Heat-source / burner sensors (v0.31.0) ────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
