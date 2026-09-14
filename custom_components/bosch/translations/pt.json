@@ -27,7 +27,7 @@
       "xmpp_config": {"title": "Configuração XMPP do termóstato Bosch", "data": {"address": "Número de série do dispositivo", "access_token": "Token de acesso", "password": "Palavra-passe"}},
       "easycontrol_protocol": {"title": "Ligação EasyControl", "description": "O XMPP liga-se diretamente ao dispositivo na rede local. O acesso na nuvem usa a sua conta Bosch e funciona remotamente.", "data": {"protocol": "Tipo de ligação"}},
       "pointtapi_device_id": {"title": "Número de série do seu EasyControl", "description": "Introduza o número de série do dispositivo, com ou sem hífenes.", "data": {"device_id": "Número de série"}},
-      "pointtapi_oauth_open": {"title": "Iniciar sessão com a conta Bosch", "description": "Abra a ligação de início de sessão e autentique-se com a sua conta Bosch.", "data": {}},
+      "pointtapi_oauth_open": {"title": "Iniciar sessão com a conta Bosch", "description": "Clique **[nesta ligação]({auth_url})** para abrir a página de início de sessão da Bosch num novo separador e inicie sessão com a sua conta Bosch.\n\nDepois de iniciar sessão, o navegador vai mostrar um erro «Não é possível abrir a página»: **é o esperado**. Deixe esse separador aberto e clique em **Submeter** abaixo.", "data": {}},
       "pointtapi_oauth": {"title": "Concluir início de sessão", "description": "Cole o URL de callback ou o código de início de sessão.", "data": {"oauth_callback_url": "URL de callback ou código"}},
       "pointtapi_gateway": {"title": "Selecionar o gateway", "description": "Estes gateways estão associados à sua conta Bosch.", "data": {"device_id": "Gateway"}}
     },
