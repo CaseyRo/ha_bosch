@@ -131,7 +131,7 @@
           "external_cutoff_switch_active": "Ulkoinen katkaisukytkin aktiivinen",
           "external_controller_fault": "Ulkoisen säätimen vika",
           "gas_valve_communication_fault": "Kaasuventtiilin tietoliikennevika",
-          "gas_valve_not_recognized": "Kaasuventtiilia ei tunnistettu",
+          "gas_valve_not_recognized": "Kaasuventtiiliä ei tunnistettu",
           "kim_not_recognized": "KIM:iä ei tunnistettu",
           "internal_electronics_fault": "Sisäinen elektroniikkavika",
           "equipment_fault_relay_error": "Laitteen vikareleen virhe",

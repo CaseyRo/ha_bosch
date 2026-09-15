@@ -34,13 +34,17 @@ POINTTAPI_COORDINATOR_ROOTS = [
     "/dhwCircuits/dhw1/operationMode",
     "/system/sensors",
     "/system/appliance",
-    "/zones",
+    "/zones",  # expanded to one walk root per discovered zone in _fetch_paths
     "/energy",
     "/energy/history",
     "/energy/historyHourly",
     "/heatSources",
     "/solarCircuits/sc1",
+    # Alerts list (type errorList). Optional-path tolerance applies; the
+    # live CT200 serves it (verified 2026-06-05, see boost-probe-notes.md).
     "/notifications",
+    # Away mode leaf — not reachable via the /system/sensors or
+    # /system/appliance reference walks (writeable: 1, verified 2026-06-05).
     "/system/awayMode/enabled",
     "/programs",
     "/devices",

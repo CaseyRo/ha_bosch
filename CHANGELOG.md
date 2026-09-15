@@ -4,7 +4,23 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Added
+- **Danish, Finnish and Swedish translations** (`da.json`, `fi.json`,
+  `sv.json`), with the EasyControl gateway device name localized for each.
+  Closes #39, #40, #41.
+
+### Changed
+- **Fault codes and eco mode refresh every 60 s.** `/system/appliance/
+  blockingError`, `causeCode`, `displayCode` and `lockingError`, plus
+  `/gateway/ui/eco`, moved from the 5-minute slow tier to the fast tier so an
+  appliance fault and the eco toggle show up within a poll instead of minutes.
+
 ### Fixed
+- **Instant hot-water systems no longer report 0 °C.** On a combi boiler
+  without a tank, `/dhwCircuits/dhw1/actualTemp` returns a placeholder `0.0`.
+  The coordinator now discovers `/dhwCircuits/dhw1/hotWaterSystem` (slow tier)
+  and, when it reads `instant`, the water heater's current temperature and
+  `sensor.hot_water_tank_actual_temperature` report unknown instead. (#57)
 - **Diagnostics no longer include the account holder's details.** The
   download carried `/gateway/user/*` (name, email, phone and street address,
   base64-encoded so reading the file through misses them), installer
