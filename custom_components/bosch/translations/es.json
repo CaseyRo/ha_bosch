@@ -474,7 +474,7 @@
       },
       "pointtapi_oauth_open": {
         "title": "Inicia sesión con tu cuenta Bosch",
-        "description": "Abre el enlace de inicio de sesión y autentícate con tu cuenta Bosch."
+        "description": "Haz clic en **[este enlace]({auth_url})** para abrir la página de inicio de sesión de Bosch en una nueva pestaña e inicia sesión con tu cuenta Bosch.\n\nTras iniciar sesión, el navegador mostrará un error «No se puede abrir la página»: **es lo esperado**. Deja esa pestaña abierta y haz clic en **Enviar** abajo."
       },
       "pointtapi_oauth": {
         "title": "Completa el inicio de sesión",
