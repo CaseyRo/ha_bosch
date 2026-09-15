@@ -28,6 +28,7 @@ from custom_components.bosch.pointtapi_coordinator import (
     [
         "/system/sensors/temperatures",
         "/system/sensors/temperatures/offset",
+        "/dhwCircuits/dhw1/hotWaterSystem",
         "/programs/pg1",
         "/programs/pg1/name",
         "/devices/list/thermostat_valve/2",
@@ -65,6 +66,14 @@ def test_device_telemetry_uses_fast_polling_cadence():
     assert _is_slow_resource("/devices/device7/battery")
     assert _is_slow_resource("/devices/device7/rssi")
     assert _is_slow_resource("/devices/device7/type")
+    assert _is_slow_resource("/dhwCircuits/dhw1/hotWaterSystem")
+    assert not _is_slow_resource("/system/appliance/displayCode")
+    assert not _is_slow_resource("/system/appliance/causeCode")
+    assert not _is_slow_resource("/system/appliance/blockingError")
+    assert not _is_slow_resource("/system/appliance/lockingError")
+    assert _is_slow_resource("/system/appliance/systemPressure")
+    assert not _is_slow_resource("/gateway/ui/eco")
+    assert _is_slow_resource("/gateway/versionFirmware")
 
 
 def test_coordinator_roots_do_not_include_unused_history_entries_path():

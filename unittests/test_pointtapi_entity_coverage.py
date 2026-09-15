@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -70,13 +72,55 @@ def _val(path, value):
     return {path: {"value": value}}
 
 
+def _translation_shape(value):
+    if isinstance(value, dict):
+        return {key: _translation_shape(child) for key, child in value.items()}
+    return None
+
+
 class TestEntityHelperConversions:
     @pytest.mark.parametrize(
         "language, expected",
-        [(None, "en"), ("", "en"), ("fr-FR", "fr"), ("de_DE", "de"), ("xx", "en")],
+        [
+            (None, "en"),
+            ("", "en"),
+            ("fr-FR", "fr"),
+            ("de_DE", "de"),
+            ("da-DK", "da"),
+            ("fi-FI", "fi"),
+            ("sv-SE", "sv"),
+            ("xx", "en"),
+        ],
     )
     def test_normalize_language(self, language, expected):
         assert _normalize_language(language) == expected
+
+    @pytest.mark.parametrize(
+        ("language", "expected_gateway", "expected_installation"),
+        [
+            ("da", "EasyControl-gateway", "Indstillinger for varmeinstallation"),
+            ("fi", "EasyControl-yhdyskäytävä", "Lämmitysjärjestelmän asetukset"),
+            ("sv", "EasyControl-gateway", "Inställningar för värmesystem"),
+        ],
+    )
+    def test_device_names_support_nordic_locales(
+        self, language, expected_gateway, expected_installation
+    ):
+        assert _device_name("gateway", language) == expected_gateway
+        assert _device_name("heating_installation", language) == expected_installation
+
+    @pytest.mark.parametrize(
+        "language", ("da", "de", "es", "fi", "fr", "it", "nl", "pl", "pt", "sk", "sv")
+    )
+    def test_translation_files_match_canonical_keys_and_format(self, language):
+        translations = Path(__file__).parent.parent / "custom_components" / "bosch"
+        canonical = json.loads((translations / "strings.json").read_text(encoding="utf-8"))
+        locale_path = translations / "translations" / f"{language}.json"
+        locale_text = locale_path.read_text(encoding="utf-8")
+        locale = json.loads(locale_text)
+
+        assert _translation_shape(locale) == _translation_shape(canonical)
+        assert locale_text == json.dumps(locale, ensure_ascii=False, indent=2) + "\n"
 
     def test_device_names_and_zone_path_routing(self):
         assert _device_name("boiler", "fr") == "Chaudière"

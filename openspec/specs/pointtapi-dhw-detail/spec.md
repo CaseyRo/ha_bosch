@@ -18,6 +18,11 @@ The integration SHALL expose `sensor.hot_water_tank_actual_temperature` for POIN
 - **WHEN** the path `/dhwCircuits/dhw1/actualTemp` is absent from the coordinator payload (e.g. a transient 403 on that ref)
 - **THEN** the sensor's state SHALL be reported as `unknown` rather than a stale value, and SHALL recover automatically on the next poll that contains the path
 
+#### Scenario: Instant hot-water system
+
+- **WHEN** the coordinator payload reports `/dhwCircuits/dhw1/hotWaterSystem.value == "instant"` (a combi boiler with no tank; `actualTemp` then carries a placeholder `0.0`)
+- **THEN** the sensor's state and the water heater's `current_temperature` SHALL be `unknown`, regardless of the numeric `actualTemp` value, and SHALL resume reporting `actualTemp` if `hotWaterSystem` later reads anything else or is absent
+
 ### Requirement: Hot water active-heating binary sensor
 
 The integration SHALL expose `binary_sensor.hot_water_tank_heating` for POINTTAPI config entries, reflecting whether `/dhwCircuits/dhw1/state` is currently `"on"`. The entity SHALL have `device_class=HEAT` so HA's UI labels it as a heat-application indicator (not water flow).
