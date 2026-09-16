@@ -10,6 +10,8 @@ body:
         How to capture both: see [Testing & reporting](../blob/master/README.md#testing--reporting).
 
         ⚠️ **Never paste tokens or OAuth callback URLs.** The diagnostics download redacts credentials automatically — use it.
+
+        🔒 **On 1.5.2 or older, the diagnostics file contains your Bosch account holder's name, email, phone and address** under `/gateway/user/*`, plus installer contacts and `/gateway/identificationKey`. They are base64-encoded, so searching the file for your name finds nothing. Before attaching a 1.5.x dump, open it and blank every `"value"` under `/gateway/user`, `/gateway/installer` and `/gateway/identificationKey`, or upgrade first: 1.6.0 and later redact them. Files attached to a GitHub issue cannot be deleted afterwards, only replaced by editing the comment.
   - type: input
     id: integration-version
     attributes:
@@ -83,6 +85,8 @@ body:
       label: Checklist
       options:
         - label: I removed/redacted any tokens or callback URLs from everything I pasted
+          required: true
+        - label: My diagnostics file is from 1.6.0 or later, or I blanked the `/gateway/user`, `/gateway/installer` and `/gateway/identificationKey` values in it (they are base64-encoded personal data)
           required: true
         - label: I checked existing issues for duplicates
           required: true
