@@ -11,19 +11,19 @@ A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-the
 
 ---
 
-> ## v1.6.0-beta.1 current status
+> ## v1.6.0 current status
 >
-> **v1.6.0-beta.1** (pre-release) reworks the POINTTAPI path for multi-zone installations.
+> **v1.6.0** (stable) reworks the POINTTAPI path for multi-zone installations.
 > Boost is a preset on every zone's climate entity; installation-wide settings (supply
 > limits, heating curve, summer/winter, night setback, room influence, global Boost, away
 > mode) live on a new **Heating Installation Settings** device; and startup spends much less
-> time waiting on Bosch's cloud (74% less on a 12-valve installation). Spanish and Portuguese
-> are new. The latest stable release is **v1.5.2**.
+> time waiting on Bosch's cloud (74% less on a 12-valve installation; an 11-zone CT200 that
+> could not finish loading at all on 1.5.2 now starts in 23 s). Spanish and Portuguese
+> are new.
 >
-> HACS offers the beta only if beta versions are enabled for this repository. **Upgrading
-> to 1.6.0 migrates the config entry one way:** going back to 1.5.x means removing and
-> re-adding the integration, so take a backup first. Full notes in the
-> [v1.6.0-beta.1 release](https://github.com/CaseyRo/ha_bosch/releases/tag/v1.6.0-beta.1).
+> **Upgrading to 1.6.0 migrates the config entry one way:** going back to 1.5.x means
+> removing and re-adding the integration, so take a backup first. Full notes in the
+> [v1.6.0 release](https://github.com/CaseyRo/ha_bosch/releases/tag/v1.6.0).
 >
 > ### Validation status
 >
@@ -31,6 +31,7 @@ A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-the
 > | --- | --- | --- | --- |
 > | ✅ Tested | Bosch CT200 | 2 heating zones, no thermostat valves | POINTTAPI cloud path |
 > | ✅ Tested | Buderus TC100.2 | 10 heating zones, 12 thermostat valves, hot-water tank | POINTTAPI cloud path and thermostat-valve controls |
+> | ✅ Tested | Bosch CT200 | 11 heating zones, hot-water tank | POINTTAPI discovery and startup ([#60](https://github.com/CaseyRo/ha_bosch/issues/60)) |
 > | ⏳ Testers wanted | Solar production | Not yet tested | See [issue #29](https://github.com/CaseyRo/ha_bosch/issues/29) |
 > | ⏳ Testers wanted | Heat pump | Not yet tested | See [issue #29](https://github.com/CaseyRo/ha_bosch/issues/29) |
 >
@@ -415,7 +416,7 @@ POINTTAPI bulk fetch failed (...); falling back ...     ← bulk degraded (still
 - When it started (after which version / change)
 
 [Open a bug report](https://github.com/CaseyRo/ha_bosch/issues/new?template=bug_report.yml) — the
-form has fields for all of the above. **Positive reports are just as valuable**: "v1.6.0-beta.1 works on my
+form has fields for all of the above. **Positive reports are just as valuable**: "v1.6.0 works on my
 TC100.2 with 10 zones and 12 thermostat valves; native boost picked the boostShortcut route" confirms
 that the dynamic entity discovery and boost probe ladder generalize beyond the tested installations.
 
