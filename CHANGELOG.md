@@ -4,6 +4,20 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-09-17
+
+Promotes `1.6.0-beta.1` to stable after a full week on a production Buderus
+TC100.2 (10 zones, 12 thermostat valves) with no regressions, plus the two
+fixes below.
+
+**Field validation of the discovery rework.** On an 11-zone CT200, the largest
+installation reported so far, 1.5.2 spent 112 to 143 s asking for paths the
+device does not serve. Bosch takes 2 to 4 s to answer HTTP 403 and that
+install has 69 such paths, which overran the 120 s init deadline and left the
+integration unable to load at all. The same instance starts in 23 s on this
+release. Measured and reported by @alexu on
+[#60](https://github.com/CaseyRo/ha_bosch/issues/60).
+
 ### Fixed
 - **Diagnostics no longer include the account holder's details.** The
   download carried `/gateway/user/*` (name, email, phone and street address,
