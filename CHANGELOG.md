@@ -4,6 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.1] — 2026-09-18
+
 ### Added
 - **Danish, Finnish and Swedish translations** (`da.json`, `fi.json`,
   `sv.json`), with the EasyControl gateway device name localized for each.
