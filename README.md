@@ -9,6 +9,8 @@
 
 A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component) with an added **POINTTAPI cloud path** for Bosch EasyControl devices (CT200, EasyControl 7).
 
+**This fork is converging back into the original project** — see the [convergence plan](docs/convergence-plan.md). Nothing changes for you today: it is still maintained, still the place to get CT200 cloud support, and you will not be asked to remove and re-add the integration when the move happens.
+
 ---
 
 > ## v1.6.0 current status
@@ -76,6 +78,23 @@ The original integration supports EasyControl devices over XMPP, which works wel
 Bosch exposes a cloud REST API (POINTTAPI) at `pointt-api.bosch-thermotechnology.com` that the official EasyControl mobile app uses. This fork reverse-engineers that API and adds it as a second protocol path, giving EasyControl users a cloud-based alternative that "just works" with the same Bosch account they already use in the app.
 
 The original XMPP/HTTP code is completely untouched — both paths coexist and you pick one during setup.
+
+### …and where it is going
+
+**This fork is meant to stop existing.** Two integrations both claiming Home Assistant's
+`bosch` domain means users cannot run them side by side, bug reports get split, and the
+same Home Assistant deprecations get fixed twice. In September 2026 the upstream
+maintainer proposed merging the two efforts instead, and that was accepted.
+
+So treat the POINTTAPI code here as **staging, not a permanent home**: the transport is
+headed for the shared `bosch-thermostat-client` library, and the Home Assistant glue for
+the upstream integration. Releases, fixes and support continue here unchanged until that
+handover is real and tested — converging is not a euphemism for abandoned.
+
+The full reasoning, the sequence, the list of what here is explicitly temporary, and the
+config-entry migration problem that gates all of it are in the
+**[convergence plan](docs/convergence-plan.md)**. The discussion itself is public on
+[upstream #554](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/554).
 
 ## What the POINTTAPI path adds
 

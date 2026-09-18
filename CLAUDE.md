@@ -2,6 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project direction — this fork is converging upstream
+
+Agreed 2026-09-18 with the upstream maintainer: the POINTTAPI work merges back
+into `bosch-thermostat` and this repo winds down once parity is reached. Read
+`docs/convergence-plan.md` before proposing anything structural.
+
+What this changes for work here:
+- The custom POINTTAPI client, coordinator and OAuth flow are **staging**. The
+  transport is headed for `bosch-thermostat-client`, the HA glue for the
+  upstream integration. Don't entrench them further than a fix requires.
+- Releases, fixes and support continue here unchanged until the handover is
+  tested. This is not a frozen repo.
+- The gate is the config entry: this repo is at version 11 with a ten-step
+  migration chain, upstream is at 1 with none. Nothing moves until upstream can
+  load a v11 entry.
+- Contributions from others are MIT here and Apache-2.0 upstream. Nobody's
+  commits move without their explicit agreement.
+
 ## Development Commands
 
 **Lint:**
