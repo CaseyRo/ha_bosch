@@ -60,6 +60,7 @@ HISTORY_HOURLY_REFRESH_INTERVAL = 30 * 60
 SLOW_RESOURCE_REFRESH_INTERVAL = 5 * 60
 SLOW_RESOURCE_PREFIXES = (
     "/gateway",
+    "/dhwCircuits/dhw1/hotWaterSystem",
     "/energy",
     "/solarCircuits",
     "/devices",
@@ -71,6 +72,15 @@ FAST_DEVICE_RESOURCE_MARKERS = (
     "/etrv/",
     "/thermostat/",
 )
+FAST_APPLIANCE_RESOURCES = {
+    "/system/appliance/blockingError",
+    "/system/appliance/causeCode",
+    "/system/appliance/displayCode",
+    "/system/appliance/lockingError",
+}
+FAST_GATEWAY_RESOURCES = {
+    "/gateway/ui/eco",
+}
 # Re-run the discovery reference walk at most this often so resources that
 # appear later (e.g. solar enabled by an installer) get picked up.
 REDISCOVERY_INTERVAL = 24 * 3600
@@ -107,6 +117,7 @@ DISCOVERY_ALLOWED_PATTERNS = {
     "/dhwCircuits/dhw1": (
         "/dhwCircuits/dhw1/actualTemp",
         "/dhwCircuits/dhw1/extraDhw*",
+        "/dhwCircuits/dhw1/hotWaterSystem",
         "/dhwCircuits/dhw1/operationMode",
         "/dhwCircuits/dhw1/state",
         "/dhwCircuits/dhw1/temperatureLevels",
@@ -267,6 +278,8 @@ def _is_slow_resource(path: str) -> bool:
     if path.startswith("/devices/") and any(
         marker in path for marker in FAST_DEVICE_RESOURCE_MARKERS
     ):
+        return False
+    if path in FAST_APPLIANCE_RESOURCES or path in FAST_GATEWAY_RESOURCES:
         return False
     return path == "/notifications" or path.startswith(SLOW_RESOURCE_PREFIXES)
 

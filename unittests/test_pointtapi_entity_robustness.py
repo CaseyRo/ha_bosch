@@ -146,6 +146,20 @@ class TestSensorRobustness:
         ent._handle_coordinator_update()
         assert ent.native_value == 7.5
 
+    def test_instant_hot_water_hides_placeholder_temperature(self):
+        coord = _coord({
+            "/dhwCircuits/dhw1/hotWaterSystem": {"value": "instant"},
+            "/dhwCircuits/dhw1/actualTemp": {
+                "value": 0.0,
+                "available": "true",
+            },
+        })
+        ent = _sensor(coord, "/dhwCircuits/dhw1/actualTemp")
+
+        ent._handle_coordinator_update()
+
+        assert ent.native_value is None
+
     def test_absent_path_reports_none_not_stale(self):
         """Value was 7.5; a poll without the path must drop to None, not keep it."""
         coord = _coord({OUTDOOR: {"value": 7.5}})
@@ -516,6 +530,17 @@ class TestWaterHeaterRobustness:
         assert ent.current_temperature == 48.0
         assert ent.target_temperature == 60.0
         assert ent.current_operation == "On"  # "high" -> "On"
+
+    def test_instant_hot_water_hides_placeholder_temperature(self):
+        ent = _water_heater(_coord({
+            "/dhwCircuits/dhw1/hotWaterSystem": {"value": "instant"},
+            "/dhwCircuits/dhw1/actualTemp": {
+                "value": 0.0,
+                "available": "true",
+            },
+        }))
+
+        assert ent.current_temperature is None
 
     def test_absent_path_reports_none_not_stale(self):
         ent = _water_heater(_coord({}))

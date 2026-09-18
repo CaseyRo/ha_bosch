@@ -205,6 +205,13 @@ def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
     return obj.get(key) if isinstance(obj, dict) else None
 
 
+def _dhw_actual_temperature(data: dict[str, Any]) -> Any:
+    """Return no temperature for instant hot-water systems."""
+    if _val(data, "/dhwCircuits/dhw1/hotWaterSystem") == "instant":
+        return None
+    return _val(data, "/dhwCircuits/dhw1/actualTemp")
+
+
 def _decode_zone_name(value: Any) -> str | None:
     """Decode Bosch zone names, which are returned as base64 UTF-8 strings."""
     if not isinstance(value, str):
@@ -303,6 +310,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Brána EasyControl",
         "es": "Gateway EasyControl",
         "pt": "Gateway EasyControl",
+        "da": "EasyControl-gateway",
+        "fi": "EasyControl-yhdyskäytävä",
+        "sv": "EasyControl-gateway",
     },
     "boiler": {
         "en": "Boiler",
@@ -314,6 +324,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Kotol",
         "es": "Caldera",
         "pt": "Caldeira",
+        "da": "Kedel",
+        "fi": "Kattila",
+        "sv": "Panna",
     },
     "dhw": {
         "en": "Hot Water Tank",
@@ -325,6 +338,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Zásobník teplej vody",
         "es": "Depósito de agua caliente",
         "pt": "Depósito de água quente",
+        "da": "Varmtvandsbeholder",
+        "fi": "Käyttövesivaraaja",
+        "sv": "Varmvattenberedare",
     },
     "solar": {
         "en": "Solar",
@@ -336,6 +352,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Solar",
         "es": "Solar",
         "pt": "Solar",
+        "da": "Solenergi",
+        "fi": "Aurinko",
+        "sv": "Solenergi",
     },
     "heating_zone": {
         "en": "Heating Zone",
@@ -347,6 +366,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Vykurovacia zóna",
         "es": "Zona de calefacción",
         "pt": "Zona de aquecimento",
+        "da": "Varmezone",
+        "fi": "Lämmitysvyöhyke",
+        "sv": "Värmezon",
     },
     "heating_installation": {
         "en": "Heating Installation Settings",
@@ -358,6 +380,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Nastavenia vykurovacieho systému",
         "es": "Configuración de la instalación de calefacción",
         "pt": "Definições da instalação de aquecimento",
+        "da": "Indstillinger for varmeinstallation",
+        "fi": "Lämmitysjärjestelmän asetukset",
+        "sv": "Inställningar för värmesystem",
     },
     "thermostat_valve": {
         "en": "Thermostat valve",
@@ -369,6 +394,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Termostatický ventil",
         "es": "Válvula termostática",
         "pt": "Válvula termostática",
+        "da": "Termostatventil",
+        "fi": "Termostaattiventtiili",
+        "sv": "Termostatventil",
     },
     "energy_performance": {
         "en": "Energy performance",
@@ -380,6 +408,9 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "sk": "Energetická výkonnosť",
         "es": "Rendimiento energético",
         "pt": "Desempenho energético",
+        "da": "Energiydelse",
+        "fi": "Energiatehokkuus",
+        "sv": "Energiprestanda",
     },
 }
 
@@ -402,7 +433,7 @@ def _normalize_language(language: str | None) -> str:
     if not isinstance(language, str) or not language.strip():
         return "en"
     code = language.strip().lower().replace("_", "-").split("-", 1)[0]
-    return code if code in {"en", "de", "es", "fr", "it", "nl", "pl", "pt", "sk"} else "en"
+    return code if code in {"da", "de", "en", "es", "fi", "fr", "it", "nl", "pl", "pt", "sk", "sv"} else "en"
 
 
 def _device_name(name_key: str, language: str | None = None) -> str:
@@ -1679,7 +1710,7 @@ class BoschPoinTTAPIWaterHeaterEntity(
     def _sync_from_data(self) -> None:
         """Populate local state from coordinator.data (no HA state write)."""
         data = self.coordinator.data or {}
-        self._current_temp = _val(data, "/dhwCircuits/dhw1/actualTemp")
+        self._current_temp = _dhw_actual_temperature(data)
         self._target_temp = _val(data, "/dhwCircuits/dhw1/temperatureLevels/high")
         raw_op = _val(data, "/dhwCircuits/dhw1/operationMode")
         _LOGGER.debug("Water heater operationMode raw response: %s", data.get("/dhwCircuits/dhw1/operationMode"))
@@ -2309,6 +2340,7 @@ def _pointtapi_sensor_descriptions(
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
             state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_dhw_actual_temperature,
         ),
         # ── Heat-source / burner sensors (v0.31.0) ────────────────────────────
         BoschPoinTTAPISensorEntityDescription(
