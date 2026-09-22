@@ -4,6 +4,22 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.2] — 2026-09-22
+
+### Fixed
+- **Config-entry migration no longer crashes on Home Assistant before 2026.8.**
+  Three migration steps passed `via_device_id`, which HA only accepts from
+  2026.8. On older releases, upgrading from an entry below version 11 raised
+  `TypeError` and left the entry in `MIGRATION_ERROR`. The migration now picks
+  `via_device_id` or `via_device` to match the installed HA. (#68)
+- **XMPP/HTTP entries no longer get an empty "Heating Zone" device.** The last
+  two migration steps ran on every entry, so gateways arriving from the
+  upstream integration gained a stray zone device. Every step is now limited to
+  POINTTAPI entries. (#68)
+- **No `async_get_device` deprecation warning on HA 2026.9.** Device lookups
+  use `async_get_device_by_identifier` where HA has it and fall back on older
+  releases, ahead of the removal in 2027.8. Closes #70. (#71)
+
 ## [1.7.0-beta.1] — 2026-09-18
 
 ### Added
