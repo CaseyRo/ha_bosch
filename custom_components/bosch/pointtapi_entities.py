@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import inspect
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -434,6 +435,29 @@ def _device_by_identifier(
         return device_registry.async_get_device_by_identifier(identifier, config_entry_id)
     return device_registry.async_get_device(identifiers={identifier})
 
+
+
+def _link_via_device_id(entity: Any, info: DeviceInfo | None) -> DeviceInfo | None:
+    """Swap ``via_device`` for ``via_device_id`` on HA 2026.8 and later.
+
+    ``via_device`` is deprecated there (it breaks in 2027.8), and older
+    releases don't accept ``via_device_id``. HA reads ``device_info`` only after
+    it has set the entity's ``hass`` and ``platform``, and the gateway device is
+    registered before the platforms load, so its registry id is known here.
+    """
+    via = (info or {}).get("via_device")
+    hass = getattr(entity, "hass", None)
+    platform = getattr(entity, "platform", None)
+    if via is None or hass is None or platform is None or platform.config_entry is None:
+        return info
+    registry = dr.async_get(hass)
+    if "via_device_id" not in inspect.signature(registry.async_get_or_create).parameters:
+        return info
+    linked = DeviceInfo({key: value for key, value in info.items() if key != "via_device"})
+    parent = _device_by_identifier(registry, via, platform.config_entry.entry_id)
+    if parent is not None:
+        linked["via_device_id"] = parent.id
+    return linked
 
 def _gateway_product_info(data: dict[str, Any] | None = None) -> tuple[str, str]:
     """Return the gateway manufacturer and model from its product ID."""
@@ -1412,6 +1436,10 @@ _ZONE_STATUS_ACTIONS = {
 
 class _BoschPoinTTAPICoordinatorEntity(CoordinatorEntity[PoinTTAPIDataUpdateCoordinator]):
     """Coordinator entity that applies already-loaded data on registration."""
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        return _link_via_device_id(self, super().device_info)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
