@@ -1,6 +1,7 @@
 """Unit tests for the legacy Bosch entity base classes."""
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -86,6 +87,31 @@ class TestBoschEntity:
             "hw_version": "uuid1",
             "via_device": (DOMAIN, "uuid1"),
         }
+
+    def test_device_info_links_the_gateway_by_registry_id_on_ha_2026_8(self):
+        entity = DummyEntity(
+            hass="hass",
+            uuid="uuid1",
+            domain_name="Sensors",
+            bosch_object=_bosch_object(),
+            gateway=_gateway(),
+        )
+        entity.platform = SimpleNamespace(config_entry=SimpleNamespace(entry_id="entry-1"))
+
+        def since_2026_8(*, via_device=None, via_device_id=None, **kwargs):
+            """HA 2026.8 and later."""
+
+        registry = SimpleNamespace(
+            async_get_or_create=since_2026_8,
+            async_get_device=MagicMock(return_value=SimpleNamespace(id="gateway-device")),
+        )
+        with patch("custom_components.bosch.pointtapi_entities.dr.async_get", return_value=registry):
+            info = entity.device_info
+
+        assert "via_device" not in info
+        assert info["via_device_id"] == "gateway-device"
+        assert info["identifiers"] == {(DOMAIN, "uuid1_Sensors")}
+        registry.async_get_device.assert_called_once_with(identifiers={(DOMAIN, "uuid1")})
 
     @pytest.mark.asyncio
     async def test_async_added_to_hass_connects_signal_and_registers_removal(self):

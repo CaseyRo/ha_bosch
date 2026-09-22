@@ -3,6 +3,7 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import DEFAULT_MAX_TEMP, DEFAULT_MIN_TEMP, DOMAIN
 from homeassistant.helpers.entity import DeviceInfo
+from .pointtapi_entities import _link_via_device_id
 
 
 class BoschEntity:
@@ -40,14 +41,17 @@ class BoschEntity:
     @property
     def device_info(self) -> DeviceInfo:
         """Get attributes about the device."""
-        return DeviceInfo(
-            identifiers=self._domain_identifier,
-            manufacturer=self._gateway.device_model,
-            model=self._gateway.device_type,
-            name=self.device_name,
-            sw_version=self._gateway.firmware,
-            hw_version=self._uuid,
-            via_device=(DOMAIN, self._uuid),
+        return _link_via_device_id(
+            self,
+            DeviceInfo(
+                identifiers=self._domain_identifier,
+                manufacturer=self._gateway.device_model,
+                model=self._gateway.device_type,
+                name=self.device_name,
+                sw_version=self._gateway.firmware,
+                hw_version=self._uuid,
+                via_device=(DOMAIN, self._uuid),
+            ),
         )
 
 

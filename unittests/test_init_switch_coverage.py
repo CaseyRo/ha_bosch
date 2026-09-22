@@ -448,6 +448,46 @@ def test_device_by_identifier_follows_installed_ha():
     registry.async_get_device.assert_called_once_with(identifiers={(DOMAIN, "uuid-1")})
     registry.async_get_device_by_identifier.assert_not_called()
 
+
+def _added_entity():
+    return SimpleNamespace(hass=object(), platform=SimpleNamespace(config_entry=SimpleNamespace(entry_id="entry-1")))
+
+
+def test_link_via_device_id_keeps_via_device_before_ha_2026_8():
+    from custom_components.bosch import pointtapi_entities as pe
+
+    def before_2026_8(*, via_device=None, **kwargs):
+        """HA before 2026.8."""
+
+    registry = SimpleNamespace(async_get_or_create=before_2026_8, async_get_device=MagicMock())
+    info = {"identifiers": {(DOMAIN, "uuid-1_dhw1")}, "via_device": (DOMAIN, "uuid-1")}
+    with patch.object(pe.dr, "async_get", return_value=registry):
+        assert pe._link_via_device_id(_added_entity(), info) is info
+        # Not added to a platform yet: nothing to look up against.
+        assert pe._link_via_device_id(SimpleNamespace(hass=None, platform=None), info) is info
+    registry.async_get_device.assert_not_called()
+
+
+def test_link_via_device_id_drops_the_link_when_the_gateway_is_missing():
+    from custom_components.bosch import pointtapi_entities as pe
+
+    def since_2026_8(*, via_device=None, via_device_id=None, **kwargs):
+        """HA 2026.8 and later."""
+
+    registry = SimpleNamespace(async_get_or_create=since_2026_8, async_get_device=MagicMock(return_value=None))
+    info = {"identifiers": {(DOMAIN, "uuid-1_dhw1")}, "via_device": (DOMAIN, "uuid-1")}
+    with patch.object(pe.dr, "async_get", return_value=registry):
+        assert pe._link_via_device_id(_added_entity(), info) == {"identifiers": {(DOMAIN, "uuid-1_dhw1")}}
+
+
+def test_pointtapi_entities_route_device_info_through_the_link():
+    from custom_components.bosch import pointtapi_entities as pe
+
+    entity = pe._BoschPoinTTAPICoordinatorEntity(MagicMock())
+    entity._attr_device_info = {"identifiers": {(DOMAIN, "uuid-1_dhw1")}}
+    with patch.object(pe, "_link_via_device_id", side_effect=lambda ent, info: ("linked", ent, info)):
+        assert entity.device_info == ("linked", entity, entity._attr_device_info)
+
 def _energy_sensor(attributes=None, new_stats_api=False):
     obj = SimpleNamespace(
         parent_id=None,
