@@ -46,6 +46,7 @@ from homeassistant.const import (
 from homeassistant.util import dt as dt_util
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -419,6 +420,19 @@ _GATEWAY_PRODUCT_MODELS = {
     "8737906738": ("Bosch", "CT200"),
     "8737906739": ("Bosch", "CT200"),
 }
+
+
+def _device_by_identifier(
+    device_registry: dr.DeviceRegistry, identifier: tuple[str, str], config_entry_id: str
+) -> dr.DeviceEntry | None:
+    """Find one of this entry's devices on either side of HA 2026.9.
+
+    2026.9 deprecated ``async_get_device`` (it breaks in 2027.8) in favour of
+    ``async_get_device_by_identifier``, which older releases don't have.
+    """
+    if hasattr(dr.DeviceRegistry, "async_get_device_by_identifier"):
+        return device_registry.async_get_device_by_identifier(identifier, config_entry_id)
+    return device_registry.async_get_device(identifiers={identifier})
 
 
 def _gateway_product_info(data: dict[str, Any] | None = None) -> tuple[str, str]:

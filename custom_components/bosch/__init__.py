@@ -85,7 +85,7 @@ from homeassistant.util.json import load_json
 from .pointtapi_client import PoinTTAPIClient
 from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
 from .pointtapi_oauth import ensure_valid_token
-from .pointtapi_entities import _gateway_product_info
+from .pointtapi_entities import _device_by_identifier, _gateway_product_info
 
 from .const import (
     ACCESS_KEY,
@@ -455,8 +455,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             registry = er.async_get(hass)
             device_registry = dr.async_get(hass)
             uuid = entry.data.get(UUID)
-            parent_device = device_registry.async_get_device(
-                identifiers={(DOMAIN, uuid)}
+            parent_device = _device_by_identifier(
+                device_registry, (DOMAIN, uuid), entry.entry_id
             )
             zone_device_kwargs = {
                 "config_entry_id": entry.entry_id,
@@ -609,8 +609,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if away_entity_id:
                 device_registry = dr.async_get(hass)
                 uuid = entry.data.get(UUID)
-                parent_device = device_registry.async_get_device(
-                    identifiers={(DOMAIN, uuid)}
+                parent_device = _device_by_identifier(
+                    device_registry, (DOMAIN, uuid), entry.entry_id
                 )
                 device_kwargs = {
                     "config_entry_id": entry.entry_id,
@@ -645,8 +645,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             registry = er.async_get(hass)
             device_registry = dr.async_get(hass)
             uuid = entry.data.get(UUID)
-            parent_device = device_registry.async_get_device(
-                identifiers={(DOMAIN, uuid)}
+            parent_device = _device_by_identifier(
+                device_registry, (DOMAIN, uuid), entry.entry_id
             )
             device_kwargs = {
                 "config_entry_id": entry.entry_id,
