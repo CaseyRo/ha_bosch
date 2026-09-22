@@ -4,19 +4,21 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 from importlib import import_module
 
 import pytest
 
 from bosch_thermostat_client.const import HTTP, SENSOR, XMPP
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 
 integration = import_module("custom_components.bosch.__init__")
 from custom_components.bosch.const import (
     BINARY_SENSOR,
     CLIMATE,
     CONF_PROTOCOL,
+    DOMAIN,
     POINTTAPI,
     SIGNAL_SENSOR_UPDATE_BOSCH,
     SWITCH,
@@ -392,6 +394,43 @@ async def test_migrate_entry_v1_renames_legacy_pointtapi_entities():
     assert registry.async_update_entity.call_count >= 5
     hass.config_entries.async_update_entry.assert_any_call(entry, version=2)
 
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("protocol", "devices_created"), [(POINTTAPI, 2), (XMPP, 0), (HTTP, 0)])
+async def test_migrate_entry_v9_device_steps_only_touch_pointtapi(protocol, devices_created):
+    # autospec holds the calls to the installed HA's real signature, so a
+    # keyword that release doesn't know (via_device_id before 2026.8) raises.
+    entry = MagicMock(version=9, entry_id="entry-1", data={CONF_PROTOCOL: protocol, UUID: "uuid-1"})
+    device_registry = create_autospec(dr.DeviceRegistry, instance=True)
+    device_registry.async_get_device.return_value = SimpleNamespace(id="gateway-device")
+    device_registry.async_get_or_create.return_value = SimpleNamespace(id="child-device")
+    registry = MagicMock(entities={})
+    registry.async_get_entity_id.return_value = "switch.away_mode"
+    hass = MagicMock()
+    with patch.object(integration.dr, "async_get", return_value=device_registry), patch(
+        "homeassistant.helpers.entity_registry.async_get", return_value=registry
+    ):
+        assert await integration.async_migrate_entry(hass, entry) is True
+
+    assert device_registry.async_get_or_create.call_count == devices_created
+    hass.config_entries.async_update_entry.assert_called_with(entry, version=11)
+
+
+def test_via_device_kwargs_follows_registry_signature():
+    parent = SimpleNamespace(id="gateway-device")
+
+    def before_2026_8(*, config_entry_id, identifiers, via_device=None):
+        """HA before 2026.8."""
+
+    def since_2026_8(*, config_entry_id, identifiers, via_device=None, via_device_id=None):
+        """HA 2026.8 and later."""
+
+    old = SimpleNamespace(async_get_or_create=before_2026_8)
+    new = SimpleNamespace(async_get_or_create=since_2026_8)
+    assert integration._via_device_kwargs(old, parent, "uuid-1") == {"via_device": (DOMAIN, "uuid-1")}
+    assert integration._via_device_kwargs(new, parent, "uuid-1") == {"via_device_id": "gateway-device"}
+    assert integration._via_device_kwargs(new, None, "uuid-1") == {}
 
 def _energy_sensor(attributes=None, new_stats_api=False):
     obj = SimpleNamespace(

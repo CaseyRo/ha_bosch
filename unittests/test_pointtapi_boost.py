@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
@@ -833,7 +833,13 @@ async def test_version_6_moves_thermostat_child_lock_to_zone_device():
     zone_device = SimpleNamespace(id="zone1-device")
     mock_dr = MagicMock()
     mock_dr.async_get_device.return_value = SimpleNamespace(id="gateway-device")
-    mock_dr.async_get_or_create.return_value = zone_device
+
+    def get_or_create_since_2026_8(*, via_device_id=None, **kwargs):
+        """HA 2026.8+ signature; older releases are covered in test_init_switch_coverage."""
+
+    mock_dr.async_get_or_create = create_autospec(
+        get_or_create_since_2026_8, return_value=zone_device
+    )
 
     with (
         patch("homeassistant.helpers.entity_registry.async_get", return_value=mock_er),

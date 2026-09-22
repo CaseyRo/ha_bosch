@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import inspect
 import logging
 import random
 import time
@@ -296,8 +297,28 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+def _via_device_kwargs(
+    device_registry: dr.DeviceRegistry, parent_device: Any, uuid: str
+) -> dict[str, Any]:
+    """Link a child device to the gateway on either side of HA 2026.8.
+
+    2026.8 added ``via_device_id`` and deprecated ``via_device``; older
+    releases reject ``via_device_id`` with a TypeError.
+    """
+    if parent_device is None:
+        return {}
+    if "via_device_id" in inspect.signature(
+        device_registry.async_get_or_create
+    ).parameters:
+        return {"via_device_id": parent_device.id}
+    return {"via_device": (DOMAIN, uuid)}
+
+
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate POINTTAPI entry versions.
+
+    Every step only touches POINTTAPI entries; XMPP/HTTP entries (including
+    ones arriving from upstream at version 1) pass through as version bumps.
 
         - v1 -> v2: entity_id renames (device-partition scheme)
         - v2 -> v3: unique_id rename for boost switch (per-zone unique_id)
@@ -443,8 +464,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "name": "Heating Zone",
                 "manufacturer": "Bosch",
             }
-            if parent_device is not None:
-                zone_device_kwargs["via_device_id"] = parent_device.id
+            zone_device_kwargs.update(
+                _via_device_kwargs(device_registry, parent_device, uuid)
+            )
             zone_device = device_registry.async_get_or_create(
                 **zone_device_kwargs,
             )
@@ -574,16 +596,53 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, version=9)
 
     if entry.version < 10:
-        from homeassistant.helpers import entity_registry as er
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
 
-        registry = er.async_get(hass)
-        away_unique_id = (
-            f"{entry.entry_id}_pointtapi_switch_system_awayMode_enabled"
-        )
-        away_entity_id = registry.async_get_entity_id(
-            "switch", DOMAIN, away_unique_id
-        )
-        if away_entity_id:
+            registry = er.async_get(hass)
+            away_unique_id = (
+                f"{entry.entry_id}_pointtapi_switch_system_awayMode_enabled"
+            )
+            away_entity_id = registry.async_get_entity_id(
+                "switch", DOMAIN, away_unique_id
+            )
+            if away_entity_id:
+                device_registry = dr.async_get(hass)
+                uuid = entry.data.get(UUID)
+                parent_device = device_registry.async_get_device(
+                    identifiers={(DOMAIN, uuid)}
+                )
+                device_kwargs = {
+                    "config_entry_id": entry.entry_id,
+                    "identifiers": {(DOMAIN, f"{uuid}_heating_installation_hc1")},
+                    "name": "Heating Installation Settings",
+                    "manufacturer": "Bosch",
+                    "model": "EasyControl",
+                }
+                device_kwargs.update(
+                    _via_device_kwargs(device_registry, parent_device, uuid)
+                )
+                installation_device = device_registry.async_get_or_create(
+                    **device_kwargs,
+                )
+                try:
+                    registry.async_update_entity(
+                        away_entity_id,
+                        device_id=installation_device.id,
+                    )
+                except Exception as err:  # pylint: disable=broad-except
+                    _LOGGER.warning(
+                        "Migration could not move away-mode entity %s: %s",
+                        away_entity_id,
+                        err,
+                    )
+        hass.config_entries.async_update_entry(entry, version=10)
+
+    if entry.version < 11:
+        if entry.data.get(CONF_PROTOCOL) == POINTTAPI:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(hass)
             device_registry = dr.async_get(hass)
             uuid = entry.data.get(UUID)
             parent_device = device_registry.async_get_device(
@@ -591,69 +650,36 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             device_kwargs = {
                 "config_entry_id": entry.entry_id,
-                "identifiers": {(DOMAIN, f"{uuid}_heating_installation_hc1")},
-                "name": "Heating Installation Settings",
+                "identifiers": {(DOMAIN, f"{uuid}_zn1")},
+                "name": "Heating Zone",
                 "manufacturer": "Bosch",
                 "model": "EasyControl",
             }
-            if parent_device is not None:
-                device_kwargs["via_device_id"] = parent_device.id
-            installation_device = device_registry.async_get_or_create(
-                **device_kwargs,
+            device_kwargs.update(
+                _via_device_kwargs(device_registry, parent_device, uuid)
             )
-            try:
-                registry.async_update_entity(
-                    away_entity_id,
-                    device_id=installation_device.id,
-                )
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning(
-                    "Migration could not move away-mode entity %s: %s",
-                    away_entity_id,
-                    err,
-                )
-        hass.config_entries.async_update_entry(entry, version=10)
-
-    if entry.version < 11:
-        from homeassistant.helpers import entity_registry as er
-
-        registry = er.async_get(hass)
-        device_registry = dr.async_get(hass)
-        uuid = entry.data.get(UUID)
-        parent_device = device_registry.async_get_device(
-            identifiers={(DOMAIN, uuid)}
-        )
-        device_kwargs = {
-            "config_entry_id": entry.entry_id,
-            "identifiers": {(DOMAIN, f"{uuid}_zn1")},
-            "name": "Heating Zone",
-            "manufacturer": "Bosch",
-            "model": "EasyControl",
-        }
-        if parent_device is not None:
-            device_kwargs["via_device_id"] = parent_device.id
-        zone_device = device_registry.async_get_or_create(**device_kwargs)
-        suffixes = (
-            "_pointtapi_switch_gateway_pirSensitivity",
-            "_pointtapi_switch_gateway_notificationLight_enabled",
-        )
-        for entity in list(registry.entities.values()):
-            if (
-                entity.config_entry_id == entry.entry_id
-                and entity.domain == "switch"
-                and entity.unique_id.endswith(suffixes)
-            ):
-                try:
-                    registry.async_update_entity(
-                        entity.entity_id,
-                        device_id=zone_device.id,
-                    )
-                except Exception as err:  # pylint: disable=broad-except
-                    _LOGGER.warning(
-                        "Migration could not move thermostat switch %s: %s",
-                        entity.entity_id,
-                        err,
-                    )
+            zone_device = device_registry.async_get_or_create(**device_kwargs)
+            suffixes = (
+                "_pointtapi_switch_gateway_pirSensitivity",
+                "_pointtapi_switch_gateway_notificationLight_enabled",
+            )
+            for entity in list(registry.entities.values()):
+                if (
+                    entity.config_entry_id == entry.entry_id
+                    and entity.domain == "switch"
+                    and entity.unique_id.endswith(suffixes)
+                ):
+                    try:
+                        registry.async_update_entity(
+                            entity.entity_id,
+                            device_id=zone_device.id,
+                        )
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Migration could not move thermostat switch %s: %s",
+                            entity.entity_id,
+                            err,
+                        )
         hass.config_entries.async_update_entry(entry, version=11)
 
     return True
