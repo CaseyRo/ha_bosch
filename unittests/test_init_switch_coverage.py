@@ -432,6 +432,22 @@ def test_via_device_kwargs_follows_registry_signature():
     assert integration._via_device_kwargs(new, parent, "uuid-1") == {"via_device_id": "gateway-device"}
     assert integration._via_device_kwargs(new, None, "uuid-1") == {}
 
+
+def test_device_by_identifier_follows_installed_ha():
+    from custom_components.bosch.pointtapi_entities import _device_by_identifier
+
+    registry = MagicMock()
+    with patch.object(dr.DeviceRegistry, "async_get_device_by_identifier", create=True):
+        _device_by_identifier(registry, (DOMAIN, "uuid-1"), "entry-1")
+    registry.async_get_device_by_identifier.assert_called_once_with((DOMAIN, "uuid-1"), "entry-1")
+    registry.async_get_device.assert_not_called()
+
+    registry = MagicMock()
+    with patch.object(dr, "DeviceRegistry", SimpleNamespace()):  # HA before 2026.9
+        _device_by_identifier(registry, (DOMAIN, "uuid-1"), "entry-1")
+    registry.async_get_device.assert_called_once_with(identifiers={(DOMAIN, "uuid-1")})
+    registry.async_get_device_by_identifier.assert_not_called()
+
 def _energy_sensor(attributes=None, new_stats_api=False):
     obj = SimpleNamespace(
         parent_id=None,
@@ -601,7 +617,7 @@ async def test_sensor_setup_pointtapi_filters_solar_and_schedules_backfill():
         assert await async_setup_sensor_entry(hass, entry, added.extend) is True
 
     assert added == [normal]
-    remove_solar.assert_called_once_with(hass, "uuid-1")
+    remove_solar.assert_called_once_with(hass, "uuid-1", "entry-1")
     assert "bosch_gas_backfill_entry-1" in hass.data
     assert scheduled
 

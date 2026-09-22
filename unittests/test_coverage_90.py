@@ -547,7 +547,7 @@ def test_sensor_registry_cleanup_removes_entities_and_device():
         patch.object(sensor_module.dr, "async_get", return_value=device_registry),
         patch.object(sensor_module.er, "async_get", return_value=registry),
     ):
-        sensor_module._remove_solar_registry_entries(MagicMock(), "uuid")
+        sensor_module._remove_solar_registry_entries(MagicMock(), "uuid", "entry-1")
     registry.async_remove.assert_called_once_with("sensor.solar")
     device_registry.async_remove_device.assert_called_once_with("solar-device")
 

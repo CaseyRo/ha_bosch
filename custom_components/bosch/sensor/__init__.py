@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from ..const import CIRCUITS, CONF_PROTOCOL, DOMAIN, POINTTAPI, SIGNAL_BOSCH, UUID
 from ..pointtapi_entities import (
     BoschPoinTTAPISensorEntity,
+    _device_by_identifier,
     _pointtapi_sensor_descriptions,
     _solar_data_available,
 )
@@ -40,11 +41,11 @@ SensorKinds = {
 }
 
 
-def _remove_solar_registry_entries(hass, uuid: str) -> None:
+def _remove_solar_registry_entries(hass, uuid: str, config_entry_id: str) -> None:
     """Remove stale Solar entities and device when solar data is unavailable."""
     device_registry = dr.async_get(hass)
-    solar_device = device_registry.async_get_device(
-        identifiers={(DOMAIN, f"{uuid}_solar")}
+    solar_device = _device_by_identifier(
+        device_registry, (DOMAIN, f"{uuid}_solar"), config_entry_id
     )
     if solar_device is None:
         return
@@ -74,7 +75,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             # (the coordinator swallows per-path failures), so only remove once
             # a refresh has actually succeeded and returned data.
             if not solar_available and coordinator.last_update_success and coordinator.data:
-                _remove_solar_registry_entries(hass, uuid)
+                _remove_solar_registry_entries(hass, uuid, config_entry.entry_id)
             descriptions = [
                 desc
                 for desc in _pointtapi_sensor_descriptions(coordinator.data or {})
