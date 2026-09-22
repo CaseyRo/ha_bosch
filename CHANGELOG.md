@@ -4,6 +4,15 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.3] — 2026-09-22
+
+### Fixed
+- **No `via_device` deprecation warnings on Home Assistant 2026.8 and later.**
+  Child devices (zone, hot water, boiler, energy, solar, heating installation,
+  thermostat valves) are now linked to the gateway by its registry id where HA
+  supports it, and by the old identifier on earlier releases. `via_device` is
+  removed in HA 2027.8. Device links themselves are unchanged. (#73)
+
 ## [1.7.0-beta.2] — 2026-09-22
 
 ### Fixed
