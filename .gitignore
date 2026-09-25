@@ -103,3 +103,9 @@ sync-to-ha.sh
 # Local noise and one-off probe artifacts
 .DS_Store
 boost_probe_*.json
+
+# OpenSpec CLI command/skill copies are managed at user scope, not per repo
+.claude/commands/opsx/
+.claude/skills/openspec-*/
+.cursor/commands/opsx*
+.cursor/skills/openspec-*/
