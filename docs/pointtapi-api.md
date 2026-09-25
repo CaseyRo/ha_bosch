@@ -14,7 +14,8 @@ against a live EasyControl CT200 (deviceType `rrc2`) on **2026-06-05**.
   — @joddye2's live CT200 resource dumps (types, `writeable` flags)
 - [BassXT/buderus](https://github.com/BassXT/buderus) — PointT groundwork for
   MX300/K30
-- Our own probes: `probe_boost_resources.py` (XMPP, read-only) and consented
+- Our own probes: `probe_boost_resources.py` (XMPP, read-only; removed from the
+  tree 2026-09-25, still in git history) and consented
   cloud probes; findings in
   `openspec/changes/pointtapi-bulk-discovery-and-controls/boost-probe-notes.md`
   (archived with the change)
