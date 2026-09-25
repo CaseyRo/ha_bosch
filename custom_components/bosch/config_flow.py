@@ -109,7 +109,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
         try:
             session = async_get_clientsession(self.hass)
             gateways = await async_list_gateways(session, self._tokens["access_token"])
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - any listing failure falls back to manual serial entry
             _LOGGER.debug(
                 "POINTTAPI gateway listing failed, falling back to manual entry: %s", err
             )
@@ -221,7 +221,7 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                     try:
                         session = async_get_clientsession(self.hass)
                         tokens = await exchange_code_for_tokens(session, code)
-                    except Exception as err:  # ConfigEntryAuthFailed or aiohttp
+                    except Exception as err:  # noqa: BLE001 - any exchange failure becomes a form error, not a crashed flow (ConfigEntryAuthFailed or aiohttp)
                         _LOGGER.warning("POINTTAPI token exchange failed: %s", err)
                         errors["base"] = "oauth_token_failed"
                     else:

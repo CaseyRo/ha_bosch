@@ -315,7 +315,7 @@ async def _fetch_history_hourly_all(
             if call_counter is not None:
                 call_counter[0] += 1
             page = await client.get(f"/energy/historyHourly?next={nxt}")
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - optional path; unavailability is logged and skipped
             _LOGGER.debug("historyHourly pagination stopped at next=%s: %s", nxt, err)
             break
         pv = page.get("value") if isinstance(page, dict) else None
@@ -354,7 +354,7 @@ async def _discover_roots(
                 return roots
     except ConfigEntryAuthFailed:
         _LOGGER.debug("POINTTAPI 401/403 on %s, using %s", root, fallback)
-    except Exception as err:
+    except Exception as err:  # noqa: BLE001 - optional path; unavailability is logged and skipped
         _LOGGER.debug(
             "POINTTAPI %s listing unavailable (%s), using %s", root, err, fallback
         )
@@ -432,7 +432,7 @@ async def _fetch_reference_tree(
             )
         except ConfigEntryAuthFailed:
             _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 - optional path; unavailability is logged and skipped
             _LOGGER.debug("POINTTAPI optional ref %s unavailable", ref_id)
 
     references = [
@@ -504,7 +504,7 @@ async def _fetch_paths(
                     )
             except ConfigEntryAuthFailed:
                 _LOGGER.debug("POINTTAPI 401/403 on %s, skipping", root)
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001 - optional path; unavailability is logged and skipped
                 _LOGGER.debug("POINTTAPI optional path %s not available: %s", root, err)
             continue
         try:
@@ -630,7 +630,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             boost_data = await self._client.bulk(list(self._BOOST_REFRESH_PATHS))
         except ConfigEntryAuthFailed:
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - Boost fallback ladder; auth errors re-raised above, the rest degrade
             _LOGGER.debug("POINTTAPI targeted Boost refresh failed: %s", err)
             return
         if not boost_data:
@@ -688,7 +688,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return ROUTE_SHORTCUT
         except ConfigEntryAuthFailed:
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - Boost fallback ladder; auth errors re-raised above, the rest degrade
             rungs.append({"rung": ROUTE_SHORTCUT, "error": str(err)})
             _LOGGER.debug("Boost probe rung boostShortcut failed: %s", err)
         try:
@@ -707,7 +707,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.client.put("/heatingCircuits/hc1/boostMode", "off")
         except ConfigEntryAuthFailed:
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - Boost fallback ladder; auth errors re-raised above, the rest degrade
             rungs.append({"rung": ROUTE_DIRECT, "error": str(err)})
             _LOGGER.debug("Boost probe rung boostMode failed: %s", err)
 
@@ -750,7 +750,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return await self._confirm_native_active()
         except ConfigEntryAuthFailed:
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - Boost fallback ladder; auth errors re-raised above, the rest degrade
             _LOGGER.warning("Native boost ON via %s failed: %s", route, err)
             return False
 
@@ -826,7 +826,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 except ConfigEntryAuthFailed:
                     pass
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - Boost fallback ladder; auth errors re-raised above, the rest degrade
             _LOGGER.warning("Native boost OFF via %s failed: %s", route, err)
             return False
 
@@ -894,7 +894,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         native_ok = False
                 except ConfigEntryAuthFailed:
                     raise
-                except Exception as err:
+                except Exception as err:  # noqa: BLE001 - Boost fallback ladder; auth errors re-raised above, the rest degrade
                     _LOGGER.warning("Native boost attempt errored: %s", err)
                     native_ok = False
 
@@ -1029,7 +1029,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "POINTTAPI 401/403 on %s, keeping cached data",
                 HISTORY_HOURLY_PATH,
             )
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - optional path; unavailability is logged and skipped
             _LOGGER.debug(
                 "POINTTAPI optional path %s not available: %s",
                 HISTORY_HOURLY_PATH,
@@ -1105,7 +1105,7 @@ class PoinTTAPIDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data = await self._client.bulk(bulk_paths)
             except ConfigEntryAuthFailed:
                 raise
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001 - bulk failure falls back to sequential GETs
                 self._log_bulk_failure(err)
                 return await _fetch_paths(self._client)
         if not data and bulk_paths:

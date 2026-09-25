@@ -3,11 +3,11 @@ asyncio_mode = "auto"
 testpaths = ["unittests"]
 
 [tool.ruff.lint]
-# Pin ruff's historical default rule set: CI installs ruff unpinned, and a
-# newer ruff broadened its defaults (BLE/DTZ/ASYNC/...), flagging 69
-# pre-existing spots repo-wide. This keeps the gate at the rules the code
-# was written against.
-select = ["E4", "E7", "E9", "F"]
+# Pinned rule set (CI installs ruff unpinned, so defaults can drift). On top of
+# ruff's historical defaults, ASYNC (blocking I/O in coroutines) and BLE (blind
+# except) are enforced for the integration itself; deliberate broad excepts
+# carry a `noqa: BLE001` with the reason.
+select = ["E4", "E7", "E9", "F", "ASYNC", "BLE"]
 # __init__.py must patch builtins.print before other imports (E402)
 # and uses a lambda for a simple callback (E731)
-per-file-ignores = {"__init__.py" = ["E402", "E731"]}
+per-file-ignores = {"__init__.py" = ["E402", "E731"], "!custom_components/bosch/**" = ["ASYNC", "BLE"]}

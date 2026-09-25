@@ -51,9 +51,11 @@ pip install bosch-thermostat-client==0.28.2 tzdata ruff
 
 CI runs ruff + pytest on Python **3.13 only** (`.github/workflows/ci.yaml`;
 3.12 was dropped in `e9833db`), with a **70% coverage floor** via
-`--cov-fail-under=70`. Ruff is configured `select = ["E4","E7","E9","F"]`, so
-async and blocking-call rules are **not** enforced — don't assume a clean ruff
-run means no blocking I/O in the event loop.
+`--cov-fail-under=70`. Ruff selects `E4,E7,E9,F` plus `ASYNC` (blocking calls
+in coroutines) and `BLE` (blind `except Exception`), the last two scoped to
+`custom_components/bosch/`. A deliberate broad except needs a
+`# noqa: BLE001 - <reason>`. ASYNC only catches known blocking calls, so a
+clean run is not proof that nothing blocks the event loop.
 
 ## Architecture Overview
 

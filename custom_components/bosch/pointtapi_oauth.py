@@ -91,7 +91,7 @@ def extract_code_from_callback_url(url: str) -> str | None:
             query = urllib.parse.urlparse(text).query or text
             codes = urllib.parse.parse_qs(query).get("code")
             return codes[0] if codes else None
-        except Exception:  # pylint: disable=broad-except
+        except ValueError:
             _LOGGER.debug("Failed to parse callback URL")
             return None
     # No `code=` wrapper: treat a clean token (no URL/query delimiters) as the

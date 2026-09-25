@@ -98,7 +98,7 @@ class StatisticHelper(BoschBaseSensor):
                 True,
                 {"state", "sum"},
             )
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - recorder read is best-effort; empty result is handled
             _LOGGER.debug("Can't fetch last stats: %s", err)
             return {}
 
@@ -117,7 +117,7 @@ class StatisticHelper(BoschBaseSensor):
                 None,
                 {"state", "sum"},
             )
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - recorder read is best-effort; empty result is handled
             _LOGGER.debug("Can't fetch stats from DB: %s", err)
             return {}
 
