@@ -722,12 +722,6 @@ async def test_options_flow_shows_defaults_and_creates_options():
     assert await flow.async_step_init({"new_stats_api": False, "optimistic_mode": True}) == {"type": "create_entry"}
 
 
-@pytest.mark.asyncio
-async def test_discovery_step_is_a_noop(mock_hass):
-    flow = _make_flow(mock_hass)
-    assert await flow.async_step_discovery({"host": "192.168.1.20"}) is None
-
-
 def test_async_get_options_flow_returns_options_handler():
     entry = MagicMock()
     options_flow = BoschFlowHandler.async_get_options_flow(entry)

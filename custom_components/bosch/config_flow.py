@@ -365,10 +365,6 @@ class BoschFlowHandler(config_entries.ConfigFlow):
                 data=data,
             )
 
-    async def async_step_discovery(self, discovery_info=None):
-        """Handle a flow discovery."""
-        _LOGGER.debug("Discovered Bosch unit : %s", discovery_info)
-
     @staticmethod
     @callback
     def async_get_options_flow(entry: config_entries.ConfigEntry):
