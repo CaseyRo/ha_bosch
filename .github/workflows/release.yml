@@ -16,8 +16,8 @@ jobs:
 
       - name: Build bosch.zip
         # Zip the *contents* of the integration directory, not the directory
-        # itself — that is the layout HACS expects if hacs.json ever sets
-        # "zip_release": true, and it keeps this asset drop-in compatible.
+        # itself: hacs.json sets "zip_release": true, and HACS installs this
+        # asset by unpacking it straight into custom_components/bosch/.
         run: |
           cd custom_components/bosch
           zip -r "$GITHUB_WORKSPACE/bosch.zip" . -x '*.pyc' -x '*__pycache__*'

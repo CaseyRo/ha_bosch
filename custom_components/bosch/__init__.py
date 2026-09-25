@@ -354,7 +354,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     if registry.async_get(old_id) and not registry.async_get(new_id):
                         registry.async_update_entity(old_id, new_entity_id=new_id)
                         renamed += 1
-                except Exception as err:  # pylint: disable=broad-except
+                except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                     _LOGGER.warning(
                         "Migration could not rename %s -> %s: %s", old_id, new_id, err
                     )
@@ -378,7 +378,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         "Migrated POINTTAPI boost switch unique_id %s -> %s for entity %s",
                         old_unique_id, new_unique_id, entity_id,
                     )
-            except Exception as err:  # pylint: disable=broad-except
+            except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                 _LOGGER.warning(
                     "Migration could not update unique_id %s: %s", old_unique_id, err
                 )
@@ -400,7 +400,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     try:
                         registry.async_remove(entity.entity_id)
                         removed += 1
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not remove stale Boost entity %s: %s",
                             entity.entity_id,
@@ -436,7 +436,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             original_name=None,
                         )
                         cleared += 1
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not clear Boost entity name %s: %s",
                             entity.entity_id,
@@ -487,7 +487,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             device_id=zone_device.id,
                         )
                         moved += 1
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not move child-lock entity %s: %s",
                             entity.entity_id,
@@ -523,7 +523,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             original_name=None,
                         )
                         cleared += 1
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not clear legacy Boost name %s: %s",
                             entity.entity_id,
@@ -555,7 +555,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             original_name=None,
                         )
                         cleared += 1
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not refresh Boost name %s: %s",
                             entity.entity_id,
@@ -583,7 +583,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     try:
                         registry.async_remove(entity.entity_id)
                         removed += 1
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not remove obsolete Boost switch %s: %s",
                             entity.entity_id,
@@ -630,7 +630,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         away_entity_id,
                         device_id=installation_device.id,
                     )
-                except Exception as err:  # pylint: disable=broad-except
+                except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                     _LOGGER.warning(
                         "Migration could not move away-mode entity %s: %s",
                         away_entity_id,
@@ -674,7 +674,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             entity.entity_id,
                             device_id=zone_device.id,
                         )
-                    except Exception as err:  # pylint: disable=broad-except
+                    except Exception as err:  # noqa: BLE001 - best-effort registry migration; one bad entity must not abort setup
                         _LOGGER.warning(
                             "Migration could not move thermostat switch %s: %s",
                             entity.entity_id,

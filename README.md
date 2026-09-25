@@ -334,7 +334,7 @@ The integration ships a **Zone mode** select (`select.*_zone_mode`, backed by
 ## Installation
 
 ### Requirements
-- Home Assistant 2024.1+
+- Home Assistant 2024.5+
 - A Bosch EasyControl device (CT200, EasyControl 7)
 - A Bosch/SingleKey ID account (the one you use in the EasyControl app)
 
