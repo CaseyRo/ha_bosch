@@ -37,7 +37,9 @@ python3 -m pytest --tb=short -q unittests
 python3 -m pytest --tb=short unittests/test_<name>.py
 ```
 
-**Test EasyControl XMPP connectivity (standalone script):**
+**Test EasyControl XMPP connectivity:** `test_easycontrol_connection.py` is a
+local, gitignored debug script (see `.gitignore` "Local Debug Scripts") — it is
+not in a fresh clone. If you have it:
 ```bash
 uv run --with bosch-thermostat-client==0.28.2 python test_easycontrol_connection.py
 ```
@@ -94,7 +96,10 @@ Steps for POINTTAPI: `user` → `easycontrol_protocol` → `pointtapi_oauth_open
 `pointtapi_device_id` (serial without dashes) is the **fallback** when discovery
 finds nothing, not the first step. There is no `choose_type` step any more.
 
-Steps for XMPP/HTTP: `choose_type` → protocol → credentials form → `configure_gateway()` in executor (validates connection, extracts UUID) → `create_entry`.
+Steps for XMPP/HTTP: `user` → `easycontrol_protocol` (pick XMPP) → `xmpp_config`
+(address, access token, optional password) → `configure_gateway()` (validates
+connection, extracts UUID; a bad token re-shows `xmpp_config` with an error) →
+`create_entry`.
 
 Tokens and all credentials are stored in `entry.data`, not `entry.options`.
 
