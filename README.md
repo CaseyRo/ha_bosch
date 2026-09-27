@@ -211,6 +211,19 @@ Heating Installation Settings device below.
 | Sensor | Actual temperature | thermostat_valve_temperature_actual | /devices/list/thermostat_valve/{id}/temperatureActual or /devices/device{id}/.../etrv/temperatureActual | Dynamic, per discovered valve |
 | Binary sensor | Warning state | thermostat_valve_warning | /devices/list/thermostat_valve/{id}/warning | Dynamic, per discovered valve |
 
+#### Room thermostat
+
+| Platform | Entity | Translation key | Resource path | Scope |
+|---|---|---|---|---|
+| Sensor | Actual temperature | thermostat_valve_temperature_actual | /devices/device{id}/wth/temperatureActual | Dynamic, per room thermostat |
+| Sensor | Indoor humidity | indoor_humidity | /devices/device{id}/wth/humidityActual | Dynamic, per room thermostat |
+| Number | Temperature offset | thermostat_valve_temperature_offset | /devices/device{id}/wth/offset | Dynamic, per room thermostat |
+| Switch | Child lock | thermostat_valve_child_lock | /devices/device{id}/wth/childLock/enabled | Dynamic, per room thermostat |
+| Sensor | Signal strength | thermostat_valve_signal_strength | /devices/list/room_thermostat/{id}/signal | Dynamic, per room thermostat |
+| Sensor | Battery | thermostat_valve_battery | /devices/list/room_thermostat/{id}/battery | Dynamic, per room thermostat |
+| Sensor | Linked zone | thermostat_valve_zone | /devices/list/room_thermostat/{id}/zone | Dynamic, per room thermostat |
+| Sensor | Protocol | thermostat_valve_protocol | /devices/list/room_thermostat/{id}/protocol | Dynamic, per room thermostat |
+
 #### Energy performance
 
 | Platform | Entity | Translation key | Resource path | Scope |
@@ -252,6 +265,7 @@ Notes:
 - Dynamic entities are created only when the corresponding API paths are present and, where enforced, marked as available.
 - Zone-scoped dynamic entities rely on zone references (for example openWindowDetection, actualValvePosition, optimumStartState).
 - Thermostat-valve entities are discovered from /devices/list thermostat_valve rows and compatible /devices/deviceN trees; count and labels vary by installation.
+- Room thermostats (`room_thermostat` rows in /devices/list, e.g. a HomematicIP wall thermostat on a CT200) get their own device with the readings under /devices/deviceN/wth.
 - Solar entities are conditionally suppressed when the first refresh has no usable /solarCircuits/sc1 data; stale solar registry entries are removed.
 - Number entities are created only for resources the appliance marks writeable.
 - On a CT200 without radiator valves, the thermostat's own child lock appears on its zone device.

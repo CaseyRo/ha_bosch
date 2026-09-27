@@ -400,6 +400,20 @@ _DEVICE_NAME_LOCALIZED: dict[str, dict[str, str]] = {
         "fi": "Termostaattiventtiili",
         "sv": "Termostatventil",
     },
+    "room_thermostat": {
+        "en": "Room thermostat",
+        "de": "Raumthermostat",
+        "fr": "Thermostat d'ambiance",
+        "it": "Termostato ambiente",
+        "nl": "Ruimtethermostaat",
+        "pl": "Termostat pokojowy",
+        "sk": "Priestorový termostat",
+        "es": "Termostato de ambiente",
+        "pt": "Termóstato ambiente",
+        "da": "Rumtermostat",
+        "fi": "Huonetermostaatti",
+        "sv": "Rumstermostat",
+    },
     "energy_performance": {
         "en": "Energy performance",
         "de": "Energieeffizienz",
@@ -726,6 +740,7 @@ class BoschPoinTTAPISensorEntityDescription(SensorEntityDescription):
 
 DEVICES_LIST_PATH = "/devices/list"
 THERMOSTAT_VALVE_TYPE = "thermostat_valve"
+ROOM_THERMOSTAT_TYPE = "room_thermostat"
 
 
 def _devices_list_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -737,12 +752,14 @@ def _devices_list_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in values if isinstance(item, dict)]
 
 
-def _thermostat_valve_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return thermostat_valve rows from /devices/list, sorted by numeric id."""
+def _thermostat_valve_rows(
+    data: dict[str, Any], device_type: str = THERMOSTAT_VALVE_TYPE
+) -> list[dict[str, Any]]:
+    """Return /devices/list rows of one device type, sorted by numeric id."""
     rows = [
         row
         for row in _devices_list_entries(data)
-        if row.get("type") == THERMOSTAT_VALVE_TYPE and row.get("id") is not None
+        if row.get("type") == device_type and row.get("id") is not None
     ]
 
     def _sort_key(row: dict[str, Any]) -> tuple[int, str]:
@@ -765,9 +782,11 @@ def _thermostat_valve_name(row: dict[str, Any]) -> str:
     return f"#{rid}" if rid is not None else "Unknown"
 
 
-def _thermostat_valve_row_by_id(data: dict[str, Any], valve_id: int) -> dict[str, Any] | None:
-    """Find a /devices/list thermostat-valve row by its numeric id."""
-    for row in _thermostat_valve_rows(data):
+def _thermostat_valve_row_by_id(
+    data: dict[str, Any], valve_id: int, device_type: str = THERMOSTAT_VALVE_TYPE
+) -> dict[str, Any] | None:
+    """Find a /devices/list row of one device type by its numeric id."""
+    for row in _thermostat_valve_rows(data, device_type):
         try:
             if int(row.get("id")) == valve_id:
                 return row
@@ -791,9 +810,14 @@ def _thermostat_valve_id_from_path(path: str) -> int | None:
     return None
 
 
-def _thermostat_valve_field(data: dict[str, Any], valve_id: int, field: str) -> Any:
-    """Read one field from a thermostat-valve row in /devices/list."""
-    row = _thermostat_valve_row_by_id(data, valve_id)
+def _thermostat_valve_field(
+    data: dict[str, Any],
+    valve_id: int,
+    field: str,
+    device_type: str = THERMOSTAT_VALVE_TYPE,
+) -> Any:
+    """Read one field from a /devices/list row of one device type."""
+    row = _thermostat_valve_row_by_id(data, valve_id, device_type)
     if not row:
         return None
     return row.get(field)
@@ -820,17 +844,21 @@ def _thermostat_valve_device_path_from_data(data: dict[str, Any], valve_id: int,
     return None
 
 
-def _thermostat_valve_battery(data: dict[str, Any], valve_id: int) -> Any:
+def _thermostat_valve_battery(
+    data: dict[str, Any], valve_id: int, device_type: str = THERMOSTAT_VALVE_TYPE
+) -> Any:
     """Return a normalized battery state for a thermostat valve."""
-    raw = _thermostat_valve_field(data, valve_id, "battery")
+    raw = _thermostat_valve_field(data, valve_id, "battery", device_type)
     if isinstance(raw, str) and raw.strip().lower() == "ok":
         return "OK"
     return raw
 
 
-def _thermostat_valve_zone_name(data: dict[str, Any], valve_id: int) -> Any:
+def _thermostat_valve_zone_name(
+    data: dict[str, Any], valve_id: int, device_type: str = THERMOSTAT_VALVE_TYPE
+) -> Any:
     """Return a zone display name for a thermostat valve when available."""
-    raw_zone = _thermostat_valve_field(data, valve_id, "zone")
+    raw_zone = _thermostat_valve_field(data, valve_id, "zone", device_type)
     if raw_zone is None:
         return None
 
@@ -841,9 +869,11 @@ def _thermostat_valve_zone_name(data: dict[str, Any], valve_id: int) -> Any:
     return raw_zone
 
 
-def _thermostat_valve_protocol_name(data: dict[str, Any], valve_id: int) -> Any:
+def _thermostat_valve_protocol_name(
+    data: dict[str, Any], valve_id: int, device_type: str = THERMOSTAT_VALVE_TYPE
+) -> Any:
     """Return a human-friendly protocol label for a thermostat valve."""
-    raw = _thermostat_valve_field(data, valve_id, "protocol")
+    raw = _thermostat_valve_field(data, valve_id, "protocol", device_type)
     if not isinstance(raw, str):
         return raw
     value = raw.strip()
@@ -888,6 +918,24 @@ def _thermostat_valve_device_info(
     )
 
 
+def _room_thermostat_device_info(
+    uuid: str,
+    data: dict[str, Any],
+    device_id: int,
+    language: str | None = None,
+) -> DeviceInfo:
+    """Build one dedicated HA device for a room thermostat."""
+    row = _thermostat_valve_row_by_id(data, device_id, ROOM_THERMOSTAT_TYPE) or {
+        "id": device_id
+    }
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{uuid}_rth_{device_id}")},
+        name=f"{_device_name(ROOM_THERMOSTAT_TYPE, language)} {_thermostat_valve_name(row)}",
+        manufacturer="Bosch",
+        via_device=(DOMAIN, uuid),
+    )
+
+
 def _thermostat_device_type(data: dict[str, Any], device_id: int) -> str | None:
     """Return the raw /devices/device{N}/type value if present."""
     obj = (data or {}).get(f"/devices/device{device_id}/type")
@@ -907,6 +955,11 @@ def _thermostat_valve_device_info_for_path(
     valve_id = _thermostat_valve_id_from_path(path)
     if valve_id is None:
         return _resolve_device_info(uuid, path, language=language, data=data)
+    if (
+        _thermostat_valve_row_by_id(data, valve_id, ROOM_THERMOSTAT_TYPE) is not None
+        or _thermostat_device_type(data, valve_id) == ROOM_THERMOSTAT_TYPE
+    ):
+        return _room_thermostat_device_info(uuid, data, valve_id, language)
     if _thermostat_valve_row_by_id(data, valve_id) is not None:
         return _thermostat_valve_device_info(uuid, data, valve_id, language)
     if _thermostat_device_type(data, valve_id) == THERMOSTAT_VALVE_TYPE:
@@ -1078,7 +1131,8 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
     for key in sorted((data or {}).keys()):
         if not key.startswith("/devices/device"):
             continue
-        if key in seen_keys:
+        # Room thermostat readings have their own device and descriptions.
+        if key in seen_keys or "/wth/" in key:
             continue
         if (
             "/etrv/valvePosition" in key
@@ -1128,6 +1182,95 @@ def _pointtapi_thermostat_valve_sensor_descriptions(
     return tuple(descriptions)
 
 
+def _pointtapi_room_thermostat_sensor_descriptions(
+    data: dict[str, Any] | None = None,
+) -> tuple[BoschPoinTTAPISensorEntityDescription, ...]:
+    """Return sensors for each room thermostat (wth readings plus its list row)."""
+    data = data or {}
+    rt = ROOM_THERMOSTAT_TYPE
+    descriptions: list[BoschPoinTTAPISensorEntityDescription] = []
+    for row in _thermostat_valve_rows(data, rt):
+        try:
+            device_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+
+        def in_list(d, did=device_id):
+            return _thermostat_valve_row_by_id(d, did, rt) is not None
+
+        def device_info(u, d, lang=None, did=device_id):
+            return _room_thermostat_device_info(u, d, did, lang)
+
+        list_key = f"/devices/list/{rt}/{device_id}"
+        wth = f"/devices/device{device_id}/wth"
+        descriptions.extend(
+            (
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"{wth}/temperatureActual",
+                    translation_key="thermostat_valve_temperature_actual",
+                    available_fn=lambda d, p=f"{wth}/temperatureActual": _path_available(d, p),
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    device_info_fn=device_info,
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"{wth}/humidityActual",
+                    translation_key="indoor_humidity",
+                    available_fn=lambda d, p=f"{wth}/humidityActual": _path_available(d, p),
+                    device_class=SensorDeviceClass.HUMIDITY,
+                    native_unit_of_measurement="%",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    device_info_fn=device_info,
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"{list_key}/signal",
+                    translation_key="thermostat_valve_signal_strength",
+                    native_unit_of_measurement="%",
+                    icon="mdi:signal",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, did=device_id: _thermostat_valve_field(
+                        d, did, "signal", rt
+                    ),
+                    available_fn=in_list,
+                    device_info_fn=device_info,
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"{list_key}/battery",
+                    translation_key="thermostat_valve_battery",
+                    icon="mdi:battery",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, did=device_id: _thermostat_valve_battery(
+                        d, did, rt
+                    ),
+                    available_fn=in_list,
+                    device_info_fn=device_info,
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"{list_key}/zone",
+                    translation_key="thermostat_valve_zone",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, did=device_id: _thermostat_valve_zone_name(
+                        d, did, rt
+                    ),
+                    available_fn=in_list,
+                    device_info_fn=device_info,
+                ),
+                BoschPoinTTAPISensorEntityDescription(
+                    key=f"{list_key}/protocol",
+                    translation_key="thermostat_valve_protocol",
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    value_fn=lambda d, did=device_id: _thermostat_valve_protocol_name(
+                        d, did, rt
+                    ),
+                    available_fn=in_list,
+                    device_info_fn=device_info,
+                ),
+            )
+        )
+    return tuple(descriptions)
+
+
 def _pointtapi_thermostat_valve_switch_descriptions(
     data: dict[str, Any] | None = None,
 ) -> tuple["BoschPoinTTAPISwitchEntityDescription", ...]:
@@ -1153,7 +1296,9 @@ def _pointtapi_thermostat_valve_switch_descriptions(
     for key in sorted((data or {}).keys()):
         if not key.startswith("/devices/device"):
             continue
-        if "/etrv/childLock" not in key and "/thermostat/childLock" not in key:
+        if not any(
+            f"/{head}/childLock" in key for head in ("etrv", "thermostat", "wth")
+        ):
             continue
         if key.endswith("/enabled"):
             discovered.add(key)
@@ -2456,6 +2601,7 @@ def _pointtapi_sensor_descriptions(
     descriptions.extend(_pointtapi_zone_optimum_start_state_sensor_descriptions(data))
     descriptions.extend(_pointtapi_electricity_average_sensor_descriptions(data))
     descriptions.extend(_pointtapi_thermostat_valve_sensor_descriptions(data))
+    descriptions.extend(_pointtapi_room_thermostat_sensor_descriptions(data))
 
     seen_keys: set[str] = set()
     deduped: list[BoschPoinTTAPISensorEntityDescription] = []

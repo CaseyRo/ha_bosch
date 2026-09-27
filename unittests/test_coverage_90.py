@@ -597,5 +597,5 @@ def test_integration_notification_and_device_removal_edges():
     integration_module.create_notification_firmware(hass, "bad firmware")
     device = SimpleNamespace(identifiers={("bosch", "uuid_trv_1")})
     entry = SimpleNamespace(data={"http_xmpp": "pointtapi", "uuid": "uuid"}, runtime_data=None)
-    assert integration_module._pointtapi_valve_ids({}) == set()
+    assert integration_module._pointtapi_child_device_ids({}) == set()
     assert device.identifiers
