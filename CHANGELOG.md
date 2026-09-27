@@ -4,6 +4,20 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.4] — 2026-09-27
+
+### Added
+- **Room thermostats.** A wall thermostat that EasyControl lists as
+  `room_thermostat` (for example a HomematicIP one on a CT200) now gets its own
+  device with temperature, humidity, a calibration offset, a child lock, and
+  signal, battery, zone and protocol. Before, its readings were never fetched.
+  (#69, #76)
+
+### Changed
+- **Home Assistant 2024.5 or later is required.** The integration already
+  relied on `entry.runtime_data`, which arrived in 2024.5; `hacs.json` now says
+  so. (#75)
+
 ## [1.7.0-beta.3] — 2026-09-22
 
 ### Fixed
