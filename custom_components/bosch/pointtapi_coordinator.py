@@ -71,6 +71,7 @@ FAST_DEVICE_RESOURCE_MARKERS = (
     "/devices/list",
     "/etrv/",
     "/thermostat/",
+    "/wth/",
 )
 FAST_APPLIANCE_RESOURCES = {
     "/system/appliance/blockingError",
@@ -187,6 +188,12 @@ DISCOVERY_ALLOWED_PATTERNS = {
         "/devices/device*/thermostat/offset",
         "/devices/device*/thermostat/temperatureActual",
         "/devices/device*/thermostat/valvePosition",
+        # Room thermostats (type room_thermostat) report under wth/.
+        "/devices/device*/wth",
+        "/devices/device*/wth/childLock*",
+        "/devices/device*/wth/humidityActual",
+        "/devices/device*/wth/offset",
+        "/devices/device*/wth/temperatureActual",
     ),
 }
 

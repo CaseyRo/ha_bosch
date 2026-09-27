@@ -104,8 +104,8 @@ def _gateway_entry(protocol=XMPP):
         ({"/devices/list": {"value": [{"id": "bad", "type": "thermostat_valve"}, "bad"]}}, set()),
     ],
 )
-def test_pointtapi_valve_ids_handles_listing_and_device_paths(data, expected):
-    assert integration._pointtapi_valve_ids(data) == expected
+def test_pointtapi_child_device_ids_handles_listing_and_device_paths(data, expected):
+    assert integration._pointtapi_child_device_ids(data) == expected
 
 
 @pytest.mark.asyncio

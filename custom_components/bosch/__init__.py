@@ -162,17 +162,19 @@ _LIBRARY_LOGGER = logging.getLogger("bosch_thermostat_client")
 HOUR = timedelta(hours=1)
 
 
-def _pointtapi_valve_ids(data: dict[str, Any]) -> set[int]:
-    """Return thermostat-valve IDs currently reported by POINTTAPI."""
-    valve_ids: set[int] = set()
+def _pointtapi_child_device_ids(
+    data: dict[str, Any], device_type: str = "thermostat_valve"
+) -> set[int]:
+    """Return IDs of child devices of one type currently reported by POINTTAPI."""
+    device_ids: set[int] = set()
     listing = data.get("/devices/list") if data else None
     values = listing.get("value") if isinstance(listing, dict) else None
     if isinstance(values, list):
         for row in values:
-            if not isinstance(row, dict) or row.get("type") != "thermostat_valve":
+            if not isinstance(row, dict) or row.get("type") != device_type:
                 continue
             try:
-                valve_ids.add(int(row["id"]))
+                device_ids.add(int(row["id"]))
             except (KeyError, TypeError, ValueError):
                 continue
 
@@ -180,13 +182,13 @@ def _pointtapi_valve_ids(data: dict[str, Any]) -> set[int]:
         if not path.startswith("/devices/device") or not path.endswith("/type"):
             continue
         value = resource.get("value") if isinstance(resource, dict) else None
-        if value != "thermostat_valve":
+        if value != device_type:
             continue
         try:
-            valve_ids.add(int(path.removeprefix("/devices/device").removesuffix("/type")))
+            device_ids.add(int(path.removeprefix("/devices/device").removesuffix("/type")))
         except ValueError:
             continue
-    return valve_ids
+    return device_ids
 
 
 async def async_remove_config_entry_device(
@@ -196,20 +198,22 @@ async def async_remove_config_entry_device(
     if entry.data.get(CONF_PROTOCOL) != POINTTAPI:
         return False
 
-    prefix = f"{entry.data.get(UUID)}_trv_"
-    valve_ids = {
-        int(identifier.removeprefix(prefix))
-        for domain, identifier in device_entry.identifiers
-        if domain == DOMAIN
-        and identifier.startswith(prefix)
-        and identifier.removeprefix(prefix).isdigit()
-    }
-    if not valve_ids:
-        return False
-
     coordinator = getattr(getattr(entry, "runtime_data", None), "coordinator", None)
     data = getattr(coordinator, "data", None) or {}
-    return not valve_ids.intersection(_pointtapi_valve_ids(data))
+    for kind, device_type in (("trv", "thermostat_valve"), ("rth", "room_thermostat")):
+        prefix = f"{entry.data.get(UUID)}_{kind}_"
+        device_ids = {
+            int(identifier.removeprefix(prefix))
+            for domain, identifier in device_entry.identifiers
+            if domain == DOMAIN
+            and identifier.startswith(prefix)
+            and identifier.removeprefix(prefix).isdigit()
+        }
+        if device_ids:
+            return not device_ids.intersection(
+                _pointtapi_child_device_ids(data, device_type)
+            )
+    return False
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: BoschConfigEntry):
