@@ -5,7 +5,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.util import dt as dt_util
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 import homeassistant.helpers.device_registry as dr
 import homeassistant.helpers.config_validation as cv
 from .const import (
@@ -205,7 +205,25 @@ def async_remove_services(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     from async_init() long before that call — so removing it unconditionally
     asks HA to drop a service that was never there and logs "Unable to remove
     unknown service bosch/debug_scan" on every unload and reload (#7).
+
+    The services are shared by every gateway, so they stay while another
+    Bosch entry is still loaded.
     """
-    for service in (SERVICE_DEBUG, SERVICE_UPDATE, SERVICE_REFRESH_GATEWAY):
+    if any(
+        entry.entry_id != config_entry.entry_id
+        and entry.state is ConfigEntryState.LOADED
+        for entry in hass.config_entries.async_entries(DOMAIN)
+    ):
+        return
+    for service in (
+        SERVICE_DEBUG,
+        SERVICE_REFRESH_GATEWAY,
+        SERVICE_UPDATE,
+        RECORDING_SERVICE_UPDATE,
+        SERVICE_GET,
+        SERVICE_PUT_STRING,
+        SERVICE_PUT_FLOAT,
+        "fetch_recordings_sensor_range",
+    ):
         if hass.services.has_service(DOMAIN, service):
             hass.services.async_remove(DOMAIN, service)

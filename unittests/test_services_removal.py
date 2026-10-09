@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from homeassistant.config_entries import ConfigEntryState
+
 from custom_components.bosch.const import DOMAIN, SERVICE_DEBUG, SERVICE_REFRESH_GATEWAY, SERVICE_UPDATE
 from custom_components.bosch.services import async_remove_services
 
@@ -36,3 +38,25 @@ def test_registered_services_are_still_removed():
 
     removed = {call.args[1] for call in hass.services.async_remove.call_args_list}
     assert removed == {SERVICE_DEBUG, SERVICE_UPDATE, SERVICE_REFRESH_GATEWAY}
+
+
+def test_services_stay_while_another_gateway_is_loaded():
+    """Services are shared; unloading one gateway must not strip the others."""
+    hass = _hass({SERVICE_UPDATE, SERVICE_REFRESH_GATEWAY})
+    other = MagicMock(entry_id="other", state=ConfigEntryState.LOADED)
+    hass.config_entries.async_entries.return_value = [other]
+
+    async_remove_services(hass, MagicMock(entry_id="this"))
+
+    hass.services.async_remove.assert_not_called()
+
+
+def test_services_removed_when_other_gateway_is_not_loaded():
+    hass = _hass({SERVICE_UPDATE, SERVICE_REFRESH_GATEWAY})
+    other = MagicMock(entry_id="other", state=ConfigEntryState.SETUP_RETRY)
+    hass.config_entries.async_entries.return_value = [other]
+
+    async_remove_services(hass, MagicMock(entry_id="this"))
+
+    removed = {call.args[1] for call in hass.services.async_remove.call_args_list}
+    assert removed == {SERVICE_UPDATE, SERVICE_REFRESH_GATEWAY}
