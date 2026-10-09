@@ -1,6 +1,7 @@
 pytest>=7.0
 pytest-asyncio>=0.21
 aiohttp
-homeassistant
+# ponytail: HA 2026.10 needs Python 3.14.2; CI runs 3.13. Drop the cap when CI moves to 3.14.
+homeassistant<2026.10
 bosch-thermostat-client==0.28.2
 pytest-cov>=5.0
