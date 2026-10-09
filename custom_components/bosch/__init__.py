@@ -946,9 +946,7 @@ class BoschGatewayEntry:
                 FIRMWARE_SCAN_INTERVAL,
             )
             async_call_later(self.hass, 1, self.thermostat_refresh)
-            asyncio.run_coroutine_threadsafe(self.recording_sensors_update(),
-                self.hass.loop
-            )
+            self.hass.async_create_task(self.recording_sensors_update())
 
     async def async_init_bosch(self) -> bool:
         """Initialize Bosch gateway module."""
@@ -1064,6 +1062,13 @@ class BoschGatewayEntry:
                         "Bosch object of entity %s is no longer available. %s",
                         entity.name,
                         err,
+                    )
+                except Exception:
+                    # Anything else must not skip the reschedule below, or the
+                    # 1-hour sensors stop until restart. CancelledError still
+                    # propagates, so unload leaves no timer behind.
+                    _LOGGER.exception(
+                        "Unexpected error updating 1-hour sensor %s", entity.name
                     )
 
         def rounder(t):
