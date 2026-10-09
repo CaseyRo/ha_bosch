@@ -355,6 +355,22 @@ async def test_recording_update_schedules_next_run_and_dispatches():
 
 
 @pytest.mark.asyncio
+async def test_recording_update_reschedules_after_unexpected_error():
+    gateway_entry = _gateway_entry(XMPP)
+    broken = SimpleNamespace(
+        enabled=True, name="Broken", signal=SIGNAL_SENSOR_UPDATE_BOSCH,
+        bosch_object=SimpleNamespace(update=AsyncMock(side_effect=KeyError("x"))),
+    )
+    gateway_entry._data.recording = [broken]
+    gateway_entry._data.recording_interval = None
+
+    with patch.object(integration, "async_track_point_in_utc_time", return_value=MagicMock()) as track:
+        await gateway_entry.recording_sensors_update()
+
+    track.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_firmware_refresh_and_reset_delegate_to_gateway():
     gateway_entry = _gateway_entry(XMPP)
     gateway_entry._update_lock = asyncio.Lock()
