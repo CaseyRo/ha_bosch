@@ -19,6 +19,7 @@ from custom_components.bosch.pointtapi_entities import (
     _coerce_int_like,
     _current_hour_entry,
     _decode_zone_name,
+    _dhw_actual_temperature,
     _device_name,
     _gateway_installed_version,
     _gateway_latest_version,
@@ -47,6 +48,7 @@ from custom_components.bosch.pointtapi_entities import (
     _thermostat_valve_warning_state,
     _thermostat_valve_zone_name,
     _today_hourly_entries,
+    _val as read_value,
     _zone_assigned_program_name,
     _zone_clock_program_id,
     _zone_id_from_path,
@@ -180,6 +182,38 @@ class TestEntityHelperConversions:
         assert _path_available({}, "/missing") is False
         assert _path_available({"/x": {"available": "false"}}, "/x") is False
         assert _path_available({"/x": {"available": "true"}}, "/x") is True
+
+    def test_value_flagged_unavailable_reads_as_none(self):
+        # #61, payload shape from the #29 hybrid dump: the gateway serves a
+        # placeholder 0.0 on a path the appliance flags unavailable.
+        data = {
+            "/system/sensors/temperatures/return": {
+                "type": "floatValue", "value": 0.0,
+                "used": "true", "available": "false",
+            },
+            "/system/sensors/temperatures/supply": {
+                "type": "floatValue", "value": 41.5, "available": "true",
+            },
+        }
+        assert read_value(data, "/system/sensors/temperatures/return") is None
+        assert read_value(data, "/system/sensors/temperatures/supply") == 41.5
+        # Only `value` is masked; the flag itself stays readable.
+        assert read_value(data, "/system/sensors/temperatures/return", "available") == "false"
+
+    def test_dhw_actual_temperature_drops_placeholders(self):
+        def dhw(temp, system="storage"):
+            return {
+                "/dhwCircuits/dhw1/hotWaterSystem": {"value": system},
+                "/dhwCircuits/dhw1/actualTemp": {
+                    "type": "floatValue", "value": temp, "available": "true",
+                },
+            }
+
+        # #83: a stored tank reporting 0 flagged available.
+        assert _dhw_actual_temperature(dhw(0)) is None
+        assert _dhw_actual_temperature(dhw(47.0)) == 47.0
+        # #57: instant hot water has nothing stored to measure.
+        assert _dhw_actual_temperature(dhw(52.0, "instant")) is None
 
     def test_zone_discovery_and_room_suffix_ignore_unrelated_payloads(self):
         data = {

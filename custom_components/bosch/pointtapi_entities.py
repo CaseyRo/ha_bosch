@@ -202,16 +202,32 @@ _APPLIANCE_STATUS_BY_CAUSE: dict[int, str] = _build_appliance_status_by_cause(
 
 
 def _val(data: dict[str, Any], path: str, key: str = VALUE_KEY) -> Any:
-    """Get key (default 'value') from data[path] if present."""
+    """Get key (default 'value') from data[path] if present.
+
+    A path the appliance flags `available: "false"` reads as None: the gateway
+    still serves a placeholder there, usually 0.0, and it is not a reading
+    (#61). The entity stays available, so it recovers if the flag flips.
+    """
     obj = data.get(path) if data else None
-    return obj.get(key) if isinstance(obj, dict) else None
+    if not isinstance(obj, dict):
+        return None
+    if key == VALUE_KEY and obj.get("available") == "false":
+        return None
+    return obj.get(key)
 
 
 def _dhw_actual_temperature(data: dict[str, Any]) -> Any:
-    """Return no temperature for instant hot-water systems."""
+    """Return no temperature for instant hot-water systems or a placeholder 0.
+
+    ponytail: an exact 0.0 is treated as "no reading". Some stored-tank
+    installs report 0 flagged available, and the Bosch app shows nothing
+    there either (#83). A heated tank never reads 0 °C, so nothing real is
+    lost; a frozen-tank alarm would need its own sensor anyway.
+    """
     if _val(data, "/dhwCircuits/dhw1/hotWaterSystem") == "instant":
         return None
-    return _val(data, "/dhwCircuits/dhw1/actualTemp")
+    value = _val(data, "/dhwCircuits/dhw1/actualTemp")
+    return None if value == 0 else value
 
 
 def _decode_zone_name(value: Any) -> str | None:
