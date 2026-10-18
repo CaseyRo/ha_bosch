@@ -1256,7 +1256,7 @@ class TestFullResourceScan:
         client = AsyncMock()
         client.get = AsyncMock(return_value={"id": "/x"})
 
-        scan = await full_resource_scan(client, timeout=0)
+        scan = await full_resource_scan(client, ceiling=0)
 
         assert scan["partial"] is True
         assert scan["resources"] == {}

@@ -469,7 +469,7 @@ async def _fetch_reference_tree(
 
 
 async def full_resource_scan(
-    client: PoinTTAPIClient, *, timeout: float = FULL_SCAN_TIMEOUT
+    client: PoinTTAPIClient, *, ceiling: float = FULL_SCAN_TIMEOUT
 ) -> dict[str, Any]:
     """Walk every reference the gateway exposes, for debug_scan (#63).
 
@@ -480,7 +480,7 @@ async def full_resource_scan(
     """
     loop = asyncio.get_running_loop()
     started = loop.time()
-    deadline = started + timeout
+    deadline = started + ceiling
     # Top-level roots (/heatingCircuits rather than /heatingCircuits/hc1) so a
     # second circuit or zone is found, plus the coordinator roots for gateways
     # that won't list a parent.
