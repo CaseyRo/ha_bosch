@@ -247,7 +247,7 @@ async def _get_discovery_path(
     client: PoinTTAPIClient,
     path: str,
     *,
-    timeout: float = DISCOVERY_OPTIONAL_TIMEOUT,
+    timeout: float = DISCOVERY_OPTIONAL_TIMEOUT,  # noqa: ASYNC109 - per-path cap folded into the walk's deadline below; asyncio.timeout is applied inside
     deadline: float | None = None,
     timings: list[tuple[str, float]] | None = None,
 ) -> Any:
