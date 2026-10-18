@@ -478,7 +478,7 @@
       },
       "pointtapi_oauth": {
         "title": "Complete sign-in",
-        "description": "Paste the **callback URL** or just the **code** below. After you sign in, your browser jumps to an address starting with `com.bosch.tt.dashtt.pointt://app/login?code=` and usually shows a cannot-open-page or blank screen — that is expected. Copy the whole address, or only the value after `code=`.\n\n**Having trouble?** If the address bar looks empty after signing in, open your browser history — the failed `com.bosch.tt.dashtt.pointt://` entry is recorded there and the address can be copied from it.",
+        "description": "**Not signed in yet, or did you close this dialog earlier?** [Open the Bosch login page]({auth_url}) first and sign in there.\n\nPaste the **callback URL** or just the **code** below. After you sign in, your browser jumps to an address starting with `com.bosch.tt.dashtt.pointt://app/login?code=` and usually shows a cannot-open-page or blank screen — that is expected. Copy the whole address, or only the value after `code=`.\n\n**Having trouble?** If the address bar looks empty after signing in, open your browser history — the failed `com.bosch.tt.dashtt.pointt://` entry is recorded there and the address can be copied from it.",
         "data": {
           "oauth_callback_url": "Callback URL or code"
         }

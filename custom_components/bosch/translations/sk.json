@@ -464,7 +464,7 @@
       },
       "pointtapi_oauth": {
         "title": "Dokončiť prihlásenie",
-        "description": "Nižšie vložte **callback URL** alebo iba **kód**. Po prihlásení prehliadač prejde na adresu začínajúcu `com.bosch.tt.dashtt.pointt://app/login?code=` a zvyčajne zobrazí chybovú alebo prázdnu stránku — to je normálne. Skopírujte celú adresu alebo iba hodnotu za `code=`.\n\n**Problémy?** Ak sa po prihlásení zdá adresný riadok prázdny, otvorte históriu prehliadača — neúspešná položka `com.bosch.tt.dashtt.pointt://` je tam zaznamenaná a adresu z nej môžete skopírovať.",
+        "description": "**Ešte nie ste prihlásení alebo ste toto okno predtým zavreli?** [Najprv otvorte prihlasovaciu stránku Bosch]({auth_url}) a prihláste sa tam.\n\nNižšie vložte **callback URL** alebo iba **kód**. Po prihlásení prehliadač prejde na adresu začínajúcu `com.bosch.tt.dashtt.pointt://app/login?code=` a zvyčajne zobrazí chybovú alebo prázdnu stránku — to je normálne. Skopírujte celú adresu alebo iba hodnotu za `code=`.\n\n**Problémy?** Ak sa po prihlásení zdá adresný riadok prázdny, otvorte históriu prehliadača — neúspešná položka `com.bosch.tt.dashtt.pointt://` je tam zaznamenaná a adresu z nej môžete skopírovať.",
         "data": {
           "oauth_callback_url": "Callback URL alebo kód"
         }

@@ -464,7 +464,7 @@
       },
       "pointtapi_oauth": {
         "title": "Dokończ logowanie",
-        "description": "Wklej poniżej **adres URL wywołania zwrotnego** lub tylko **kod**. Po zalogowaniu przeglądarka przechodzi na adres zaczynający się od `com.bosch.tt.dashtt.pointt://app/login?code=` i zwykle pokazuje stronę błędu lub pustą stronę — to normalne. Skopiuj cały adres lub tylko wartość po `code=`.\n\n**Problemy?** Jeśli po zalogowaniu pasek adresu wygląda na pusty, otwórz historię przeglądarki — nieudany wpis `com.bosch.tt.dashtt.pointt://` jest tam zapisany i można z niego skopiować adres.",
+        "description": "**Nie zalogowano się jeszcze lub to okno zostało wcześniej zamknięte?** [Najpierw otwórz stronę logowania Bosch]({auth_url}) i zaloguj się tam.\n\nWklej poniżej **adres URL wywołania zwrotnego** lub tylko **kod**. Po zalogowaniu przeglądarka przechodzi na adres zaczynający się od `com.bosch.tt.dashtt.pointt://app/login?code=` i zwykle pokazuje stronę błędu lub pustą stronę — to normalne. Skopiuj cały adres lub tylko wartość po `code=`.\n\n**Problemy?** Jeśli po zalogowaniu pasek adresu wygląda na pusty, otwórz historię przeglądarki — nieudany wpis `com.bosch.tt.dashtt.pointt://` jest tam zapisany i można z niego skopiować adres.",
         "data": {
           "oauth_callback_url": "Adres URL wywołania zwrotnego lub kod"
         }

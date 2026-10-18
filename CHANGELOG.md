@@ -4,6 +4,12 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **Renewing the sign-in after closing the dialog shows the login link again.**
+  Home Assistant keeps a reauth flow alive when its dialog is closed, so
+  reopening **Resolve issue** went straight to the code-entry step, which had no
+  link. That step now opens with the Bosch login link, in every language. (#80)
+
 ## [1.7.0-beta.4] — 2026-09-27
 
 ### Added

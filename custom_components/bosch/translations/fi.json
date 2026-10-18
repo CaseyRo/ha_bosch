@@ -478,7 +478,7 @@
       },
       "pointtapi_oauth": {
         "title": "Viimeistele kirjautuminen",
-        "description": "Liitä alle **callback-URL-osoite** tai pelkkä **koodi**. Kirjautumisen jälkeen selain siirtyy osoitteeseen, joka alkaa `com.bosch.tt.dashtt.pointt://app/login?code=`, ja näyttää yleensä tyhjän näytön tai virheen sivun avaamisesta - se on odotettua. Kopioi koko osoite tai vain `code=`-kohdan jälkeinen arvo.\n\n**Onko ongelmia?** Jos osoiterivi näyttää tyhjältä kirjautumisen jälkeen, avaa selaimen historia - epäonnistunut `com.bosch.tt.dashtt.pointt://`-merkintä on tallennettu sinne, ja osoite voidaan kopioida siitä.",
+        "description": "**Etkö ole vielä kirjautunut, vai suljitko tämän ikkunan aiemmin?** [Avaa ensin Boschin kirjautumissivu]({auth_url}) ja kirjaudu siellä.\n\nLiitä alle **callback-URL-osoite** tai pelkkä **koodi**. Kirjautumisen jälkeen selain siirtyy osoitteeseen, joka alkaa `com.bosch.tt.dashtt.pointt://app/login?code=`, ja näyttää yleensä tyhjän näytön tai virheen sivun avaamisesta - se on odotettua. Kopioi koko osoite tai vain `code=`-kohdan jälkeinen arvo.\n\n**Onko ongelmia?** Jos osoiterivi näyttää tyhjältä kirjautumisen jälkeen, avaa selaimen historia - epäonnistunut `com.bosch.tt.dashtt.pointt://`-merkintä on tallennettu sinne, ja osoite voidaan kopioida siitä.",
         "data": {
           "oauth_callback_url": "Callback-URL tai koodi"
         }

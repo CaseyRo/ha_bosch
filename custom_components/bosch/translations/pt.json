@@ -478,7 +478,7 @@
       },
       "pointtapi_oauth": {
         "title": "Concluir início de sessão",
-        "description": "Cole o URL de callback ou o código de início de sessão.",
+        "description": "**Ainda não iniciou sessão ou fechou esta janela antes?** [Abra primeiro a página de início de sessão da Bosch]({auth_url}) e inicie sessão aí.\n\nCole o URL de callback ou o código de início de sessão.",
         "data": {
           "oauth_callback_url": "URL de callback ou código"
         }

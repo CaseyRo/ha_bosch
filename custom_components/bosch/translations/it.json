@@ -464,7 +464,7 @@
       },
       "pointtapi_oauth": {
         "title": "Completa l'accesso",
-        "description": "Incolla qui sotto l'**URL di callback** o solo il **codice**. Dopo l'accesso, il browser passa a un indirizzo che inizia con `com.bosch.tt.dashtt.pointt://app/login?code=` e di solito mostra una pagina di errore o vuota — è normale. Copia l'intero indirizzo, oppure solo il valore dopo `code=`.\n\n**Problemi?** Se dopo l'accesso la barra degli indirizzi sembra vuota, apri la cronologia del browser: la voce `com.bosch.tt.dashtt.pointt://` non riuscita è registrata lì e l'indirizzo può essere copiato da quella.",
+        "description": "**Non hai ancora effettuato l'accesso o hai chiuso questa finestra prima?** [Apri prima la pagina di accesso Bosch]({auth_url}) e accedi lì.\n\nIncolla qui sotto l'**URL di callback** o solo il **codice**. Dopo l'accesso, il browser passa a un indirizzo che inizia con `com.bosch.tt.dashtt.pointt://app/login?code=` e di solito mostra una pagina di errore o vuota — è normale. Copia l'intero indirizzo, oppure solo il valore dopo `code=`.\n\n**Problemi?** Se dopo l'accesso la barra degli indirizzi sembra vuota, apri la cronologia del browser: la voce `com.bosch.tt.dashtt.pointt://` non riuscita è registrata lì e l'indirizzo può essere copiato da quella.",
         "data": {
           "oauth_callback_url": "URL di callback o codice"
         }

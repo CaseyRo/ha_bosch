@@ -478,7 +478,7 @@
       },
       "pointtapi_oauth": {
         "title": "Fuldfør login",
-        "description": "Indsæt **callback-URL'en** eller kun **koden** nedenfor. Efter login springer browseren til en adresse, der starter med `com.bosch.tt.dashtt.pointt://app/login?code=`, og viser som regel en tom side eller en fejl om, at siden ikke kan åbnes - det er forventet. Kopiér hele adressen eller kun værdien efter `code=`.\n\n**Har du problemer?** Hvis adresselinjen ser tom ud efter login, kan du åbne browserhistorikken - den mislykkede `com.bosch.tt.dashtt.pointt://`-post findes der, og adressen kan kopieres derfra.",
+        "description": "**Ikke logget ind endnu, eller lukkede du denne dialog tidligere?** [Åbn Bosch-loginsiden]({auth_url}) først, og log ind der.\n\nIndsæt **callback-URL'en** eller kun **koden** nedenfor. Efter login springer browseren til en adresse, der starter med `com.bosch.tt.dashtt.pointt://app/login?code=`, og viser som regel en tom side eller en fejl om, at siden ikke kan åbnes - det er forventet. Kopiér hele adressen eller kun værdien efter `code=`.\n\n**Har du problemer?** Hvis adresselinjen ser tom ud efter login, kan du åbne browserhistorikken - den mislykkede `com.bosch.tt.dashtt.pointt://`-post findes der, og adressen kan kopieres derfra.",
         "data": {
           "oauth_callback_url": "Callback-URL eller kode"
         }
