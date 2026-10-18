@@ -20,6 +20,7 @@ from custom_components.bosch.pointtapi_coordinator import (
     _program_roots,
     _zone_roots,
     BULK_WARN_INTERVAL,
+    full_resource_scan,
 )
 
 
@@ -1210,3 +1211,53 @@ class TestAsyncUpdateDataMapping:
         coord._fetch = AsyncMock(side_effect=ValueError("surprise"))
         with pytest.raises(UpdateFailed):
             await coord._async_update_data()
+
+
+class TestFullResourceScan:
+    """debug_scan's uncapped walk (#63)."""
+
+    @pytest.mark.asyncio
+    async def test_walks_past_the_startup_limits(self):
+        tree = {
+            "/gateway": ["/gateway/a"],
+            "/gateway/a": ["/gateway/a/b"],
+            "/gateway/a/b": ["/gateway/a/b/c"],
+            "/gateway/a/b/c": ["/gateway/a/b/c/d"],
+            # A cycle back to the root must not refetch it.
+            "/gateway/a/b/c/d": ["/gateway"],
+            "/programs": ["/programs/pg1"],
+            # Filtered out by the startup allowlist.
+            "/programs/pg1": ["/programs/pg1/switchPoints"],
+        }
+
+        async def mock_get(path):
+            if path == "/zones":
+                raise RuntimeError("boom")
+            if path == "/heatingCircuits":
+                raise ConfigEntryAuthFailed
+            return {"id": path, "references": [{"id": c} for c in tree.get(path, [])]}
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=mock_get)
+
+        scan = await full_resource_scan(client)
+
+        assert scan["partial"] is False
+        resources = scan["resources"]
+        assert "/gateway/a/b/c/d" in resources  # depth 5; startup stops at 3
+        assert "/programs/pg1/switchPoints" in resources
+        assert not _discovery_path_needed("/programs/pg1/switchPoints")
+        assert [c.args[0] for c in client.get.call_args_list].count("/gateway") == 1
+        assert scan["errors"]["/zones"] == "RuntimeError: boom"
+        assert scan["errors"]["/heatingCircuits"] == "401/403"
+
+    @pytest.mark.asyncio
+    async def test_flags_a_scan_cut_off_by_the_ceiling(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value={"id": "/x"})
+
+        scan = await full_resource_scan(client, timeout=0)
+
+        assert scan["partial"] is True
+        assert scan["resources"] == {}
+        client.get.assert_not_awaited()

@@ -287,7 +287,7 @@ Both protocol paths share these, addressed by device id:
 
 - `bosch.refresh_gateway` — force a refresh now. On a cloud entry that is a coordinator refresh; on XMPP it re-reads the gateway. **Replaces `bosch.update_thermostat`**, which still works as a deprecated alias.
 - `bosch.send_custom_get` / `bosch.send_custom_put_float` / `bosch.send_custom_put_string` — read or write any API path directly. Useful for probing resources this integration doesn't expose yet; put the result in an issue.
-- `bosch.debug_scan` — **XMPP/HTTP entries only**. On a cloud entry, use the diagnostics download plus `send_custom_get` instead.
+- `bosch.debug_scan` — write every resource the gateway exposes to `www/bosch_scan.json`. On a cloud entry it walks the whole reference tree, not just the paths this integration reads, so it can take several minutes (capped at 10; a dump cut off there says `"partial": true`). The file is redacted like a diagnostics download, so it can go straight into an issue.
 
 The recording and hot-water services (`bosch.update_recordings_sensor`, `bosch.fetch_recordings_sensor_range`, `bosch.set_dhw_charge`) are XMPP/HTTP concerns and behave as before.
 
