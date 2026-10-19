@@ -27,6 +27,9 @@ All notable changes to this Bosch Home Assistant custom component will be docume
   stored-tank systems report the tank temperature as 0 even though it's flagged
   available; the Bosch app shows nothing there either. It now shows as unknown.
   (#83)
+- **Services keep working after Home Assistant 2027.10.** Finding the gateway
+  for a service call used `DeviceEntry.config_entries`, which HA 2026.10 warns
+  about and 2027.10 removes. It now uses `config_entry_id` where HA has it.
 
 ## [1.7.0-beta.4] — 2026-09-27
 

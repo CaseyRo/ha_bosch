@@ -42,7 +42,10 @@ def find_gateway_entry(hass: HomeAssistant, devices_id: str) -> list:
     for target in devices_id:
         device = registry.async_get(target)
         if device:
-            for entry_id in device.config_entries:
+            # config_entry_id replaces config_entries (removed in HA 2027.10);
+            # older HA versions only have config_entries.
+            entry_id = getattr(device, "config_entry_id", None)
+            for entry_id in [entry_id] if entry_id else device.config_entries:
                 entry = hass.config_entries.async_get_entry(entry_id)
                 if entry and entry.domain == DOMAIN and entry not in matched_entries:
                     matched_entries.append(entry)
