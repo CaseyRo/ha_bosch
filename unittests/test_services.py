@@ -83,6 +83,21 @@ class TestFindGatewayEntry:
         assert result == ["gateway-entry"]
         assert registry.async_get.call_count == 2
 
+    def test_prefers_config_entry_id_when_present(self):
+        hass = MagicMock()
+        entry = SimpleNamespace(
+            domain=DOMAIN,
+            runtime_data=SimpleNamespace(gateway_entry="gateway-entry"),
+        )
+        device = SimpleNamespace(config_entry_id="entry1", config_entries={"stale"})
+        registry = MagicMock()
+        registry.async_get.return_value = device
+        hass.config_entries.async_get_entry.return_value = entry
+
+        with patch("custom_components.bosch.services.dr.async_get", return_value=registry):
+            assert find_gateway_entry(hass, ["device1"]) == ["gateway-entry"]
+        hass.config_entries.async_get_entry.assert_called_once_with("entry1")
+
     def test_ignores_entries_without_runtime_data(self):
         hass = MagicMock()
         entry = SimpleNamespace(domain=DOMAIN, runtime_data=None)
