@@ -464,7 +464,7 @@
       },
       "pointtapi_oauth": {
         "title": "Anmeldung abschließen",
-        "description": "Fügen Sie unten die **Callback-URL** oder nur den **Code** ein. Nach der Anmeldung springt Ihr Browser zu einer Adresse, die mit `com.bosch.tt.dashtt.pointt://app/login?code=` beginnt, und zeigt meist eine Fehler- oder leere Seite — das ist normal. Kopieren Sie die gesamte Adresse oder nur den Wert nach `code=`.\n\n**Probleme?** Wenn die Adressleiste nach der Anmeldung leer wirkt, öffnen Sie den Browserverlauf — der fehlgeschlagene Eintrag `com.bosch.tt.dashtt.pointt://` steht dort und die Adresse lässt sich von dort kopieren.",
+        "description": "**Noch nicht angemeldet, oder haben Sie diesen Dialog vorhin geschlossen?** [Öffnen Sie zuerst die Bosch-Anmeldeseite]({auth_url}) und melden Sie sich dort an.\n\nFügen Sie unten die **Callback-URL** oder nur den **Code** ein. Nach der Anmeldung springt Ihr Browser zu einer Adresse, die mit `com.bosch.tt.dashtt.pointt://app/login?code=` beginnt, und zeigt meist eine Fehler- oder leere Seite — das ist normal. Kopieren Sie die gesamte Adresse oder nur den Wert nach `code=`.\n\n**Probleme?** Wenn die Adressleiste nach der Anmeldung leer wirkt, öffnen Sie den Browserverlauf — der fehlgeschlagene Eintrag `com.bosch.tt.dashtt.pointt://` steht dort und die Adresse lässt sich von dort kopieren.",
         "data": {
           "oauth_callback_url": "Callback-URL oder Code"
         }

@@ -6,6 +6,9 @@ setup ensures relative imports resolve correctly.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -147,6 +150,19 @@ async def test_pointtapi_oauth_open_submit_goes_to_oauth(mock_hass):
     result = await flow.async_step_pointtapi_oauth_open({})
     assert result["type"] == "form"
     assert result["step_id"] == "pointtapi_oauth"
+
+
+def test_pointtapi_oauth_step_text_carries_login_link():
+    """The paste step shows the login link itself (#80).
+
+    A reauth flow the integration started survives a closed dialog, and
+    reopening it resumes at this step, past the one that introduces the link.
+    """
+    strings = json.loads(
+        (Path(__file__).parent.parent / "custom_components/bosch/strings.json")
+        .read_text(encoding="utf-8")
+    )
+    assert "{auth_url}" in strings["config"]["step"]["pointtapi_oauth"]["description"]
 
 
 @pytest.mark.asyncio

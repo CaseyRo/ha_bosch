@@ -464,7 +464,7 @@
       },
       "pointtapi_oauth": {
         "title": "Aanmelding voltooien",
-        "description": "Plak hieronder de **callback-URL** of alleen de **code**. Na het inloggen gaat uw browser naar een adres dat begint met `com.bosch.tt.dashtt.pointt://app/login?code=` en toont meestal een foutpagina of een lege pagina — dat is normaal. Kopieer het volledige adres, of alleen de waarde na `code=`.\n\n**Lukt het niet?** Als de adresbalk na het aanmelden leeg lijkt, open dan je browsergeschiedenis — het mislukte `com.bosch.tt.dashtt.pointt://`-item staat daar en het adres kun je daaruit kopiëren.",
+        "description": "**Nog niet ingelogd, of heb je dit venster eerder gesloten?** [Open eerst de Bosch-inlogpagina]({auth_url}) en log daar in.\n\nPlak hieronder de **callback-URL** of alleen de **code**. Na het inloggen gaat uw browser naar een adres dat begint met `com.bosch.tt.dashtt.pointt://app/login?code=` en toont meestal een foutpagina of een lege pagina — dat is normaal. Kopieer het volledige adres, of alleen de waarde na `code=`.\n\n**Lukt het niet?** Als de adresbalk na het aanmelden leeg lijkt, open dan je browsergeschiedenis — het mislukte `com.bosch.tt.dashtt.pointt://`-item staat daar en het adres kun je daaruit kopiëren.",
         "data": {
           "oauth_callback_url": "Callback-URL of code"
         }

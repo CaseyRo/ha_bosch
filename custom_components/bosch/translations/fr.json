@@ -464,7 +464,7 @@
       },
       "pointtapi_oauth": {
         "title": "Finaliser la connexion",
-        "description": "Collez ci-dessous l'**URL de rappel** ou simplement le **code**. Après la connexion, votre navigateur accède à une adresse commençant par `com.bosch.tt.dashtt.pointt://app/login?code=` et affiche généralement une page d'erreur ou vide — c'est normal. Copiez l'adresse entière, ou seulement la valeur après `code=`.\n\n**Un problème ?** Si la barre d'adresse semble vide après la connexion, ouvrez l'historique du navigateur — l'entrée `com.bosch.tt.dashtt.pointt://` qui a échoué s'y trouve et l'adresse peut y être copiée.",
+        "description": "**Pas encore connecté, ou vous avez fermé cette fenêtre plus tôt ?** [Ouvrez d'abord la page de connexion Bosch]({auth_url}) et connectez-vous.\n\nCollez ci-dessous l'**URL de rappel** ou simplement le **code**. Après la connexion, votre navigateur accède à une adresse commençant par `com.bosch.tt.dashtt.pointt://app/login?code=` et affiche généralement une page d'erreur ou vide — c'est normal. Copiez l'adresse entière, ou seulement la valeur après `code=`.\n\n**Un problème ?** Si la barre d'adresse semble vide après la connexion, ouvrez l'historique du navigateur — l'entrée `com.bosch.tt.dashtt.pointt://` qui a échoué s'y trouve et l'adresse peut y être copiée.",
         "data": {
           "oauth_callback_url": "URL de rappel ou code"
         }
