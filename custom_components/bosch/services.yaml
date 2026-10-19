@@ -1,7 +1,7 @@
 debug_scan:
   description: >-
-    Run raw scan for Bosch (XMPP/HTTP local devices only). It will be available as bosch_scan.json in your www dir of Home Assistant. You can check url of the file in logs after it. It doesn't matter which entity you choose. It makes scan for whole your setup. Typically it is https://ha/local/bosch_scan.json?vX .
-    For POINTTAPI cloud devices, download integration diagnostics or use bosch.send_custom_get for ad-hoc path queries.
+    Run raw scan for Bosch. It will be available as bosch_scan.json in your www dir of Home Assistant. You can check url of the file in logs after it. It doesn't matter which entity you choose. It makes scan for whole your setup. Typically it is https://ha/local/bosch_scan.json?vX .
+    On a POINTTAPI cloud device it walks every resource the gateway exposes, which can take several minutes (capped at 10). The file is redacted like a diagnostics download, so it can be attached to an issue.
   fields:
     device_id:
       name: Device

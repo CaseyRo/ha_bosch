@@ -182,3 +182,38 @@ async def test_pointtapi_thermostat_refresh_triggers_coordinator():
 
     await gw_entry.thermostat_refresh()
     coordinator.async_request_refresh.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_pointtapi_rawscan_writes_a_redacted_full_scan():
+    """debug_scan on a cloud entry crawls and redacts like diagnostics (#63)."""
+    hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
+    entry = SimpleNamespace(
+        entry_id="entry-123",
+        runtime_data=SimpleNamespace(gateway=None, coordinator=None),
+    )
+    gw_entry = _gateway_entry(hass, entry)
+    scan = {
+        "partial": False,
+        "duration_s": 1.0,
+        "resources": {
+            "/gateway": {"id": "/gateway", "uuid": "abc-123"},
+            "/gateway/user": {"id": "/gateway/user", "value": "personal"},
+            "/zones/zn1/temp": {"id": "/zones/zn1/temp", "value": 21.5},
+        },
+        "errors": {},
+    }
+    with (
+        patch.object(
+            bosch_module, "full_resource_scan", AsyncMock(return_value=scan)
+        ),
+        patch.object(bosch_module, "get_url", return_value="http://ha"),
+        patch.object(bosch_module, "async_create_persistent_notification"),
+    ):
+        result = await gw_entry.make_rawscan("www/bosch_scan.json")
+
+    saved = hass.async_add_executor_job.await_args.args[2]
+    assert saved is result
+    assert saved["resources"]["/gateway"]["uuid"] == "**REDACTED**"
+    assert saved["resources"]["/gateway/user"]["value"] == "**REDACTED**"
+    assert saved["resources"]["/zones/zn1/temp"]["value"] == 21.5

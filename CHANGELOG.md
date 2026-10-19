@@ -4,6 +4,15 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Added
+- **`bosch.debug_scan` works on cloud (POINTTAPI) entries.** It walks every
+  resource the gateway exposes, not only the paths the integration reads, and
+  writes `www/bosch_scan.json` with the responses, the paths that failed, and
+  whether the scan finished. The file is redacted like a diagnostics download,
+  so it can be attached to an issue as it is. A large installation takes a few
+  minutes; the scan stops at 10 minutes and marks the file `"partial": true`.
+  (#63)
+
 ### Fixed
 - **Renewing the sign-in after closing the dialog shows the login link again.**
   Home Assistant keeps a reauth flow alive when its dialog is closed, so

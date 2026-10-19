@@ -83,7 +83,8 @@ from homeassistant.util.json import load_json
 
 
 from .pointtapi_client import PoinTTAPIClient
-from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator
+from .diagnostics import _redact_path_response
+from .pointtapi_coordinator import PoinTTAPIDataUpdateCoordinator, full_resource_scan
 from .pointtapi_oauth import ensure_valid_token
 from .pointtapi_entities import _device_by_identifier, _gateway_product_info
 
@@ -827,6 +828,7 @@ class BoschGatewayEntry:
             startup_phases.append(
                 ("platform_setups", time.monotonic() - platforms_started)
             )
+            async_register_debug_service(hass=self.hass, entry=self)
             phase_summary = "; ".join(
                 f"{name}={elapsed:.3f}s" for name, elapsed in startup_phases
             )
@@ -1202,33 +1204,53 @@ class BoschGatewayEntry:
     async def make_rawscan(self, filename: str) -> dict:
         """Create rawscan from service."""
         rawscan = {}
-        async with self._update_lock:
-            _LOGGER.info("Starting rawscan of Bosch component")
-            async_create_persistent_notification(
-                self.hass,
-                title="Bosch scan",
-                message=("Starting rawscan"),
-                notification_id=NOTIFICATION_ID,
-            )
-            rawscan = await self.gateway.rawscan()
-            try:
-                save_json(filename, rawscan)
-            except (FileNotFoundError, OSError) as err:
-                _LOGGER.error("Can't create file. %s", err)
-                if rawscan:
-                    return rawscan
-            url = "{}{}{}".format(
-                get_url(self.hass),
-                "/local/bosch_scan.json?v",
-                random.randint(0, 5000),
-            )
-            _LOGGER.info(f"Rawscan success. Your URL: {url}")
-            async_create_persistent_notification(
-                self.hass,
-                title="Bosch scan",
-                message=(f"[{url}]({url})"),
-                notification_id=NOTIFICATION_ID,
-            )
+        _LOGGER.info("Starting rawscan of Bosch component")
+        async_create_persistent_notification(
+            self.hass,
+            title="Bosch scan",
+            message=(
+                "Starting rawscan. On a cloud (POINTTAPI) entry this walks "
+                "every resource and can take several minutes."
+                if self._protocol == POINTTAPI
+                else "Starting rawscan"
+            ),
+            notification_id=NOTIFICATION_ID,
+        )
+        if self._protocol == POINTTAPI:
+            # No update lock: the crawl can run for minutes and the coordinator
+            # keeps polling beside it. Redacted like a diagnostics download, so
+            # the file can be attached to an issue as it is (#63).
+            rawscan = await full_resource_scan(self.gateway)
+            rawscan["resources"] = {
+                path: _redact_path_response(path, resp)
+                for path, resp in rawscan["resources"].items()
+            }
+        else:
+            async with self._update_lock:
+                rawscan = await self.gateway.rawscan()
+        try:
+            await self.hass.async_add_executor_job(save_json, filename, rawscan)
+        except (FileNotFoundError, OSError) as err:
+            _LOGGER.error("Can't create file. %s", err)
+            if rawscan:
+                return rawscan
+        url = "{}{}{}".format(
+            get_url(self.hass),
+            "/local/bosch_scan.json?v",
+            random.randint(0, 5000),
+        )
+        _LOGGER.info(f"Rawscan success. Your URL: {url}")
+        partial = (
+            " The scan hit its 10-minute ceiling, so the file is partial."
+            if isinstance(rawscan, dict) and rawscan.get("partial")
+            else ""
+        )
+        async_create_persistent_notification(
+            self.hass,
+            title="Bosch scan",
+            message=(f"[{url}]({url}){partial}"),
+            notification_id=NOTIFICATION_ID,
+        )
         return rawscan
 
     async def async_reset(self) -> bool:

@@ -11,6 +11,7 @@ import asyncio
 import fnmatch
 import logging
 import time
+from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
 
@@ -89,6 +90,10 @@ REDISCOVERY_INTERVAL = 24 * 3600
 BULK_WARN_INTERVAL = 3600
 DISCOVERY_OPTIONAL_TIMEOUT = 8
 DISCOVERY_TOTAL_TIMEOUT = 60
+# Ceiling for the debug_scan crawl (#63). It walks every reference, not just the
+# allowlist, so a 10-zone install takes minutes; past this it writes what it has
+# and flags the dump partial.
+FULL_SCAN_TIMEOUT = 600
 DISCOVERY_ALLOWED_PATTERNS = {
     "/gateway": (
         "/gateway/notificationLight*",
@@ -413,10 +418,17 @@ async def _fetch_reference_tree(
     *,
     deadline: float,
     timings: list[tuple[str, float]] | None = None,
+    path_needed: Callable[[str], bool] = _discovery_path_needed,
+    max_depth: int | None = 3,
+    errors: dict[str, str] | None = None,
 ) -> None:
-    """Fetch nested references concurrently, capped by the discovery semaphore."""
+    """Fetch nested references concurrently, capped by the discovery semaphore.
+
+    The defaults are the startup walk. debug_scan passes no filter, no depth
+    limit and an ``errors`` dict that collects each path that failed (#63).
+    """
     async def fetch_reference(ref_id: str, depth: int) -> None:
-        if not _discovery_path_needed(ref_id) or ref_id in seen_references:
+        if not path_needed(ref_id) or ref_id in seen_references:
             return
         seen_references.add(ref_id)
         try:
@@ -425,9 +437,11 @@ async def _fetch_reference_tree(
                     client, ref_id, deadline=deadline, timings=timings
                 )
             if not isinstance(child, dict):
+                if child is None and errors is not None:
+                    errors[ref_id] = "no response (timed out)"
                 return
             data[ref_id] = child
-            if depth >= 3:
+            if max_depth is not None and depth >= max_depth:
                 return
             children = [
                 item.get(ID_KEY)
@@ -439,8 +453,12 @@ async def _fetch_reference_tree(
             )
         except ConfigEntryAuthFailed:
             _LOGGER.debug("POINTTAPI 401/403 on ref %s, skipping", ref_id)
-        except Exception:  # noqa: BLE001 - optional path; unavailability is logged and skipped
+            if errors is not None:
+                errors[ref_id] = "401/403"
+        except Exception as err:  # noqa: BLE001 - optional path; unavailability is logged and skipped
             _LOGGER.debug("POINTTAPI optional ref %s unavailable", ref_id)
+            if errors is not None:
+                errors[ref_id] = f"{type(err).__name__}: {err}"
 
     references = [
         item.get(ID_KEY)
@@ -448,6 +466,49 @@ async def _fetch_reference_tree(
         if isinstance(item, dict) and item.get(ID_KEY)
     ]
     await asyncio.gather(*(fetch_reference(ref_id, 1) for ref_id in references))
+
+
+async def full_resource_scan(
+    client: PoinTTAPIClient, *, ceiling: float = FULL_SCAN_TIMEOUT
+) -> dict[str, Any]:
+    """Walk every reference the gateway exposes, for debug_scan (#63).
+
+    The startup walk filters against the allowlist and stops at depth 3, so it
+    can't show what an installation offers beyond what the integration already
+    reads. This one starts at each top-level root and follows references with
+    neither limit; ``seen`` stops cycles. Responses are unredacted.
+    """
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    deadline = started + ceiling
+    # Top-level roots (/heatingCircuits rather than /heatingCircuits/hc1) so a
+    # second circuit or zone is found, plus the coordinator roots for gateways
+    # that won't list a parent.
+    roots = list(
+        dict.fromkeys(
+            [f"/{root.split('/')[1]}" for root in POINTTAPI_COORDINATOR_ROOTS]
+            + POINTTAPI_COORDINATOR_ROOTS
+        )
+    )
+    data: dict[str, Any] = {}
+    errors: dict[str, str] = {}
+    await _fetch_reference_tree(
+        client,
+        {REFERENCES_KEY: [{ID_KEY: root} for root in roots]},
+        data,
+        set(),
+        asyncio.Semaphore(10),
+        deadline=deadline,
+        path_needed=lambda _path: True,
+        max_depth=None,
+        errors=errors,
+    )
+    return {
+        "partial": loop.time() >= deadline,
+        "duration_s": round(loop.time() - started, 1),
+        "resources": dict(sorted(data.items())),
+        "errors": dict(sorted(errors.items())),
+    }
 
 
 async def _fetch_paths(
