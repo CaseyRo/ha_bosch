@@ -9,6 +9,15 @@ All notable changes to this Bosch Home Assistant custom component will be docume
   Home Assistant keeps a reauth flow alive when its dialog is closed, so
   reopening **Resolve issue** went straight to the code-entry step, which had no
   link. That step now opens with the Bosch login link, in every language. (#80)
+- **No more 0 readings from values the appliance doesn't have.** When Bosch
+  flags a value `available: "false"`, the gateway still sends a placeholder,
+  usually `0.0`. Those values now show as unknown instead of 0, for example the
+  return temperature or the water heater's target temperature. The entities stay
+  available and pick up a real value if one appears. (#61)
+- **A hot-water tank no longer shows 0 °C when Bosch sends no reading.** Some
+  stored-tank systems report the tank temperature as 0 even though it's flagged
+  available; the Bosch app shows nothing there either. It now shows as unknown.
+  (#83)
 
 ## [1.7.0-beta.4] — 2026-09-27
 
