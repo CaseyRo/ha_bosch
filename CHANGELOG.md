@@ -4,13 +4,16 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.5] — 2026-10-19
+
 ### Added
 - **`bosch.debug_scan` works on cloud (POINTTAPI) entries.** It walks every
   resource the gateway exposes, not only the paths the integration reads, and
   writes `www/bosch_scan.json` with the responses, the paths that failed, and
   whether the scan finished. The file is redacted like a diagnostics download,
-  so it can be attached to an issue as it is. A large installation takes a few
-  minutes; the scan stops at 10 minutes and marks the file `"partial": true`.
+  so it can be attached to an issue as it is. A CT200 with 260 resources takes
+  about 6 seconds; the scan stops at 10 minutes and marks the file
+  `"partial": true`.
   (#63)
 
 ### Fixed
@@ -30,6 +33,7 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 - **Services keep working after Home Assistant 2027.10.** Finding the gateway
   for a service call used `DeviceEntry.config_entries`, which HA 2026.10 warns
   about and 2027.10 removes. It now uses `config_entry_id` where HA has it.
+  (#89)
 
 ## [1.7.0-beta.4] — 2026-09-27
 
