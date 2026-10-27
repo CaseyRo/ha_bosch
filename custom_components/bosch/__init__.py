@@ -5,10 +5,12 @@ import asyncio
 import builtins
 import inspect
 import logging
+import os
 import random
 import time
 from collections.abc import Awaitable
 from datetime import timedelta
+from functools import partial
 from typing import Any
 
 import homeassistant.helpers.config_validation as cv
@@ -64,7 +66,11 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryNotReady,
+    HomeAssistantError,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import (
@@ -1229,18 +1235,22 @@ class BoschGatewayEntry:
             async with self._update_lock:
                 rawscan = await self.gateway.rawscan()
         try:
+            # HA doesn't create www/ by default (#78).
+            await self.hass.async_add_executor_job(
+                partial(os.makedirs, os.path.dirname(filename), exist_ok=True)
+            )
             await self.hass.async_add_executor_job(save_json, filename, rawscan)
-        except (FileNotFoundError, OSError) as err:
+        except (OSError, HomeAssistantError) as err:  # save_json raises WriteError
+            # The scan still comes back as the action response.
             _LOGGER.error("Can't create file. %s", err)
-            if rawscan:
-                return rawscan
+            return rawscan
         url = "{}{}{}".format(
             get_url(self.hass),
             "/local/bosch_scan.json?v",
             random.randint(0, 5000),
         )
         _LOGGER.info(f"Rawscan success. Your URL: {url}")
-        partial = (
+        partial_note = (
             " The scan hit its 10-minute ceiling, so the file is partial."
             if isinstance(rawscan, dict) and rawscan.get("partial")
             else ""
@@ -1248,7 +1258,7 @@ class BoschGatewayEntry:
         async_create_persistent_notification(
             self.hass,
             title="Bosch scan",
-            message=(f"[{url}]({url}){partial}"),
+            message=(f"[{url}]({url}) (saved to `{filename}`){partial_note}"),
             notification_id=NOTIFICATION_ID,
         )
         return rawscan
