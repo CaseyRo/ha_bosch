@@ -167,7 +167,7 @@ Entity creation is partly dynamic. What you see depends on what your appliance a
 | Sensor | Indoor humidity | indoor_humidity | /system/sensors/humidity/indoor_h1 | 1 entity (attached to zone device) |
 | Sensor | Zone valve position | valve_position | /zones/{zid}/actualValvePosition | Dynamic, per zone when reference exists |
 | Sensor | Zone average temperature | zone_average_temperature | /zones/{zid}/temperatureActual | Dynamic, per discovered zone |
-| Sensor | Assigned program name | assigned_program | /zones/{zid}/assignedProgramName (computed from /programs/pgN/name) | Dynamic, per discovered zone |
+| Sensor | Assigned program name | assigned_program | /zones/{zid}/assignedProgramName (computed from /programs/pgN/name; read-only `schedule` attribute from /programs/pgN/week) | Dynamic, per discovered zone |
 | Sensor | Optimum start state | optimum_start_state | /zones/{zid}/optimumStartState | Dynamic, per zone when reference exists |
 | Binary sensor | Open window detected | open_window_detected | /zones/{zid}/openWindowDetection/status | Dynamic, per zone when reference exists |
 

@@ -32,6 +32,7 @@ from custom_components.bosch.pointtapi_coordinator import (
         "/dhwCircuits/dhw1/hotWaterSystem",
         "/programs/pg1",
         "/programs/pg1/name",
+        "/programs/pg1/week",
         "/devices/list/thermostat_valve/2",
         "/devices/list/thermostat_valve/2/offset",
         "/devices/device2/etrv/offset",

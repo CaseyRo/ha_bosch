@@ -179,6 +179,7 @@ DISCOVERY_ALLOWED_PATTERNS = {
     ),
     "/programs": (
         "/programs/pg*/name",
+        "/programs/pg*/week",
     ),
     "/devices": (
         "/devices/list",
@@ -219,7 +220,7 @@ def _discovery_path_needed(path: str) -> bool:
         return True
     if path.startswith("/devices/device") and path.count("/") == 2:
         return True
-    if path.startswith("/programs/pg") and not path.endswith("/name"):
+    if path.startswith("/programs/pg") and not path.endswith(("/name", "/week")):
         return False
     for root, patterns in DISCOVERY_ALLOWED_PATTERNS.items():
         if path.startswith(root + "/"):

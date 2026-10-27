@@ -40,6 +40,8 @@ _CONFIDENTIAL_PATH_PREFIXES = (
     "/gateway/identificationkey",
     "/gateway/remoteservicespassword",
     "/system/location",
+    # Household members' first names (base64), on the auto-away list (#78).
+    "/system/autoaway/users",
 )
 
 

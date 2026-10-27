@@ -4,6 +4,17 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Added
+- **Zone schedules, read-only** (#78). Each zone's assigned-program sensor
+  has a `schedule` attribute: the switch points for every weekday (time and
+  target temperature) of the program the zone follows, read from
+  `/programs/pgN/week` on the 5-minute poll. Editing comes later.
+
+### Fixed
+- **Diagnostics and `bosch.debug_scan` redact the auto-away users** (#78).
+  `/system/autoAway/users` carries household members' first names, which
+  the redaction missed.
+
 ## [1.7.0-beta.6] — 2026-10-27
 
 ### Fixed

@@ -2046,10 +2046,47 @@ def _zone_assigned_program_attributes(
     program_id = _zone_clock_program_id(data, zone_id)
     if program_id is None:
         return None
-    return {
+    attributes: dict[str, Any] = {
         "program_id": program_id,
         "program_name_path": f"/programs/{program_id}/name",
     }
+    schedule = _program_week_schedule(_val(data, f"/programs/{program_id}/week"))
+    if schedule:
+        attributes["schedule"] = schedule
+    return attributes
+
+
+_WEEK_PROGRAM_DAYS = {
+    "Mo": "monday",
+    "Tu": "tuesday",
+    "We": "wednesday",
+    "Th": "thursday",
+    "Fr": "friday",
+    "Sa": "saturday",
+    "Su": "sunday",
+}
+
+
+def _program_week_schedule(raw: Any) -> dict[str, list[dict[str, Any]]] | None:
+    """Turn a weekProgram value into switch points per weekday (#78).
+
+    Entries look like {"d": "Mo", "t": 990, "Th": 20.5}: t is minutes after
+    midnight, Th the target temperature from that time on.
+    """
+    if not isinstance(raw, list):
+        return None
+    schedule: dict[str, list[dict[str, Any]]] = {day: [] for day in _WEEK_PROGRAM_DAYS.values()}
+    for point in raw:
+        if not isinstance(point, dict):
+            continue
+        day = _WEEK_PROGRAM_DAYS.get(point.get("d"))
+        minutes, temperature = point.get("t"), point.get("Th")
+        if day is None or not isinstance(minutes, int) or not 0 <= minutes < 1440:
+            continue
+        schedule[day].append(
+            {"time": f"{minutes // 60:02d}:{minutes % 60:02d}", "temperature": temperature}
+        )
+    return schedule if any(schedule.values()) else None
 
 
 def _program_names_by_index(data: dict[str, Any]) -> dict[int, str]:
