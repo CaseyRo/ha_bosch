@@ -35,6 +35,7 @@ from custom_components.bosch.pointtapi_entities import (
     _pointtapi_sensor_descriptions,
     _pointtapi_zone_actual_temperature_sensor_descriptions,
     _pointtapi_zone_valve_sensor_descriptions,
+    _zone_assigned_program_attributes,
 )
 
 
@@ -1444,6 +1445,46 @@ class TestComfortControlDescriptions:
         assert ent.native_value == "Salle de bains"
         assert ent.extra_state_attributes["program_id"] == "pg3"
         assert ent.extra_state_attributes["program_name_path"] == "/programs/pg3/name"
+
+    def test_zone_assigned_program_sensor_exposes_week_schedule(self):
+        # weekProgram shape from the CT200 scan on #78.
+        data = {
+            "/zones/zn1": {"id": "/zones/zn1"},
+            "/zones/zn1/clockProgram": {"value": 1.0},
+            "/programs/pg1/week": {
+                "value": [
+                    {"d": "Su", "t": 480, "Th": 20.5, "name": 0},
+                    {"d": "Su", "t": 1380, "Th": 15.0, "name": 0},
+                    {"d": "Mo", "t": 990, "Th": 20.5, "name": 0},
+                    {"d": "Xx", "t": 60, "Th": 18.0},
+                    {"d": "Tu", "t": "bad", "Th": 18.0},
+                    "junk",
+                ]
+            },
+        }
+
+        attrs = _zone_assigned_program_attributes(data, "zn1")
+
+        assert attrs["schedule"]["monday"] == [{"time": "16:30", "temperature": 20.5}]
+        assert attrs["schedule"]["sunday"] == [
+            {"time": "08:00", "temperature": 20.5},
+            {"time": "23:00", "temperature": 15.0},
+        ]
+        assert attrs["schedule"]["tuesday"] == []
+        assert list(attrs["schedule"]) == [
+            "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+        ]
+
+    def test_zone_assigned_program_sensor_omits_schedule_without_week(self):
+        data = {
+            "/zones/zn1": {"id": "/zones/zn1"},
+            "/zones/zn1/clockProgram": {"value": 1.0},
+            "/programs/pg1/week": {"value": "not a list"},
+        }
+
+        assert "schedule" not in _zone_assigned_program_attributes(data, "zn1")
+        del data["/programs/pg1/week"]
+        assert "schedule" not in _zone_assigned_program_attributes(data, "zn1")
 
     def test_zone_assigned_program_sensor_falls_back_when_program_name_missing(self):
         data = {

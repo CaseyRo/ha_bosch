@@ -52,6 +52,9 @@ class TestRedactPathResponse:
             "/gateway/installer/phone": "012345",
             "/gateway/identificationKey": "KEY123",
             "/system/location/coordinates": "52.37,4.89",
+            # Auto-away users, from the CT200 scan on #78.
+            "/system/autoAway/users/list": [{"id": 1, "name": "SmFuZQ==", "away": "false"}],
+            "/system/autoAway/users/us1/name": "SmFuZQ==",
         }.items():
             redacted = _redact_path_response(path, {"id": path, "value": value})
             assert redacted["value"] == "**REDACTED**", path
