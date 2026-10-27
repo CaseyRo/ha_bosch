@@ -4,6 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.6] — 2026-10-27
+
 ### Fixed
 - **`bosch.debug_scan` no longer fails when there is no `www` folder** (#78).
   Home Assistant doesn't create `/config/www` by default, so the scan errored
