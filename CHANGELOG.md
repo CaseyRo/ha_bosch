@@ -4,6 +4,15 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **`bosch.debug_scan` no longer fails when there is no `www` folder** (#78).
+  Home Assistant doesn't create `/config/www` by default, so the scan errored
+  with `No such file or directory` once the crawl finished, and the result was
+  lost. It now creates the folder, and if the file still can't be
+  written the scan comes back as the action response instead. The notification
+  also names the file's location on disk, because `/local/` links only work
+  once Home Assistant has restarted with the folder in place.
+
 ## [1.7.0-beta.5] — 2026-10-19
 
 ### Added

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.util.file import WriteError
 
 from custom_components.bosch.const import POINTTAPI
 
@@ -217,3 +218,35 @@ async def test_pointtapi_rawscan_writes_a_redacted_full_scan():
     assert saved["resources"]["/gateway"]["uuid"] == "**REDACTED**"
     assert saved["resources"]["/gateway/user"]["value"] == "**REDACTED**"
     assert saved["resources"]["/zones/zn1/temp"]["value"] == 21.5
+
+
+@pytest.mark.asyncio
+async def test_rawscan_returns_the_scan_when_the_file_write_fails():
+    """A failed write must not throw away the scan (#78).
+
+    save_json wraps OSError in WriteError, so catching OSError alone let the
+    action fail and lose up to 10 minutes of crawling.
+    """
+    hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock(
+        side_effect=[None, WriteError("No such file or directory")]
+    )
+    entry = SimpleNamespace(
+        entry_id="entry-123",
+        runtime_data=SimpleNamespace(gateway=None, coordinator=None),
+    )
+    gw_entry = _gateway_entry(hass, entry)
+    scan = {"partial": False, "duration_s": 1.0, "resources": {}, "errors": {}}
+    notify = MagicMock()
+    with (
+        patch.object(
+            bosch_module, "full_resource_scan", AsyncMock(return_value=scan)
+        ),
+        patch.object(bosch_module, "async_create_persistent_notification", notify),
+    ):
+        result = await gw_entry.make_rawscan("www/bosch_scan.json")
+
+    assert result is scan
+    makedirs = hass.async_add_executor_job.await_args_list[0].args[0]
+    assert makedirs.args == ("www",) and makedirs.keywords == {"exist_ok": True}
+    notify.assert_called_once()  # only "Starting rawscan", no success link
