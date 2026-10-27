@@ -4,6 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.7] — 2026-10-27
+
 ### Added
 - **Zone schedules, read-only** (#78). Each zone's assigned-program sensor
   has a `schedule` attribute: the switch points for every weekday (time and
