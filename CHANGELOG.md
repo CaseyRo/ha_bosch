@@ -4,6 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.8] — 2026-10-31
+
 ### Fixed
 - **Diagnostics and `bosch.debug_scan` redact HomematicIP pairing keys and
   appliance serials** (#78). Each `/devices/devN` entry carries its valve's
