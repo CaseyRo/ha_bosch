@@ -4,6 +4,14 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **Diagnostics and `bosch.debug_scan` redact HomematicIP pairing keys and
+  appliance serials** (#78). Each `/devices/devN` entry carries its valve's
+  `sgtin` and `dlk` (the radio pairing key) inside the list value, and
+  `/system/info` and `/heatSources/info` carry the appliance serial under
+  `No`. Redaction only checked top-level keys, so both slipped through. If you
+  posted a diagnostics file or a scan before this release, remove it.
+
 ## [1.7.0-beta.7] — 2026-10-27
 
 ### Added
