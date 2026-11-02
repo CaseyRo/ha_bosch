@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **Changing a zone's temperature no longer drops its schedule** (#101). In
+  automatic (clock) mode the new setpoint is written as a temporary override
+  (`/zones/znN/clockOverride/temperatureHeating`), so the zone keeps its
+  program and returns to it at the next switch point, as the EasyControl app
+  and the thermostat do. In manual mode nothing changes.
+
 ## [1.7.0-beta.8] — 2026-10-31
 
 ### Fixed

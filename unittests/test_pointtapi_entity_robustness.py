@@ -475,7 +475,8 @@ class TestClimateRobustness:
             await ent.async_set_preset_mode("boost")
 
     @pytest.mark.asyncio
-    async def test_set_temperature_switches_manual_then_writes_and_refreshes(self):
+    async def test_set_temperature_in_clock_mode_overrides_and_keeps_schedule(self):
+        # #101: the schedule must survive a setpoint change, as in the app.
         coord = _coord({
             "/zones/zn1/temperatureActual": {"value": 20.0},
             "/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0},
@@ -486,12 +487,26 @@ class TestClimateRobustness:
         await ent.async_set_temperature(temperature=21.5)
 
         calls = [(c.args[0], c.args[1]) for c in coord.client.put.await_args_list]
-        assert calls == [
-            ("/zones/zn1/userMode", "manual"),
-            ("/zones/zn1/manualTemperatureHeating", 21.5),
-        ]
+        assert calls == [("/zones/zn1/clockOverride/temperatureHeating", 21.5)]
         assert ent.target_temperature == 21.5  # optimistic
         coord.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.parametrize("mode", ["manual", None])
+    @pytest.mark.asyncio
+    async def test_set_temperature_outside_clock_mode_switches_manual(self, mode):
+        data = {"/zones/zn1/temperatureHeatingSetpoint": {"value": 21.0}}
+        if mode:
+            data["/zones/zn1/userMode"] = {"value": mode}
+        coord = _coord(data)
+        ent = _climate(coord)
+
+        await ent.async_set_temperature(temperature=19.0)
+
+        calls = [(c.args[0], c.args[1]) for c in coord.client.put.await_args_list]
+        assert calls == [
+            ("/zones/zn1/userMode", "manual"),
+            ("/zones/zn1/manualTemperatureHeating", 19.0),
+        ]
 
     @pytest.mark.asyncio
     async def test_set_hvac_mode_auto_sets_clock_mode(self):
