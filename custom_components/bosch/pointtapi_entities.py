@@ -1763,17 +1763,26 @@ class BoschPoinTTAPIClimateEntity(_BoschPoinTTAPICoordinatorEntity, ClimateEntit
     async def async_set_temperature(self, **kwargs) -> None:
         """Set target temperature via POINTTAPI PUT.
 
-        Automatically switches zone to manual mode first, since writing to
-        manualTemperatureHeating has no effect when zone is in clock mode.
+        In clock mode this writes a temporary override that keeps the schedule
+        running until its next switch point, like the EasyControl app (#101).
+        Otherwise it switches to manual first, since manualTemperatureHeating
+        has no effect while the zone follows its clock program.
         """
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
+        zone = f"/zones/{self._zone_id}"
+        user_mode = _val(self.coordinator.data or {}, f"{zone}/userMode")
         try:
-            # Switch to manual mode so the setpoint takes effect
-            await self.coordinator.client.put(f"/zones/{self._zone_id}/userMode", "manual")
-            path = f"/zones/{self._zone_id}/manualTemperatureHeating"
-            await self.coordinator.client.put(path, float(temperature))
+            if user_mode == "clock":
+                await self.coordinator.client.put(
+                    f"{zone}/clockOverride/temperatureHeating", float(temperature)
+                )
+            else:
+                await self.coordinator.client.put(f"{zone}/userMode", "manual")
+                await self.coordinator.client.put(
+                    f"{zone}/manualTemperatureHeating", float(temperature)
+                )
             self._target = float(temperature)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
