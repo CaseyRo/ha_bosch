@@ -4,6 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0-beta.9] — 2026-11-02
+
 ### Fixed
 - **Changing a zone's temperature no longer drops its schedule** (#101). In
   automatic (clock) mode the new setpoint is written as a temporary override
