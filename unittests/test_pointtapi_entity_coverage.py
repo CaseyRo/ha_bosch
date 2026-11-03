@@ -491,3 +491,11 @@ class TestProgramsAndVersions:
         session = BoostSession(datetime.now(timezone.utc), 0)
         with patch("custom_components.bosch.pointtapi_entities.dt_util.utcnow", return_value=datetime.now(timezone.utc)):
             assert session.remaining_minutes == 0.0
+
+    @pytest.mark.parametrize("used, value, expected", [("true", 1.3, 1.3), ("false", 25.5, None)])
+    def test_system_pressure_ignores_unused_sensor(self, used, value, expected):
+        # #100: a boiler without a pressure sensor serves 25.5 flagged used: "false".
+        path = "/system/appliance/systemPressure"
+        data = {path: {"value": value, "used": used, "available": "true", "unitOfMeasure": "bar"}}
+        desc = next(d for d in _pointtapi_sensor_descriptions(data) if d.key == path)
+        assert desc.value_fn(data) == expected
