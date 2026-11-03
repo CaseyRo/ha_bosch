@@ -4,6 +4,14 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Added
+- **`bosch.set_away_event` service.** Moves the standing away event (slot
+  `/events/ev1`) to new dates and name, for a presence flow that schedules a
+  trip. One element is written under the update lock and read back (3 tries,
+  5 s apart); the service answers `{name, start, end, verified}` or fails if
+  the device doesn't reflect the write or the slot is missing. It never creates
+  or deletes a slot: park the event in the far future to end an away period.
+
 ## [1.7.0-beta.7] — 2026-10-27
 
 ### Added

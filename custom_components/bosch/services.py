@@ -5,6 +5,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.util import dt as dt_util
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 import homeassistant.helpers.device_registry as dr
 import homeassistant.helpers.config_validation as cv
@@ -17,12 +18,15 @@ from .const import (
     SERVICE_PUT_STRING,
     SERVICE_PUT_FLOAT,
     SERVICE_GET,
+    SERVICE_SET_AWAY_EVENT,
     VALUE,
 )
 
 from .sensor.recording import RecordingSensor
 
 _LOGGER = logging.getLogger(__name__)
+
+AWAY_EVENT_NAME_MAX = 32  # shortcut: device limit unprobed, 32 is conservative; raise once probed
 
 SERVICE_INTEGRATION_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.ensure_list})
 SERVICE_GET_SCHEMA = SERVICE_INTEGRATION_SCHEMA.extend({vol.Required("path"): str})
@@ -32,6 +36,14 @@ SERVICE_FETCH_RANGE_SCHEMA = SERVICE_INTEGRATION_SCHEMA.extend(
 SERVICE_PUT_STRING_SCHEMA = SERVICE_GET_SCHEMA.extend({vol.Required(VALUE): str})
 SERVICE_PUT_FLOAT_SCHEMA = SERVICE_GET_SCHEMA.extend(
     {vol.Required(VALUE): vol.Or(int, float)}
+)
+SERVICE_SET_AWAY_EVENT_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.ensure_list,
+        vol.Required("name"): vol.All(cv.string, vol.Length(min=1, max=AWAY_EVENT_NAME_MAX)),
+        vol.Required("start"): cv.date,
+        vol.Required("end"): cv.date,
+    }
 )
 
 
@@ -155,7 +167,30 @@ def async_register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
         return {
             "data": data
         }
-        
+
+    async def async_handle_set_away_event(service_call: ServiceCall) -> ServiceResponse:
+        """Move the standing away event (ev1) to the given dates."""
+        start, end = service_call.data["start"], service_call.data["end"]
+        if start > end:
+            raise ServiceValidationError("start must not be after end")
+        _gateway_entries = find_gateway_entry(hass=hass, devices_id=service_call.data[ATTR_DEVICE_ID])
+        if not _gateway_entries:
+            raise ServiceValidationError("No Bosch gateway found for the given device")
+        results = [
+            await g.set_away_event(
+                service_call.data["name"], start.isoformat(), end.isoformat()
+            )
+            for g in _gateway_entries
+        ]
+        return results[0] if len(results) == 1 else {"data": results}
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_AWAY_EVENT,
+        async_handle_set_away_event,
+        schema=SERVICE_SET_AWAY_EVENT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_REFRESH_GATEWAY,
@@ -225,6 +260,7 @@ def async_remove_services(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
         SERVICE_GET,
         SERVICE_PUT_STRING,
         SERVICE_PUT_FLOAT,
+        SERVICE_SET_AWAY_EVENT,
         "fetch_recordings_sensor_range",
     ):
         if hass.services.has_service(DOMAIN, service):

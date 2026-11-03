@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import builtins
 import inspect
 import logging
@@ -161,6 +162,10 @@ TASK = "task"
 DATA_CONFIGS = "bosch_configs"
 
 _LOGGER = logging.getLogger(__name__)
+
+AWAY_EVENT_PATH = "/events/ev1"
+AWAY_EVENT_READBACK_ATTEMPTS = 3
+AWAY_EVENT_READBACK_DELAY = 5  # probe 4: cloud read-back landed within 5 s
 
 # Configure library logger to match component logger level
 # This ensures debug logging works for both component and library
@@ -1103,6 +1108,50 @@ class BoschGatewayEntry:
         if self._protocol == POINTTAPI:
             return await self.gateway.put(uri=path, value=value)
         return await self.gateway.raw_put(path=path, value=value)
+
+    async def set_away_event(
+        self, name: str, start: str, end: str
+    ) -> dict[str, Any]:
+        """Move the standing away event (slot ev1) and verify it on read-back (PoinTTAPI)."""
+        if self._protocol != POINTTAPI:
+            raise HomeAssistantError("set_away_event needs a PoinTTAPI gateway")
+        wanted = {"name": name, "start": start, "end": end}
+        async with self._update_lock:
+            try:
+                current = await self.gateway.get(uri=AWAY_EVENT_PATH)
+            except RuntimeError as err:  # client raises RuntimeError on any non-200
+                raise HomeAssistantError(
+                    f"Standing event slot {AWAY_EVENT_PATH} is unavailable: {err}"
+                ) from err
+            events = current.get("value") if isinstance(current, dict) else None
+            if not isinstance(events, list) or not events:
+                raise HomeAssistantError(f"{AWAY_EVENT_PATH} holds no event to move")
+            event = dict(events[0])
+            event["name"] = base64.b64encode(name.encode()).decode()
+            event["start"], event["end"] = start, end
+            await self.gateway.put(uri=AWAY_EVENT_PATH, value=[event])
+            seen = None
+            for attempt in range(AWAY_EVENT_READBACK_ATTEMPTS):
+                await asyncio.sleep(AWAY_EVENT_READBACK_DELAY)
+                seen = await self._read_away_event()
+                if seen == wanted:
+                    return {**wanted, "verified": True}
+        raise HomeAssistantError(
+            f"{AWAY_EVENT_PATH} did not reflect the write after "
+            f"{AWAY_EVENT_READBACK_ATTEMPTS} reads (device shows {seen})"
+        )
+
+    async def _read_away_event(self) -> dict[str, str] | None:
+        try:
+            got = await self.gateway.get(uri=AWAY_EVENT_PATH)
+            e = got["value"][0]
+            return {
+                "name": base64.b64decode(e["name"]).decode(),
+                "start": e["start"],
+                "end": e["end"],
+            }
+        except (RuntimeError, KeyError, IndexError, TypeError, ValueError):
+            return None  # treated as "not yet"; the caller retries then raises
 
     async def custom_get(self, path) -> Any:
         """Fetch value from gateway."""
