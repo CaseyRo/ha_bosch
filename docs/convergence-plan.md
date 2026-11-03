@@ -1,26 +1,29 @@
 # Convergence plan
 
-**Status: agreed, in progress. Last updated 2026-09-21.**
+**Status: agreed, in progress. Last updated 2026-11-03.**
 
 This fork is going to stop being a fork. The work here is being merged back into
 [`bosch-thermostat`](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component),
 the project it came from, and this repository will wind down once that is done.
 
 This document explains why, what it means for you, and what has to happen first.
-It is kept current as things move — the discussion itself is public on
-[upstream issue #554](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/554).
+It is kept current as things move. The current plan, with target dates, is public on
+[upstream #607](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/607).
+The original agreement is on
+[upstream #554](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/554).
 
 ---
 
 ## If you are a user, this is the part that matters
 
-**Nothing changes today, and nothing you need to do.** Keep running what you are
+**Nothing changes today, and there is nothing you need to do.** Keep running what you are
 running.
 
 - This fork is **still maintained and still the place to get POINTTAPI / CT200
-  support**. Releases continue as normal.
+  support**. Releases continue as normal; [v1.7.0](https://github.com/CaseyRo/ha_bosch/releases/tag/v1.7.0)
+  is the current stable release.
 - When the time comes to move, **you will not be asked to remove and re-add the
-  integration**. That is a hard requirement, not an aspiration — see
+  integration**. That is a hard requirement, not an aspiration. See
   [The hard part](#the-hard-part-nobody-loses-their-entry) below.
 - Wind-down will be announced here and in a release, with the migration path
   written down, well before anything is archived.
@@ -38,8 +41,8 @@ costs that are not obvious until you hit them:
 - **It splits a small community.** Bug reports, testing and translations land in
   one place or the other, and neither gets the full picture.
 - **It splits maintenance.** Most issues people file are not POINTTAPI-specific
-  at all — they are Home Assistant API changes, translation gaps, deprecations.
-  Fixing those twice is wasted effort.
+  at all. They are Home Assistant API changes, translation gaps and deprecations,
+  and fixing those twice is wasted effort.
 
 The two projects also have complementary gaps. Upstream has the history, the
 users and the Home Assistant standing. This fork has the working cloud path and
@@ -48,8 +51,8 @@ people with hardware to test on. Neither is complete alone.
 In September 2026 the upstream maintainer proposed merging the efforts and
 giving this fork's maintainer commit rights, rather than either project
 absorbing the other by force. That offer was accepted, and write access to the
-upstream integration followed on 18 September. Changes there still go through
-pull requests.
+upstream integration and client followed on 18 September. Changes there still go
+through pull requests.
 
 ## What was agreed
 
@@ -57,74 +60,60 @@ pull requests.
 
 | Piece | Where it ends up |
 | --- | --- |
-| POINTTAPI transport (HTTP client, OAuth, token refresh) | `bosch-thermostat-client` — the shared library, testable without Home Assistant |
+| POINTTAPI transport (HTTP client, OAuth, token refresh) | `bosch-thermostat-client`, the shared library, testable without Home Assistant |
 | Home Assistant glue (config flow, entities, coordinator, diagnostics) | The upstream integration |
 | A separate `bosch_pointt` domain | **Rejected.** Converging, not formalising the split |
 
-## The sequence
+## Where it stands
 
-Deliberately ordered so that nothing user-visible moves before the safety net
-exists. No dates: two of the steps depend on other people, and a date this side
-cannot control is not a commitment, it is a wish.
+| Step | State |
+| --- | --- |
+| **1. Test infrastructure** | **Done.** The client's test suite runs again ([client #72](https://github.com/bosch-thermostat/bosch-thermostat-client-python/pull/72)). The integration has a lint gate ([#584](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/584)), pytest on every push ([#595](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/595)) and Python 3.14 ([#598](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/598)). |
+| **2. Config entry migration** | **Merged, not yet released.** [#596](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/596) moves upstream to config entry version 12 and carries this fork's migration chain. See below. |
+| **3. Device simulator** | **In review.** alaraun's rawscan-driven simulator ([#591](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/591)) waits on a client release. For the cloud path, the diagnostics files contributors have sent become replay fixtures, where the sender agrees. |
+| **4. Transport into the client** | Not started. Target: a client PR in November. |
+| **5. Home Assistant glue into the integration** | Not started. Target: five PRs from mid-November, then an upstream beta (0.30.0b1) around 5 December. |
+| **6. Parity on real hardware** | Planned for December: CT200 (two zones), Buderus TC100.2 (10 zones, 12 valves), CT200 with radiator valves, room thermostat. |
+| **7. Wind-down** | After the holidays: a final release here pointing users upstream, then archiving once the upstream build has run quietly for a few weeks. Target: January 2027. |
 
-**1. Test infrastructure first.** Neither upstream repository ran tests on push.
-That is the most likely reason a year of Home Assistant changes broke things
-quietly. Two pull requests went up:
-
-- [client-python #72](https://github.com/bosch-thermostat/bosch-thermostat-client-python/pull/72)
-  — the test suite could not even be collected; 7 of 9 modules errored before a
-  single test ran. Now green on 3.12 and 3.13, waiting for review.
-- [integration #584](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/584)
-  — that repository has no tests at all, so a lint gate is the only automated
-  check currently possible. **Merged 2026-09-19.**
-
-**2. A device simulator.** Upstream has no Bosch hardware to test against. The
-fix is to replay recorded devices: feed real captured responses to a local test
-server and run a full startup in CI. Every device somebody sends a capture for
-then becomes a permanent regression test, and nobody has to own every model.
-
-For the cloud path this needs no new capture mechanism — the coordinator already
-caches responses by path, and the diagnostics download contains exactly that. The
-dumps contributors have already sent are the starting corpus.
-
-A contributor has since opened a pytest harness for the integration, with a mock
-gateway and a raw-scan fixture
-([#591](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/591),
-the last of a five-PR series). The simulator will build on whatever of that lands.
-
-**3. The transport moves** into the shared library, verified against the
-simulator rather than against one maintainer's boiler.
-
-**4. The Home Assistant glue moves**, together with the migration work below.
-
-**5. Parity is confirmed on real hardware** — CT200, Buderus TC100.2, multi-zone
-and valve setups — and only then does this repository wind down.
+The target dates depend on two things this side does not control: upstream
+releases (nothing has been released upstream since 11 September) and tester
+availability in December. If either slips, the dates move and your installation
+stays as it is. Progress is tracked on
+[upstream #607](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/607).
 
 ## The hard part: nobody loses their entry
 
-This is the genuine blocker, and it is worth stating plainly because it is the
+This was the genuine blocker, and it is worth stating plainly because it is the
 thing most likely to go wrong for users.
-
-| | This fork | Upstream |
-| --- | --- | --- |
-| Config entry version | **11** | **1** |
-| Migration code | ten-step chain | none |
 
 Home Assistant 2026.7 added a guard
 ([core#173184](https://github.com/home-assistant/core/pull/173184)) that refuses
 to load a config entry whose version is higher than the integration expects.
-So today, if you installed upstream over this fork, your entry would not load at
-all — and because both use the `bosch` domain, you cannot run them side by side
-to ease across.
+This fork writes version 11 after a ten-step migration chain; upstream was at
+version 1 with no migrations. Because both use the `bosch` domain, you cannot run
+them side by side to ease across, so a CT200 entry would simply not load
+upstream.
 
-Converging therefore requires upstream to adopt a higher entry version and carry
-this fork's migration chain, guarded so that existing upstream installations
-never run through migrations meant for POINTTAPI entries.
+[#596](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/596)
+fixes that on upstream `master`. It moves upstream to version 12 and carries the
+whole chain, with every step guarded to POINTTAPI entries, so existing upstream
+installations pass through as a plain version bump. An entry this fork wrote now
+loads upstream without removing and re-adding the integration.
 
-Until that exists and is tested, nothing moves. This is tracked as its own piece
-of work rather than folded into a code port:
-[upstream #592](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/592)
-has the step-by-step breakdown and the proposal.
+**That is not enough to switch yet.** Upstream can load your entry, but it does
+not speak POINTTAPI until steps 4 and 5 land. Until then a CT200 on upstream
+shows "Unknown model". Don't switch early.
+
+Two rules keep the move safe:
+
+- **Identifiers move verbatim.** Entity unique IDs and device identifiers keep
+  this fork's exact format, so entity history, dashboards and automations carry
+  over. The `11 → 12` migration step stays empty, and this fork never needs to
+  write a version 12 entry itself.
+- **Only shipped features move.** Work still in progress here (writing away
+  events, editing schedules, hybrid heat pumps) stays behind and is proposed
+  upstream later on its own.
 
 ## What in this repository is temporary
 
@@ -135,15 +124,15 @@ are explicitly staging posts, not permanent design decisions:
   because the shared library did not support the cloud API. Destined for the
   library.
 - **The OAuth/PKCE flow and token refresh.** The refresh-and-persist behaviour
-  solves the exact gap that stalled the upstream cloud attempt; it is offered
-  upstream rather than kept here.
-- **The discovery allowlist.** Written for POINTTAPI, but the underlying problem
-  — asking a device for paths it will refuse, slowly — costs IVT and NEFIT users
-  too. The idea belongs upstream even though the code does not transfer directly.
+  solves the exact gap that stalled the earlier upstream cloud attempts; it moves
+  upstream with the transport.
+- **The discovery allowlist.** Written for POINTTAPI. The underlying problem,
+  asking a device for paths it will refuse, slowly, costs IVT and NEFIT users
+  too, but the code does not transfer directly to those connectors.
 - **Diagnostics redaction.** A privacy fix that should not be fork-specific.
-- **The service target definitions.** Already offered upstream as
-  [#585](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/585).
-- **CI configuration.** Already sent, see above.
+  The client now masks personal data in raw scans as well
+  ([client #73](https://github.com/bosch-thermostat/bosch-thermostat-client-python/pull/73)).
+- **CI configuration.** Already sent and merged upstream, see above.
 
 Treat anything in this list as "here for now". If you are building on this
 integration, that is the part worth knowing.
@@ -157,20 +146,24 @@ is not a euphemism for "abandoned". The
 
 ## Open dependencies
 
-Relicensing is someone else's decision, and so is when upstream reviews
-pull requests. That is why no dates appear above.
-
-- **Relicensing.** This repository is MIT; upstream is Apache-2.0, and code
-  moving there has to be Apache-2.0. The maintainer here has agreed for his own
-  contributions. Other contributors hold copyright in their own commits and are
-  being asked individually — nobody's work moves without their explicit yes.
+- **Upstream releases.** The integration and client have unreleased work on their
+  main branches, including the version 12 migration. When and by whom they are
+  released is the upstream maintainer's decision, and it is one of the questions
+  on [#607](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/607).
+- **Ownership after the move.** Who maintains the POINTTAPI path upstream once
+  this fork is archived. Also on #607.
+- **Relicensing: settled.** This repository is MIT; upstream is Apache-2.0, and
+  code moving there has to be Apache-2.0. The POINTTAPI code has two authors, the
+  maintainer here and jfhautenauven, and both agreed (jfhautenauven on #554, 27
+  September 2026).
 
 ## Following along
 
-- The agreement and ongoing discussion:
+- The current plan and its open decisions:
+  [upstream #607](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/607)
+- The original agreement:
   [upstream #554](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/554)
-- Open work upstream:
-  [client #72](https://github.com/bosch-thermostat/bosch-thermostat-client-python/pull/72),
-  [integration #585](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/585),
-  [integration #592](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/592)
+- The migration work:
+  [upstream #592](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/issues/592)
+  and [#596](https://github.com/bosch-thermostat/home-assistant-bosch-custom-component/pull/596)
 - Questions about what this means for your installation: open an issue here.
