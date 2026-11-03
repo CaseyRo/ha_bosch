@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-11-03
+
+Promotes `1.7.0-beta.9` to stable, plus the fix below. The betas ran on a
+production CT200 (two zones, stored hot-water tank) throughout. The config
+entry stays at version 11, so updating from 1.6.0 runs no
+migration. Everything since 1.6.0 is listed under the beta headings below.
+
 ### Fixed
 - **System pressure no longer shows 25.5 bar on boilers without a pressure
   sensor** (#100). Such boilers (seen on a Worcester Greenstar) flag

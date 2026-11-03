@@ -13,19 +13,20 @@ A fork of [@pszafer's bosch-thermostat integration](https://github.com/bosch-the
 
 ---
 
-> ## v1.6.0 current status
+> ## v1.7.0 current status
 >
-> **v1.6.0** (stable) reworks the POINTTAPI path for multi-zone installations.
-> Boost is a preset on every zone's climate entity; installation-wide settings (supply
-> limits, heating curve, summer/winter, night setback, room influence, global Boost, away
-> mode) live on a new **Heating Installation Settings** device; and startup spends much less
-> time waiting on Bosch's cloud (74% less on a 12-valve installation; an 11-zone CT200 that
-> could not finish loading at all on 1.5.2 now starts in 23 s). Spanish and Portuguese
-> are new.
+> **v1.7.0** (stable) adds room thermostats, read-only zone schedules and a cloud
+> `bosch.debug_scan`. Changing a zone's temperature in automatic mode now keeps its
+> schedule. Diagnostics are safer: HomematicIP pairing keys, appliance serials and
+> household names are now redacted. Danish, Finnish and Swedish are new. Updating from
+> 1.6.0 runs no config entry migration. Full notes in the
+> [v1.7.0 release](https://github.com/CaseyRo/ha_bosch/releases/tag/v1.7.0).
 >
-> **Upgrading to 1.6.0 migrates the config entry one way:** going back to 1.5.x means
-> removing and re-adding the integration, so take a backup first. Full notes in the
-> [v1.6.0 release](https://github.com/CaseyRo/ha_bosch/releases/tag/v1.6.0).
+> **Coming from 1.5.x or earlier, the config entry migrates one way:** going back means
+> removing and re-adding the integration, so take a backup first.
+>
+> This fork is converging into the upstream integration; see the
+> [convergence plan](docs/convergence-plan.md).
 >
 > ### Validation status
 >
@@ -114,7 +115,7 @@ Paste the whole callback URL **or** just the `code` value into the final step â€
 
 Token refresh is automatic. If your session expires, HA triggers a re-authentication flow â€” no need to delete and re-add the integration.
 
-### Entities (POINTTAPI, v1.6.0)
+### Entities (POINTTAPI, v1.7.0)
 
 Entity creation is partly dynamic. What you see depends on what your appliance advertises in its resource references.
 
