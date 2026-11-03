@@ -34,3 +34,23 @@ See proposal.md. `PoinTTAPIClient.put(uri, value)` already serialises `{"value":
 - `PUT /events/ev1` with `[existing, new]` returned **400 (empty message)** for every variant tried: new id 2 and 3, no id, non-overlapping and later dates, type `holiday`. PUT of the unchanged array returns 204.
 - `POST /events` returns **400** and changes nothing.
 - Unresolved: whether `ev1` is a single-slot array (a second element is always rejected) or the 400 comes from an unseen field rule. Next probe: PUT a one-element array that edits id 1 in place.
+
+## Write probe 3 — 2026-11-03 (live, device 101506113, future dates only, ev1 restored byte-identical)
+
+- **`ev1` holds exactly one event and is fully editable.** A one-element PUT editing id 1 in
+  place (end date +1 day) returned 204 and read back within 5 s. A one-element PUT with a
+  completely different future event (new name, 2027-02-01..02, id 1) also returned 204 and
+  showed in `list1` within 5 s. Together with spike 2 (any second element → 400), this means
+  **one event per `evN` slot**, not an array of events.
+- **`ev2` no longer exists:** GET and PUT both return **404** now. It held id 2 on 2026-10-31,
+  and `list1` dropped id 2 at the same time. So a slot exists only while it holds an event, and
+  the 500 that HA showed for `ev2` (#95) is the integration wrapping that 404, not a transient
+  cloud fault.
+- **Unresolved: how a new slot is created.** `PUT /events/ev2` (404) and `POST /events`
+  (400, spike 2) both fail. The EasyControl app can create one, so the route exists. The next
+  probe is to capture what the app sends, rather than guess more bodies.
+
+**Consequence for this design:** "create via whole-array PUT to `ev1`" is wrong. Within what has
+been verified, the integration can **edit or replace the event in an existing slot** and read
+all slots through `list1`. Creating or deleting slots stays out of scope until the creation
+route is known. Tasks and spec need rewriting to this model before implementation.
