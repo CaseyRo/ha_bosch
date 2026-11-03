@@ -2409,6 +2409,11 @@ def _pointtapi_sensor_descriptions(
             device_class=SensorDeviceClass.PRESSURE,
             native_unit_of_measurement=UnitOfPressure.BAR,
             entity_category=EntityCategory.DIAGNOSTIC,
+            # Boilers without a pressure sensor flag the path `used: "false"`
+            # and serve 25.5, the EMS "no value" byte (0xFF / 10), not a reading (#100).
+            value_fn=lambda d: None
+            if (d.get("/system/appliance/systemPressure") or {}).get("used") == "false"
+            else _val(d, "/system/appliance/systemPressure"),
         ),
         BoschPoinTTAPISensorEntityDescription(
             key="/gateway/wifi/rssi",

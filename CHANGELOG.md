@@ -4,6 +4,14 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **System pressure no longer shows 25.5 bar on boilers without a pressure
+  sensor** (#100). Such boilers (seen on a Worcester Greenstar) flag
+  `/system/appliance/systemPressure` as `used: "false"` and serve 25.5, which
+  is the EMS "no value" byte, not a reading. The sensor now reads unknown
+  there. Where a sensor is fitted, the unit stays bar as Bosch reports it; to
+  see psi, change the entity's display unit in Home Assistant.
+
 ## [1.7.0-beta.9] — 2026-11-02
 
 ### Fixed
