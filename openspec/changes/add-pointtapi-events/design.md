@@ -54,3 +54,19 @@ See proposal.md. `PoinTTAPIClient.put(uri, value)` already serialises `{"value":
 been verified, the integration can **edit or replace the event in an existing slot** and read
 all slots through `list1`. Creating or deleting slots stays out of scope until the creation
 route is known. Tasks and spec need rewriting to this model before implementation.
+
+## Standing slot (Casey, 2026-11-03) — supersedes create/delete for now
+
+- Decision: `ev1` is kept forever as the blippstrom event `Away (blippstrom)`. At rest it is parked
+  on `2099-12-30..2099-12-31`; Node-RED moves it to the trip dates and parks it again on return.
+  Nothing creates or deletes a slot, so the app capture is no longer on the critical path.
+- Probe 4 (live, device 101506113): one-element PUT to `ev1` replacing the dummy (27 Nov to 15 Dec)
+  with the parked event returned 204 and read back from the cloud in 5 s. 2099 was accepted first
+  try. `ev2` is 404, `list1` shows only the parked event. The dummy is gone, so the "delete dummy
+  before 27 Nov" to-do is resolved.
+- Minimum to ship: one service `bosch.set_away_event` (`device_id`, `name`, `start`, `end`, dates
+  `YYYY-MM-DD`). It GETs `ev1`, PUTs a one-element array with id 1 under the update lock, reads back
+  with bounded retry, returns `{name, start, end, verified}` as an optional service response and
+  raises on mismatch or if `ev1` is 404. Validate start <= end and the name length. Ownership checks
+  stay in Node-RED. The events sensor (tasks 2.x) and app capture are follow-ups, not blockers.
+- Consumer: `nr-blippstrom-v2` openspec `bosch-away-flow`, design D9.
