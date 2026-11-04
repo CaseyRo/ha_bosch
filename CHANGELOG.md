@@ -4,6 +4,8 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.8.0-beta.1] — 2026-11-04
+
 ### Added
 - **`bosch.set_away_event` service.** Moves the standing away event (slot
   `/events/ev1`) to new dates and name, for a presence flow that schedules a
