@@ -89,4 +89,6 @@ def _redact_path_response(path: str, resp: Any) -> Any:
         redacted["uuid"] = "**REDACTED**"
     if "serialNumber" in redacted:
         redacted["serialNumber"] = "**REDACTED**"
-    return redacted
+    # Nested in list values (#78): HomematicIP device id + pairing key in
+    # deviceArray (the API 403s their own paths), appliance serial in systeminfo.
+    return async_redact_data(redacted, {"sgtin", "dlk", "No"})

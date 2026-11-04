@@ -62,6 +62,23 @@ class TestRedactPathResponse:
         for path in ("/gateway/userMode", "/gateway/versionFirmware"):
             assert _redact_path_response(path, {"id": path, "value": "x"})["value"] == "x"
 
+    def test_redacts_homematicip_keys_inside_device_array(self):
+        # Shape from the CT200 scan on #78: keys ride inside the value list.
+        resp = {
+            "id": "/devices/dev3",
+            "type": "deviceArray",
+            "value": [{"name": "TGl2aW5n", "zone": 1, "sgtin": "3014F7", "dlk": "D229", "battery": "ok"}],
+        }
+        device = _redact_path_response(resp["id"], resp)["value"][0]
+        assert device["sgtin"] == device["dlk"] == "**REDACTED**"
+        assert (device["name"], device["zone"], device["battery"]) == ("TGl2aW5n", 1, "ok")
+        assert resp["value"][0]["dlk"] == "D229"
+
+    def test_redacts_systeminfo_serial(self):
+        resp = {"id": "/system/info", "type": "systeminfo", "value": [{"Id": "195", "No": "3674", "Ver": "NF5.6"}]}
+        info = _redact_path_response(resp["id"], resp)["value"][0]
+        assert info == {"Id": "195", "No": "**REDACTED**", "Ver": "NF5.6"}
+
     def test_ordinary_path_value_survives(self):
         resp = {"id": "/system/sensors/outdoor_t1", "value": 12.5}
         assert _redact_path_response(resp["id"], resp)["value"] == 12.5

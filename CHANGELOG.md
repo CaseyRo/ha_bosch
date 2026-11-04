@@ -12,6 +12,40 @@ All notable changes to this Bosch Home Assistant custom component will be docume
   the device doesn't reflect the write or the slot is missing. It never creates
   or deletes a slot: park the event in the far future to end an away period.
 
+## [1.7.0] — 2026-11-03
+
+Promotes `1.7.0-beta.9` to stable, plus the fix below. The betas ran on a
+production CT200 (two zones, stored hot-water tank) throughout. The config
+entry stays at version 11, so updating from 1.6.0 runs no
+migration. Everything since 1.6.0 is listed under the beta headings below.
+
+### Fixed
+- **System pressure no longer shows 25.5 bar on boilers without a pressure
+  sensor** (#100). Such boilers (seen on a Worcester Greenstar) flag
+  `/system/appliance/systemPressure` as `used: "false"` and serve 25.5, which
+  is the EMS "no value" byte, not a reading. The sensor now reads unknown
+  there. Where a sensor is fitted, the unit stays bar as Bosch reports it; to
+  see psi, change the entity's display unit in Home Assistant.
+
+## [1.7.0-beta.9] — 2026-11-02
+
+### Fixed
+- **Changing a zone's temperature no longer drops its schedule** (#101). In
+  automatic (clock) mode the new setpoint is written as a temporary override
+  (`/zones/znN/clockOverride/temperatureHeating`), so the zone keeps its
+  program and returns to it at the next switch point, as the EasyControl app
+  and the thermostat do. In manual mode nothing changes.
+
+## [1.7.0-beta.8] — 2026-10-31
+
+### Fixed
+- **Diagnostics and `bosch.debug_scan` redact HomematicIP pairing keys and
+  appliance serials** (#78). Each `/devices/devN` entry carries its valve's
+  `sgtin` and `dlk` (the radio pairing key) inside the list value, and
+  `/system/info` and `/heatSources/info` carry the appliance serial under
+  `No`. Redaction only checked top-level keys, so both slipped through. If you
+  posted a diagnostics file or a scan before this release, remove it.
+
 ## [1.7.0-beta.7] — 2026-10-27
 
 ### Added
