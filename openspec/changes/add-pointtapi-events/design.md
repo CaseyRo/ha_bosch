@@ -34,3 +34,39 @@ See proposal.md. `PoinTTAPIClient.put(uri, value)` already serialises `{"value":
 - `PUT /events/ev1` with `[existing, new]` returned **400 (empty message)** for every variant tried: new id 2 and 3, no id, non-overlapping and later dates, type `holiday`. PUT of the unchanged array returns 204.
 - `POST /events` returns **400** and changes nothing.
 - Unresolved: whether `ev1` is a single-slot array (a second element is always rejected) or the 400 comes from an unseen field rule. Next probe: PUT a one-element array that edits id 1 in place.
+
+## Write probe 3 — 2026-11-03 (live, device 101506113, future dates only, ev1 restored byte-identical)
+
+- **`ev1` holds exactly one event and is fully editable.** A one-element PUT editing id 1 in
+  place (end date +1 day) returned 204 and read back within 5 s. A one-element PUT with a
+  completely different future event (new name, 2027-02-01..02, id 1) also returned 204 and
+  showed in `list1` within 5 s. Together with spike 2 (any second element → 400), this means
+  **one event per `evN` slot**, not an array of events.
+- **`ev2` no longer exists:** GET and PUT both return **404** now. It held id 2 on 2026-10-31,
+  and `list1` dropped id 2 at the same time. So a slot exists only while it holds an event, and
+  the 500 that HA showed for `ev2` (#95) is the integration wrapping that 404, not a transient
+  cloud fault.
+- **Unresolved: how a new slot is created.** `PUT /events/ev2` (404) and `POST /events`
+  (400, spike 2) both fail. The EasyControl app can create one, so the route exists. The next
+  probe is to capture what the app sends, rather than guess more bodies.
+
+**Consequence for this design:** "create via whole-array PUT to `ev1`" is wrong. Within what has
+been verified, the integration can **edit or replace the event in an existing slot** and read
+all slots through `list1`. Creating or deleting slots stays out of scope until the creation
+route is known. Tasks and spec need rewriting to this model before implementation.
+
+## Standing slot (Casey, 2026-11-03) — supersedes create/delete for now
+
+- Decision: `ev1` is kept forever as the blippstrom event `Away (blippstrom)`. At rest it is parked
+  on `2099-12-30..2099-12-31`; Node-RED moves it to the trip dates and parks it again on return.
+  Nothing creates or deletes a slot, so the app capture is no longer on the critical path.
+- Probe 4 (live, device 101506113): one-element PUT to `ev1` replacing the dummy (27 Nov to 15 Dec)
+  with the parked event returned 204 and read back from the cloud in 5 s. 2099 was accepted first
+  try. `ev2` is 404, `list1` shows only the parked event. The dummy is gone, so the "delete dummy
+  before 27 Nov" to-do is resolved.
+- Minimum to ship: one service `bosch.set_away_event` (`device_id`, `name`, `start`, `end`, dates
+  `YYYY-MM-DD`). It GETs `ev1`, PUTs a one-element array with id 1 under the update lock, reads back
+  with bounded retry, returns `{name, start, end, verified}` as an optional service response and
+  raises on mismatch or if `ev1` is 404. Validate start <= end and the name length. Ownership checks
+  stay in Node-RED. The events sensor (tasks 2.x) and app capture are follow-ups, not blockers.
+- Consumer: `nr-blippstrom-v2` openspec `bosch-away-flow`, design D9.

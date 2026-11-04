@@ -166,3 +166,21 @@ width, not a hint about the semantics. Don't read anything into it.
   for the cycle (v0.33 behavior); WARNING throttled to once per hour
 - PUT acceptance is `204` (sometimes `200`); a 204 is **not** proof of
   behavior — the boost ladder confirms activation against the next refresh
+
+## Events (`/events`) — read probe 2026-10-31, CT200 101506113
+
+All three are `type: eventArray`. Entry shape:
+`{"name": <base64>, "start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "type": "away", "id": <int>}`.
+
+| path | writeable | observed |
+|---|---|---|
+| `/events/ev1` | 1 | one entry, id 1 |
+| `/events/ev2` | 1 | one entry, id 2 (returned 500 on 2026-10-30; works now) |
+| `/events/list1` | 0 | union of ev1 + ev2 (ids 1, 2) |
+
+- `ev1` and `ev2` look like per-slot arrays; `list1` is the merged read view. Which slot a new
+  event lands in, and whether `ev2` is a second slot or a second household member's list,
+  is **not yet known**.
+- Only `type: "away"` seen. Name length limit, other types, the id rule, the away setpoint
+  and write-to-gateway delay are unprobed (they need a write; see the change's tasks 1.1/1.1a/1.2).
+- Names are household-specific: redact in anything committed.

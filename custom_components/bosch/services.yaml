@@ -147,3 +147,35 @@ send_custom_get:
       example: '"/system/holidayModes/hm1/startStop"'
       selector:
         text:
+set_away_event:
+  name: Set away event
+  description: >-
+    Move the standing away event (slot ev1 on the EasyControl) to new dates and rename it. The slot must already hold an event; nothing is created or deleted. Returns the values read back from the device, or fails if the device does not reflect the write. Park the event in the far future to end an away period.
+  fields:
+    device_id:
+      name: Device
+      description: Bosch gateway device.
+      required: true
+      selector:
+        device:
+          integration: bosch
+          multiple: true
+    name:
+      name: Name
+      description: Event name, e.g. Away (blippstrom).
+      required: true
+      example: Away (blippstrom)
+      selector:
+        text:
+    start:
+      name: Start
+      description: First day, YYYY-MM-DD.
+      required: true
+      selector:
+        date:
+    end:
+      name: End
+      description: Last day (inclusive), YYYY-MM-DD.
+      required: true
+      selector:
+        date:
