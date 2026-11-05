@@ -4,7 +4,15 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+## [1.8.0-beta.2] — 2026-11-05
+
+Brings the Home Assistant 2026.11 fix from 1.7.1 to the beta channel.
+
 ### Fixed
+- **Entities with a parent device load again on Home Assistant 2026.11** (from
+  1.7.1). `DeviceInfo` is built with keyword arguments, so child-device
+  entities no longer fail with `DeviceInfo.__init__() takes 1 positional
+  argument but 2 were given`.
 - **`bosch.send_custom_put_string` can write structured values.** A value that
   is a JSON array or object, such as a day program for
   `/programs/pgN/monday` (`[{"t":360,"Th":21.5,"name":0}]`), is now sent as
