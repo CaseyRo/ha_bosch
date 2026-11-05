@@ -4,6 +4,13 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **Entities with a parent device load again on Home Assistant 2026.11.**
+  HA 2026.11 made `DeviceInfo` keyword-only, so building it from a dict made
+  every child-device entity (selects, sensors, ...) fail with `DeviceInfo.__init__()
+  takes 1 positional argument but 2 were given`. The `via_device_id` link now
+  passes keyword arguments.
+
 ## [1.8.0-beta.1] — 2026-11-04
 
 ### Added
