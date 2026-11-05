@@ -496,6 +496,28 @@ def test_link_via_device_id_drops_the_link_when_the_gateway_is_missing():
         assert pe._link_via_device_id(_added_entity(), info) == {"identifiers": {(DOMAIN, "uuid-1_dhw1")}}
 
 
+def test_link_via_device_id_builds_keyword_only_device_info():
+    """HA 2026.11: DeviceInfo(...) rejects a positional dict."""
+    from custom_components.bosch import pointtapi_entities as pe
+
+    class KeywordOnlyDeviceInfo(dict):
+        def __init__(self, **kwargs):
+            super().__init__(kwargs)
+
+    def since_2026_8(*, via_device=None, via_device_id=None, **kwargs):
+        """HA 2026.8 and later."""
+
+    parent = SimpleNamespace(id="gateway-device")
+    registry = SimpleNamespace(async_get_or_create=since_2026_8, async_get_device=MagicMock(return_value=parent))
+    info = {"identifiers": {(DOMAIN, "uuid-1_dhw1")}, "via_device": (DOMAIN, "uuid-1")}
+    with (
+        patch.object(pe, "DeviceInfo", KeywordOnlyDeviceInfo),
+        patch.object(pe.dr, "async_get", return_value=registry),
+    ):
+        linked = pe._link_via_device_id(_added_entity(), info)
+    assert linked == {"identifiers": {(DOMAIN, "uuid-1_dhw1")}, "via_device_id": "gateway-device"}
+
+
 def test_pointtapi_entities_route_device_info_through_the_link():
     from custom_components.bosch import pointtapi_entities as pe
 
