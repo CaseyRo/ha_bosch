@@ -126,7 +126,7 @@ send_custom_put_string:
       selector:
         text:
     value:
-      description: Value you want to send
+      description: Value you want to send. A JSON array or object (for example a day program) is sent as structured JSON, not as a string.
       example: '2022-05-17'
       selector:
         text:
