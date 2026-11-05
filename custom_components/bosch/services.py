@@ -59,9 +59,14 @@ def _parse_json_value(value):
     if not isinstance(value, str) or value.strip()[:1] not in ("[", "{"):
         return value
     try:
-        return json.loads(value)
+        return json.loads(value, parse_constant=_reject_json_constant)
     except ValueError:
         return value
+
+
+def _reject_json_constant(constant: str):
+    """Refuse NaN, Infinity and -Infinity, which json.loads accepts but JSON does not."""
+    raise ValueError(f"Invalid JSON constant: {constant}")
 
 
 def find_gateway_entry(hass: HomeAssistant, devices_id: str) -> list:
