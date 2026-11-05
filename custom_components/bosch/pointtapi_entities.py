@@ -483,11 +483,12 @@ def _link_via_device_id(entity: Any, info: DeviceInfo | None) -> DeviceInfo | No
     registry = dr.async_get(hass)
     if "via_device_id" not in inspect.signature(registry.async_get_or_create).parameters:
         return info
-    linked = DeviceInfo({key: value for key, value in info.items() if key != "via_device"})
+    fields = {key: value for key, value in info.items() if key != "via_device"}
     parent = _device_by_identifier(registry, via, platform.config_entry.entry_id)
     if parent is not None:
-        linked["via_device_id"] = parent.id
-    return linked
+        fields["via_device_id"] = parent.id
+    # HA 2026.11 made DeviceInfo keyword-only (no longer a TypedDict taking a dict).
+    return DeviceInfo(**fields)
 
 def _gateway_product_info(data: dict[str, Any] | None = None) -> tuple[str, str]:
     """Return the gateway manufacturer and model from its product ID."""
