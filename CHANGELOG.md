@@ -4,6 +4,16 @@ All notable changes to this Bosch Home Assistant custom component will be docume
 
 ## [Unreleased]
 
+### Fixed
+- **`bosch.send_custom_put_string` can write structured values.** A value that
+  is a JSON array or object, such as a day program for
+  `/programs/pgN/monday` (`[{"t":360,"Th":21.5,"name":0}]`), is now sent as
+  JSON rather than as a quoted string, which the gateway rejected with
+  HTTP 403. Other strings are sent unchanged.
+- **A rejected custom PUT now fails the service call with a clear error**
+  instead of an unhandled `ConfigEntryAuthFailed` traceback and an HTTP 500
+  from the service endpoint.
+
 ## [1.8.0-beta.1] — 2026-11-04
 
 ### Added

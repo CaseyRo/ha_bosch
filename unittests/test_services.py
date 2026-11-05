@@ -249,6 +249,33 @@ class TestRegisteredHandlers:
         entry.custom_put.assert_awaited_once_with(path="/x", value="on")
 
     @pytest.mark.asyncio
+    async def test_put_string_sends_json_arrays_and_objects_as_json(self, handlers):
+        entry = _gateway_entry()
+        day = '[{"t":360,"Th":21.5,"name":0},{"t":1320,"Th":21.0,"name":0}]'
+        with patch("custom_components.bosch.services.find_gateway_entry", return_value=[entry]):
+            await handlers[SERVICE_PUT_STRING](_service_call(**{ATTR_DEVICE_ID: ["device1"], "path": "/programs/pg4/monday", "value": day}))
+            await handlers[SERVICE_PUT_STRING](_service_call(**{ATTR_DEVICE_ID: ["device1"], "path": "/x", "value": ' {"a": 1}'}))
+            await handlers[SERVICE_PUT_STRING](_service_call(**{ATTR_DEVICE_ID: ["device1"], "path": "/x", "value": "[not json"}))
+            await handlers[SERVICE_PUT_STRING](_service_call(**{ATTR_DEVICE_ID: ["device1"], "path": "/x", "value": "2022-05-17"}))
+
+        assert [c.kwargs["value"] for c in entry.custom_put.await_args_list] == [
+            [{"t": 360, "Th": 21.5, "name": 0}, {"t": 1320, "Th": 21.0, "name": 0}],
+            {"a": 1},
+            "[not json",
+            "2022-05-17",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_put_raises_home_assistant_error_when_gateway_rejects(self, handlers):
+        from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+
+        entry = _gateway_entry()
+        entry.custom_put.side_effect = ConfigEntryAuthFailed("POINTTAPI PUT /x: HTTP 403")
+        with patch("custom_components.bosch.services.find_gateway_entry", return_value=[entry]):
+            with pytest.raises(HomeAssistantError, match="PUT /x failed"):
+                await handlers[SERVICE_PUT_STRING](_service_call(**{ATTR_DEVICE_ID: ["device1"], "path": "/x", "value": "on"}))
+
+    @pytest.mark.asyncio
     async def test_handlers_return_without_gateway(self, handlers):
         with patch("custom_components.bosch.services.find_gateway_entry", return_value=[]):
             assert await handlers[SERVICE_UPDATE](_service_call(**{ATTR_DEVICE_ID: ["missing"]})) is None

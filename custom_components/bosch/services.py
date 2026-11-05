@@ -1,11 +1,12 @@
 """Services used in HA."""
 from __future__ import annotations
+import json
 import logging
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.util import dt as dt_util
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 import homeassistant.helpers.device_registry as dr
 import homeassistant.helpers.config_validation as cv
@@ -45,6 +46,22 @@ SERVICE_SET_AWAY_EVENT_SCHEMA = vol.Schema(
         vol.Required("end"): cv.date,
     }
 )
+
+
+def _parse_json_value(value):
+    """Turn a JSON array or object passed as a string into its value.
+
+    Some resources take structured values, for example a day program
+    (``/programs/pg1/monday``) is a list of switch points. The string service
+    would otherwise send the list as a quoted string, which the gateway
+    rejects. Anything that is not valid JSON is sent unchanged.
+    """
+    if not isinstance(value, str) or value.strip()[:1] not in ("[", "{"):
+        return value
+    try:
+        return json.loads(value)
+    except ValueError:
+        return value
 
 
 def find_gateway_entry(hass: HomeAssistant, devices_id: str) -> list:
@@ -160,9 +177,13 @@ def async_register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
         if not _path or not _value:
             _LOGGER.error("Path or value not defined.")
             return
+        _value = _parse_json_value(_value)
         data = []
         for _gateway_entry in _gateway_entries:
-            return_value = await _gateway_entry.custom_put(path=_path, value=_value)
+            try:
+                return_value = await _gateway_entry.custom_put(path=_path, value=_value)
+            except Exception as err:  # noqa: BLE001 - report the rejected write to the caller, not as a crashed request
+                raise HomeAssistantError(f"PUT {_path} failed: {err}") from err
             data.append(return_value)
         return {
             "data": data
