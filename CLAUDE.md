@@ -145,6 +145,14 @@ All platform signals, circuit names (`DHW`, `HC`, `SC`, `ZN`, `DV`), protocol id
 - Current integration version: see `manifest.json` (`version`). Bump it on releases;
   don't restate it here — this file said `1.0.0` for five minor releases.
 - `bosch-thermostat-client` is not used by and does not support POINTTAPI; the POINTTAPI path is entirely custom
+- **2026-11-12: `manifest.json` is the only place the client version lives.**
+  `unittests/requirements.txt` used to carry a second `bosch-thermostat-client==`
+  pin, and nothing kept the two in step. Upstream went red on #590/#591 exactly
+  this way — the manifest moved to `0.29.0b1`, the requirements file still said
+  `0.28.2`, and `test_migration.py` died on `ImportError: cannot import name
+  'easycontrol_ssl_context'`. Both repos now drop that second pin and have
+  `ci.yaml` install the manifest's own requirement instead (upstream #614). When
+  you bump the client, change `manifest.json` and nothing else.
 - `.gitmodules` pulls in `deric-bosch-client`, a vendored fork of the upstream
   client kept for reference when diffing protocol behaviour. Nothing in
   `custom_components/` imports it; a plain `git clone` without `--recursive` is
